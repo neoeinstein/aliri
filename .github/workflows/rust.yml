@@ -12,6 +12,17 @@ jobs:
   check:
     name: Check
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        features:
+          - ""
+          - --no-default-features --features "ec"
+          - --no-default-features --features "hmac"
+          - --no-default-features --features "rsa, hmac, ec"
+          - --no-default-features --features "ec, private-keys"
+          - --no-default-features --features "hmac, private-keys"
+          - --no-default-features --features "rsa, private-keys"
+          - --all-features
     steps:
       - name: Checkout sources
         uses: actions/checkout@v2
@@ -27,11 +38,17 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: check
-          args: --all
+          args: --all ${{ matrix.features }}
 
   test:
     name: Test Suite
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        features:
+          - ""
+          - --no-default-features --features "hmac, ec, rsa"
+          - --all-features
     steps:
       - name: Checkout sources
         uses: actions/checkout@v2
@@ -47,7 +64,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: test
-          args: --all
+          args: --all ${{ matrix.features }}
 
   lints:
     name: Lints

@@ -1,4 +1,3 @@
-use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "ec")]
@@ -26,7 +25,8 @@ pub struct Jwk {
     pub params: Parameters,
 }
 
-lazy_static! {
+#[cfg(feature = "hmac")]
+lazy_static::lazy_static! {
     static ref HMAC_BLANK_CHECK: jsonwebtoken::Validation = jsonwebtoken::Validation {
         validate_exp: false,
         algorithms: vec![
@@ -36,6 +36,10 @@ lazy_static! {
         ],
         ..Default::default()
     };
+}
+
+#[cfg(feature = "rsa")]
+lazy_static::lazy_static! {
     static ref RSA_BLANK_CHECK: jsonwebtoken::Validation = jsonwebtoken::Validation {
         validate_exp: false,
         algorithms: vec![
@@ -48,6 +52,10 @@ lazy_static! {
         ],
         ..Default::default()
     };
+}
+
+#[cfg(feature = "ec")]
+lazy_static::lazy_static! {
     static ref EC_BLANK_CHECK: jsonwebtoken::Validation = jsonwebtoken::Validation {
         validate_exp: false,
         algorithms: vec![
@@ -56,11 +64,19 @@ lazy_static! {
         ],
         ..Default::default()
     };
-    static ref RSA_ALGOS: &'static [jsonwebtoken::Algorithm] = &[];
-    static ref EC_ALGOS: &'static [jsonwebtoken::Algorithm] = &[
-        jsonwebtoken::Algorithm::ES256,
-        jsonwebtoken::Algorithm::ES384,
-    ];
+}
+
+fn get_blank_check(kty: jwa::KeyType) -> &'static jsonwebtoken::Validation {
+    match kty {
+        #[cfg(feature = "hmac")]
+        jwa::KeyType::Hmac => &*HMAC_BLANK_CHECK,
+
+        #[cfg(feature = "rsa")]
+        jwa::KeyType::Rsa => &*RSA_BLANK_CHECK,
+
+        #[cfg(feature = "ec")]
+        jwa::KeyType::EllipticCurve => &*EC_BLANK_CHECK,
+    }
 }
 
 impl Jwk {
@@ -72,11 +88,7 @@ impl Jwk {
     ) -> anyhow::Result<C> {
         let decoder = self.params.verify_key();
 
-        let blank = match self.params.to_family() {
-            jwa::KeyType::Hmac => &*HMAC_BLANK_CHECK,
-            jwa::KeyType::Rsa => &*RSA_BLANK_CHECK,
-            jwa::KeyType::EllipticCurve => &*EC_BLANK_CHECK,
-        };
+        let blank = get_blank_check(self.params.to_key_type());
 
         let token_data: jsonwebtoken::TokenData<PayloadWithBasicClaims<C>> =
             jsonwebtoken::decode(token, &decoder, &blank)?;
@@ -195,7 +207,7 @@ impl Parameters {
     }
 
     /// Returns the algorithm family used by the key.
-    pub fn to_family(&self) -> jwa::KeyType {
+    pub fn to_key_type(&self) -> jwa::KeyType {
         match self {
             #[cfg(feature = "rsa")]
             Self::Rsa(_) => jwa::KeyType::Rsa,
@@ -247,7 +259,7 @@ mod tests {
     use super::*;
 
     mod serialization {
-        use crate::test_util;
+        use crate::test;
 
         use super::*;
 
@@ -260,7 +272,7 @@ mod tests {
 
                 #[test]
                 fn deserialize() -> anyhow::Result<()> {
-                    let _key: Parameters = serde_json::from_str(test_util::ec::JWK_MINIMAL)?;
+                    let _key: Parameters = serde_json::from_str(test::ec::JWK_MINIMAL)?;
                     Ok(())
                 }
             }
@@ -272,7 +284,7 @@ mod tests {
                 #[test]
                 fn deserialize_with_private_key() -> anyhow::Result<()> {
                     let _key: Parameters =
-                        serde_json::from_str(test_util::ec::JWK_WITH_MINIMAL_PRIVATE_KEY)?;
+                        serde_json::from_str(test::ec::JWK_WITH_MINIMAL_PRIVATE_KEY)?;
                     Ok(())
                 }
             }
@@ -284,7 +296,7 @@ mod tests {
 
             #[test]
             fn deserialize() -> anyhow::Result<()> {
-                let _key: Parameters = serde_json::from_str(test_util::hmac::JWK_MINIMAL)?;
+                let _key: Parameters = serde_json::from_str(test::hmac::JWK_MINIMAL)?;
                 Ok(())
             }
         }
@@ -298,7 +310,7 @@ mod tests {
 
                 #[test]
                 fn deserialize() -> anyhow::Result<()> {
-                    let _key: Parameters = serde_json::from_str(test_util::rsa::JWK_MINIMAL)?;
+                    let _key: Parameters = serde_json::from_str(test::rsa::JWK_MINIMAL)?;
                     Ok(())
                 }
             }
@@ -310,7 +322,7 @@ mod tests {
                 #[test]
                 fn deserialize_with_private_key() -> anyhow::Result<()> {
                     let _key: Parameters =
-                        serde_json::from_str(test_util::rsa::JWK_WITH_MINIMAL_PRIVATE_KEY)?;
+                        serde_json::from_str(test::rsa::JWK_WITH_MINIMAL_PRIVATE_KEY)?;
                     Ok(())
                 }
             }
@@ -319,7 +331,7 @@ mod tests {
 
     #[cfg(feature = "private-keys")]
     mod key_generation {
-        use crate::{jwa::Algorithm, test_util};
+        use crate::{jwa::Algorithm, test};
 
         use super::*;
 
@@ -417,8 +429,8 @@ mod tests {
 
             let header = jsonwebtoken::Header::new(alg.to_jsonwebtoken().unwrap());
 
-            let claims = test_util::MinimalClaims::default()
-                .with_audience(*test_util::TEST_AUD)
+            let claims = test::MinimalClaims::default()
+                .with_audience(*test::TEST_AUD)
                 .with_future_expiration(60 * 5);
 
             let encoded = jwk.sign(&header, &claims)?;
@@ -431,9 +443,9 @@ mod tests {
 
             let validator = BasicValidation::default()
                 .add_approved_algorithm(alg)
-                .add_allowed_audience(test_util::TEST_AUD.to_owned());
+                .add_allowed_audience(test::TEST_AUD.to_owned());
 
-            let claims: test_util::MinimalClaims = jwk.verify_token(&encoded, &validator)?;
+            let claims: test::MinimalClaims = jwk.verify_token(&encoded, &validator)?;
             dbg!(claims);
 
             Ok(())

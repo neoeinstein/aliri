@@ -87,7 +87,7 @@ mod tests {
     };
 
     #[cfg(feature = "rsa")]
-    use crate::test_util;
+    use crate::test;
 
     #[cfg(feature = "rsa")]
     use super::*;
@@ -95,7 +95,7 @@ mod tests {
     #[test]
     #[cfg(feature = "rsa")]
     fn decodes_jwks() -> anyhow::Result<()> {
-        let jwks: Jwks = serde_json::from_str(test_util::rsa::JWKS)?;
+        let jwks: Jwks = serde_json::from_str(test::rsa::JWKS)?;
         dbg!(&jwks);
         Ok(())
     }

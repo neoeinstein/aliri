@@ -7,8 +7,7 @@ pub mod jwks;
 mod types;
 mod verify;
 
-#[cfg(test)]
-pub(crate) mod test_util;
+pub mod test;
 
 pub use jwk::Jwk;
 pub use jwks::Jwks;

@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use aliri_core::clock::UnixTime;
 use lazy_static::lazy_static;
 
-use crate::{Audiences, CoreClaims};
+use crate::{Audiences, CoreClaims, Issuer, IssuerRef};
 
 #[cfg(feature = "rsa")]
 pub mod rsa {
@@ -55,12 +55,18 @@ pub struct MinimalClaims {
     #[serde(default, skip_serializing_if = "Audiences::is_empty")]
     aud: Audiences,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    iss: Option<Issuer>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     exp: Option<UnixTime>,
 }
 
 impl CoreClaims for MinimalClaims {
     fn aud(&self) -> &Audiences {
         &self.aud
+    }
+
+    fn iss(&self) -> Option<&IssuerRef> {
+        self.iss.as_deref()
     }
 
     fn exp(&self) -> Option<UnixTime> {
@@ -71,6 +77,11 @@ impl CoreClaims for MinimalClaims {
 impl MinimalClaims {
     pub fn with_audience(mut self, aud: impl Into<crate::Audience>) -> Self {
         self.aud = Audiences::from(vec![aud.into()]);
+        self
+    }
+
+    pub fn with_issuer(mut self, iss: impl Into<Issuer>) -> Self {
+        self.iss = Some(iss.into());
         self
     }
 
