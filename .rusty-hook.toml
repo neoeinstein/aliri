@@ -1,0 +1,3 @@
+[hooks]
+pre-commit = "cargo test --all"
+pre-push = "cargo fmt --all -- --check"

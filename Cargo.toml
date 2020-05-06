@@ -4,4 +4,25 @@ version = "0.1.0"
 authors = ["Marcus Griep <marcus@griep.us>"]
 edition = "2018"
 
+[features]
+
 [dependencies]
+ahash = "0.3"
+anyhow = "1"
+aliri_core = { path = "./aliri_core" }
+aliri_jose = { path = "./aliri_jose" }
+aliri_macros = { path = "./aliri_macros" }
+base64 = "0.12"
+jsonwebtoken = { git = "https://github.com/neoeinstein/jsonwebtoken", branch = "less-decoding" }
+lazy_static = "1"
+reqwest = { optional = true, version = "0.10", features = [ "json" ] }
+serde = { version = "1", features = [ "derive" ] }
+
+[dev-dependencies]
+aliri_jose = { path = "./aliri_jose", features = [ "private-keys" ] }
+openssl = "0.10"
+rusty-hook = "0.11"
+serde_json = "1"
+tokio = { version = "0.2", features = [ "rt-threaded", "macros" ] }
+
+[workspace]

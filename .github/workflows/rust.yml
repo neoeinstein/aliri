@@ -6,7 +6,7 @@
 
 on: [push, pull_request]
 
-name: Quickstart
+name: Core Build
 
 jobs:
   check:
@@ -27,6 +27,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: check
+          args: --all
 
   test:
     name: Test Suite
@@ -46,6 +47,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: test
+          args: --all
 
   lints:
     name: Lints
@@ -72,4 +74,4 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: clippy
-          args: -- -D warnings
+          args: --all -- -D warnings
