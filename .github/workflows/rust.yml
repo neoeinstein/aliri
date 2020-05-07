@@ -6,7 +6,7 @@
 
 on: [push, pull_request]
 
-name: Core Build
+name: CI
 
 jobs:
   check:
