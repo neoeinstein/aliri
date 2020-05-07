@@ -1,9 +1,9 @@
-use std::collections::HashSet;
+use std::{collections::HashSet, time::SystemTime};
 
 use aliri_core::clock::UnixTime;
 use lazy_static::lazy_static;
 
-use crate::{Audiences, CoreClaims, Issuer, IssuerRef};
+use crate::jwt;
 
 #[cfg(feature = "rsa")]
 pub mod rsa {
@@ -42,8 +42,8 @@ pub mod mixed {
 }
 
 lazy_static! {
-    pub static ref TEST_AUD: &'static crate::AudienceRef =
-        &crate::AudienceRef::from_str("TEST_AUDIENCE");
+    pub static ref TEST_AUD: &'static jwt::AudienceRef =
+        &jwt::AudienceRef::from_str("TEST_AUDIENCE");
     pub static ref VALID_AUD: HashSet<String> = [TEST_AUD.as_str()]
         .iter()
         .map(|&s| String::from(s))
@@ -52,20 +52,20 @@ lazy_static! {
 
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug, Default, PartialEq, Eq)]
 pub struct MinimalClaims {
-    #[serde(default, skip_serializing_if = "Audiences::is_empty")]
-    aud: Audiences,
+    #[serde(default, skip_serializing_if = "jwt::Audiences::is_empty")]
+    aud: jwt::Audiences,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    iss: Option<Issuer>,
+    iss: Option<jwt::Issuer>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     exp: Option<UnixTime>,
 }
 
-impl CoreClaims for MinimalClaims {
-    fn aud(&self) -> &Audiences {
+impl jwt::CoreClaims for MinimalClaims {
+    fn aud(&self) -> &jwt::Audiences {
         &self.aud
     }
 
-    fn iss(&self) -> Option<&IssuerRef> {
+    fn iss(&self) -> Option<&jwt::IssuerRef> {
         self.iss.as_deref()
     }
 
@@ -75,18 +75,18 @@ impl CoreClaims for MinimalClaims {
 }
 
 impl MinimalClaims {
-    pub fn with_audience(mut self, aud: impl Into<crate::Audience>) -> Self {
-        self.aud = Audiences::from(vec![aud.into()]);
+    pub fn with_audience(mut self, aud: impl Into<jwt::Audience>) -> Self {
+        self.aud = jwt::Audiences::from(vec![aud.into()]);
         self
     }
 
-    pub fn with_issuer(mut self, iss: impl Into<Issuer>) -> Self {
+    pub fn with_issuer(mut self, iss: impl Into<jwt::Issuer>) -> Self {
         self.iss = Some(iss.into());
         self
     }
 
     pub fn with_future_expiration(mut self, secs: u64) -> Self {
-        let n = UnixTime::from(std::time::SystemTime::now());
+        let n = UnixTime::from(SystemTime::now());
         self.exp = Some(UnixTime(n.0 + secs));
         self
     }

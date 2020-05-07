@@ -5,12 +5,12 @@ use jsonwebtoken::EncodingKey;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Parameters {
+pub struct Hmac {
     #[serde(rename = "k")]
     key: Base64Url,
 }
 
-impl Parameters {
+impl Hmac {
     #[cfg(feature = "private-keys")]
     pub fn generate(bits: usize) -> anyhow::Result<Self> {
         let mut buf = Vec::new();

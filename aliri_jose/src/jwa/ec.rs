@@ -18,8 +18,8 @@ pub use public::PublicKeyParameters;
 
 lazy_static! {
     static ref P256: EcGroup = EcGroup::from_curve_name(Nid::X9_62_PRIME256V1).unwrap();
-    static ref P384: openssl::ec::EcGroup = EcGroup::from_curve_name(Nid::SECP384R1).unwrap();
-    static ref P521: openssl::ec::EcGroup = EcGroup::from_curve_name(Nid::SECP521R1).unwrap();
+    static ref P384: EcGroup = EcGroup::from_curve_name(Nid::SECP384R1).unwrap();
+    static ref P521: EcGroup = EcGroup::from_curve_name(Nid::SECP521R1).unwrap();
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Serialize, Deserialize)]
@@ -57,39 +57,39 @@ impl Curve {
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
-pub enum Parameters {
+pub enum EllipticCurve {
     #[cfg(feature = "private-keys")]
     PublicAndPrivate(PrivateKeyParameters),
     PublicOnly(PublicKeyParameters),
 }
 
-impl Parameters {
+impl EllipticCurve {
     #[cfg(feature = "private-keys")]
     pub fn generate(curve: Curve) -> anyhow::Result<Self> {
-        PrivateKeyParameters::generate(curve).map(Parameters::PublicAndPrivate)
+        PrivateKeyParameters::generate(curve).map(Self::PublicAndPrivate)
     }
 
     #[cfg(feature = "private-keys")]
     fn private_params(&self) -> Option<&PrivateKeyParameters> {
         match self {
-            Parameters::PublicAndPrivate(p) => Some(p),
-            Parameters::PublicOnly(_) => None,
+            Self::PublicAndPrivate(p) => Some(p),
+            Self::PublicOnly(_) => None,
         }
     }
 
     fn public_params(&self) -> &PublicKeyParameters {
         match self {
             #[cfg(feature = "private-keys")]
-            Parameters::PublicAndPrivate(p) => &p.public_key,
-            Parameters::PublicOnly(p) => p,
+            Self::PublicAndPrivate(p) => &p.public_key,
+            Self::PublicOnly(p) => p,
         }
     }
 
     pub fn remove_private_key(self) -> Self {
         match self {
             #[cfg(feature = "private-keys")]
-            Parameters::PublicAndPrivate(p) => Parameters::PublicOnly(p.public_key),
-            Parameters::PublicOnly(p) => Parameters::PublicOnly(p),
+            Self::PublicAndPrivate(p) => Self::PublicOnly(p.public_key),
+            Self::PublicOnly(p) => Self::PublicOnly(p),
         }
     }
 

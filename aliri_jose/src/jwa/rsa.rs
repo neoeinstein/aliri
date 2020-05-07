@@ -13,49 +13,49 @@ pub use public::PublicKeyParameters;
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
-pub enum Parameters {
+pub enum Rsa {
     #[cfg(feature = "private-keys")]
     PublicAndPrivate(PrivateKeyParameters),
     PublicOnly(PublicKeyParameters),
 }
 
-impl Parameters {
+impl Rsa {
     #[cfg(feature = "private-keys")]
     pub fn generate() -> anyhow::Result<Self> {
-        PrivateKeyParameters::generate().map(Parameters::PublicAndPrivate)
+        PrivateKeyParameters::generate().map(Rsa::PublicAndPrivate)
     }
 
     #[cfg(feature = "private-keys")]
     pub fn private_key_from_pem(pem: &str) -> anyhow::Result<Self> {
-        PrivateKeyParameters::from_pem(pem).map(Parameters::PublicAndPrivate)
+        PrivateKeyParameters::from_pem(pem).map(Self::PublicAndPrivate)
     }
 
     #[cfg(feature = "openssl")]
     pub fn public_key_from_pem(pem: &str) -> anyhow::Result<Self> {
-        PublicKeyParameters::from_pem(pem).map(Parameters::PublicOnly)
+        PublicKeyParameters::from_pem(pem).map(Self::PublicOnly)
     }
 
     #[cfg(feature = "private-keys")]
     fn private_params(&self) -> Option<&PrivateKeyParameters> {
         match self {
-            Parameters::PublicAndPrivate(p) => Some(p),
-            Parameters::PublicOnly(_) => None,
+            Self::PublicAndPrivate(p) => Some(p),
+            Self::PublicOnly(_) => None,
         }
     }
 
     fn public_params(&self) -> &PublicKeyParameters {
         match self {
             #[cfg(feature = "private-keys")]
-            Parameters::PublicAndPrivate(p) => &p.public_key,
-            Parameters::PublicOnly(p) => p,
+            Self::PublicAndPrivate(p) => &p.public_key,
+            Self::PublicOnly(p) => p,
         }
     }
 
     pub fn remove_private_key(self) -> Self {
         match self {
             #[cfg(feature = "private-keys")]
-            Parameters::PublicAndPrivate(p) => Parameters::PublicOnly(p.public_key),
-            Parameters::PublicOnly(p) => Parameters::PublicOnly(p),
+            Self::PublicAndPrivate(p) => Self::PublicOnly(p.public_key),
+            Self::PublicOnly(p) => Self::PublicOnly(p),
         }
     }
 

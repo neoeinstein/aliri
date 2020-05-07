@@ -3,16 +3,14 @@
 pub mod jwa;
 pub mod jwk;
 pub mod jwks;
-
-mod types;
-mod verify;
+pub mod jws;
+pub mod jwt;
 
 pub mod test;
 
 pub use jwk::Jwk;
 pub use jwks::Jwks;
-pub use types::*;
-pub use verify::{BasicValidation, CoreClaims, EmptyClaims};
+pub use jwt::{Jwt, JwtRef};
 
 use static_assertions::assert_cfg;
 

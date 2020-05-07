@@ -1,6 +1,6 @@
 use std::future::Future;
 
-use aliri_jose::{jwa, Audience, BasicValidation, CoreClaims, Issuer, IssuerRef, Jwks, KeyIdRef};
+use aliri_jose::{jwk, jws, jwt, Jwks};
 use jsonwebtoken::Algorithm;
 
 use super::Directive;
@@ -10,11 +10,11 @@ use crate::TokenRef;
 pub struct JwksAuthority {
     jwks: Jwks,
     jwks_url: String,
-    validator: BasicValidation,
+    validator: jwt::BasicValidation,
 }
 
 impl JwksAuthority {
-    pub fn new(validator: BasicValidation) -> Self {
+    pub fn new(validator: jwt::BasicValidation) -> Self {
         let jwks_url = format!("{}.well-known/jwks.json", validator.issuer().unwrap());
 
         Self {
@@ -24,7 +24,7 @@ impl JwksAuthority {
         }
     }
 
-    pub fn issuer(&self) -> &IssuerRef {
+    pub fn issuer(&self) -> &jwt::IssuerRef {
         self.validator.issuer().expect("always an issuer")
     }
 
@@ -56,7 +56,9 @@ impl JwksAuthority {
         Ok(())
     }
 
-    pub async fn verify_token<T: for<'de> serde::Deserialize<'de> + CoreClaims + ScopeClaims>(
+    pub async fn verify_token<
+        T: for<'de> serde::Deserialize<'de> + jwt::CoreClaims + ScopeClaims,
+    >(
         &mut self,
         token: &TokenRef,
         directives: &[Directive],
@@ -71,7 +73,7 @@ impl JwksAuthority {
 
         let key = self
             .jwks
-            .get_key_by_id(KeyIdRef::from_str(&kid), alg)
+            .get_key_by_id(jwk::KeyIdRef::from_str(&kid), alg)
             .next()
             .ok_or_else(|| anyhow::anyhow!("unable to find key with matching kid {}", kid))?;
 
@@ -104,18 +106,18 @@ pub trait ScopeClaims {
     }
 }
 
-impl ScopeClaims for aliri_jose::EmptyClaims {}
+impl ScopeClaims for jwt::EmptyClaims {}
 
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug, PartialEq, Eq)]
 struct Claims {
-    aud: Audience,
-    iss: Issuer,
+    aud: jwt::Audience,
+    iss: jwt::Issuer,
     exp: u64,
 }
 
 impl<'a, T> crate::Authority<'a, T> for JwksAuthority
 where
-    T: for<'de> serde::Deserialize<'de> + CoreClaims + ScopeClaims + 'a,
+    T: for<'de> serde::Deserialize<'de> + jwt::CoreClaims + ScopeClaims + 'a,
 {
     type Directive = &'a [super::Directive];
     type Verify = std::pin::Pin<Box<dyn Future<Output = Result<T, Self::VerifyError>> + 'a>>;
@@ -126,33 +128,34 @@ where
     }
 }
 
-fn jwk_algo_from_jsonwebtoken(alg: Algorithm) -> Option<jwa::Algorithm> {
+fn jwk_algo_from_jsonwebtoken(alg: Algorithm) -> Option<jws::Algorithm> {
     match alg {
         #[cfg(feature = "hmac")]
-        Algorithm::HS256 => Some(jwa::Algorithm::HS256),
+        Algorithm::HS256 => Some(jws::Algorithm::HS256),
         #[cfg(feature = "hmac")]
-        Algorithm::HS384 => Some(jwa::Algorithm::HS384),
+        Algorithm::HS384 => Some(jws::Algorithm::HS384),
         #[cfg(feature = "hmac")]
-        Algorithm::HS512 => Some(jwa::Algorithm::HS512),
+        Algorithm::HS512 => Some(jws::Algorithm::HS512),
 
         #[cfg(feature = "rsa")]
-        Algorithm::RS256 => Some(jwa::Algorithm::RS256),
+        Algorithm::RS256 => Some(jws::Algorithm::RS256),
         #[cfg(feature = "rsa")]
-        Algorithm::RS384 => Some(jwa::Algorithm::RS384),
+        Algorithm::RS384 => Some(jws::Algorithm::RS384),
         #[cfg(feature = "rsa")]
-        Algorithm::RS512 => Some(jwa::Algorithm::RS512),
+        Algorithm::RS512 => Some(jws::Algorithm::RS512),
         #[cfg(feature = "rsa")]
-        Algorithm::PS256 => Some(jwa::Algorithm::PS256),
+        Algorithm::PS256 => Some(jws::Algorithm::PS256),
         #[cfg(feature = "rsa")]
-        Algorithm::PS384 => Some(jwa::Algorithm::PS384),
+        Algorithm::PS384 => Some(jws::Algorithm::PS384),
         #[cfg(feature = "rsa")]
-        Algorithm::PS512 => Some(jwa::Algorithm::PS512),
+        Algorithm::PS512 => Some(jws::Algorithm::PS512),
 
         #[cfg(feature = "ec")]
-        Algorithm::ES256 => Some(jwa::Algorithm::ES256),
+        Algorithm::ES256 => Some(jws::Algorithm::ES256),
         #[cfg(feature = "ec")]
-        Algorithm::ES384 => Some(jwa::Algorithm::ES384),
+        Algorithm::ES384 => Some(jws::Algorithm::ES384),
 
+        #[allow(unreachable_patterns)]
         _ => None,
     }
 }
@@ -161,87 +164,87 @@ fn jwk_algo_from_jsonwebtoken(alg: Algorithm) -> Option<jwa::Algorithm> {
 mod tests {
     use std::time::Duration;
 
-    use aliri_jose::{jwa, jwk, BasicValidation, EmptyClaims, Jwk, Jwks, KeyId};
+    use aliri_jose::{jwk, jws, jwt, Jwk, Jwks};
 
-    use crate::{oauth2::Directive, Authority as _};
+    use crate::{oauth2::Directive, Authority};
 
     use super::*;
 
     #[tokio::test]
     #[cfg(feature = "rsa")]
     async fn async_validate_rs256() -> anyhow::Result<()> {
-        async_validate(jwa::Algorithm::RS256, jsonwebtoken::Algorithm::RS256).await
+        async_validate(jws::Algorithm::RS256, jsonwebtoken::Algorithm::RS256).await
     }
 
     #[tokio::test]
     #[cfg(feature = "rsa")]
     async fn async_validate_rs384() -> anyhow::Result<()> {
-        async_validate(jwa::Algorithm::RS384, jsonwebtoken::Algorithm::RS384).await
+        async_validate(jws::Algorithm::RS384, jsonwebtoken::Algorithm::RS384).await
     }
 
     #[tokio::test]
     #[cfg(feature = "rsa")]
     async fn async_validate_rs512() -> anyhow::Result<()> {
-        async_validate(jwa::Algorithm::RS512, jsonwebtoken::Algorithm::RS512).await
+        async_validate(jws::Algorithm::RS512, jsonwebtoken::Algorithm::RS512).await
     }
 
     #[tokio::test]
     #[cfg(feature = "rsa")]
     async fn async_validate_ps256() -> anyhow::Result<()> {
-        async_validate(jwa::Algorithm::PS256, jsonwebtoken::Algorithm::PS256).await
+        async_validate(jws::Algorithm::PS256, jsonwebtoken::Algorithm::PS256).await
     }
 
     #[tokio::test]
     #[cfg(feature = "rsa")]
     async fn async_validate_ps384() -> anyhow::Result<()> {
-        async_validate(jwa::Algorithm::PS384, jsonwebtoken::Algorithm::PS384).await
+        async_validate(jws::Algorithm::PS384, jsonwebtoken::Algorithm::PS384).await
     }
 
     #[tokio::test]
     #[cfg(feature = "rsa")]
     async fn async_validate_ps512() -> anyhow::Result<()> {
-        async_validate(jwa::Algorithm::PS512, jsonwebtoken::Algorithm::PS512).await
+        async_validate(jws::Algorithm::PS512, jsonwebtoken::Algorithm::PS512).await
     }
 
     #[tokio::test]
     #[cfg(feature = "hmac")]
     async fn async_validate_hs256() -> anyhow::Result<()> {
-        async_validate(jwa::Algorithm::HS256, jsonwebtoken::Algorithm::HS256).await
+        async_validate(jws::Algorithm::HS256, jsonwebtoken::Algorithm::HS256).await
     }
 
     #[tokio::test]
     #[cfg(feature = "hmac")]
     async fn async_validate_hs384() -> anyhow::Result<()> {
-        async_validate(jwa::Algorithm::HS384, jsonwebtoken::Algorithm::HS384).await
+        async_validate(jws::Algorithm::HS384, jsonwebtoken::Algorithm::HS384).await
     }
 
     #[tokio::test]
     #[cfg(feature = "hmac")]
     async fn async_validate_hs512() -> anyhow::Result<()> {
-        async_validate(jwa::Algorithm::HS512, jsonwebtoken::Algorithm::HS512).await
+        async_validate(jws::Algorithm::HS512, jsonwebtoken::Algorithm::HS512).await
     }
 
     #[tokio::test]
     #[cfg(feature = "ec")]
     async fn async_validate_es256() -> anyhow::Result<()> {
-        async_validate(jwa::Algorithm::ES256, jsonwebtoken::Algorithm::ES256).await
+        async_validate(jws::Algorithm::ES256, jsonwebtoken::Algorithm::ES256).await
     }
 
     #[tokio::test]
     #[cfg(feature = "ec")]
     async fn async_validate_es384() -> anyhow::Result<()> {
-        async_validate(jwa::Algorithm::ES384, jsonwebtoken::Algorithm::ES384).await
+        async_validate(jws::Algorithm::ES384, jsonwebtoken::Algorithm::ES384).await
     }
     async fn async_validate(
-        alg: jwa::Algorithm,
+        alg: jws::Algorithm,
         jalg: jsonwebtoken::Algorithm,
     ) -> anyhow::Result<()> {
         let jwk_params = jwk::Parameters::generate(alg)?;
         dbg!(&jwk_params);
 
-        let test_kid = KeyId::new("test_key");
-        let test_issuer = Issuer::new("test_issuer");
-        let test_audience = Audience::new("test_audience");
+        let test_kid = jwk::KeyId::new("test_key");
+        let test_issuer = jwt::Issuer::new("test_issuer");
+        let test_audience = jwt::Audience::new("test_audience");
 
         let jwk = Jwk {
             id: Some(test_kid.clone()),
@@ -267,7 +270,7 @@ mod tests {
         let dec_head = jsonwebtoken::decode_header(&encoded)?;
         dbg!(&dec_head);
 
-        let validator = BasicValidation::default()
+        let validator = jwt::BasicValidation::default()
             .add_approved_algorithm(alg)
             .set_issuer(test_issuer)
             .add_allowed_audience(test_audience)
@@ -285,7 +288,7 @@ mod tests {
 
         let directives = vec![Directive::default(), both, t];
 
-        let c: EmptyClaims = auth
+        let c: jwt::EmptyClaims = auth
             .verify(&TokenRef::from_str(&encoded), &directives)
             .await?;
 
@@ -297,10 +300,10 @@ mod tests {
     #[tokio::test]
     #[cfg(all(any(feature = "reqwest"), feature = "rsa"))]
     async fn request() -> anyhow::Result<()> {
-        let validator = BasicValidation::default()
-            .add_approved_algorithm(jwa::Algorithm::RS256)
-            .set_issuer(Issuer::new("https://demo.auth0.com/"))
-            .add_allowed_audience(Audience::new("test"))
+        let validator = jwt::BasicValidation::default()
+            .add_approved_algorithm(jws::Algorithm::RS256)
+            .set_issuer(jwt::Issuer::new("https://demo.auth0.com/"))
+            .add_allowed_audience(jwt::Audience::new("test"))
             .with_leeway(Duration::from_secs(0));
 
         let mut authority = JwksAuthority::new(validator);

@@ -1,13 +1,33 @@
+use aliri_macros::typed_string;
 use serde::{Deserialize, Serialize};
 
-#[cfg(feature = "ec")]
-pub mod ec;
-#[cfg(feature = "hmac")]
-pub mod hmac;
-#[cfg(feature = "rsa")]
-pub mod rsa;
+use crate::{
+    jwa, jws,
+    jwt::{BasicValidation, CoreClaims, PayloadWithBasicClaims},
+};
 
-use crate::{jwa, verify::PayloadWithBasicClaims, BasicValidation, CoreClaims, KeyId};
+typed_string! {
+    /// An identifier for a JWK
+    pub struct KeyId(String);
+
+    /// Reference to `KeyId`
+    pub struct KeyIdRef(str);
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum KeyType {
+    #[cfg(feature = "rsa")]
+    #[serde(rename = "RSA")]
+    Rsa,
+
+    #[cfg(feature = "ec")]
+    #[serde(rename = "EC")]
+    EllipticCurve,
+
+    #[cfg(feature = "hmac")]
+    #[serde(rename = "oct")]
+    Hmac,
+}
 
 /// An identified JSON Web Key
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -19,7 +39,7 @@ pub struct Jwk {
     pub usage: Option<Usage>,
 
     #[serde(rename = "alg")]
-    pub algorithm: Option<jwa::Algorithm>,
+    pub algorithm: Option<jws::Algorithm>,
 
     #[serde(flatten)]
     pub params: Parameters,
@@ -66,16 +86,16 @@ lazy_static::lazy_static! {
     };
 }
 
-fn get_blank_check(kty: jwa::KeyType) -> &'static jsonwebtoken::Validation {
+fn get_blank_check(kty: KeyType) -> &'static jsonwebtoken::Validation {
     match kty {
         #[cfg(feature = "hmac")]
-        jwa::KeyType::Hmac => &*HMAC_BLANK_CHECK,
+        KeyType::Hmac => &*HMAC_BLANK_CHECK,
 
         #[cfg(feature = "rsa")]
-        jwa::KeyType::Rsa => &*RSA_BLANK_CHECK,
+        KeyType::Rsa => &*RSA_BLANK_CHECK,
 
         #[cfg(feature = "ec")]
-        jwa::KeyType::EllipticCurve => &*EC_BLANK_CHECK,
+        KeyType::EllipticCurve => &*EC_BLANK_CHECK,
     }
 }
 
@@ -124,59 +144,61 @@ pub enum Usage {
 pub enum Parameters {
     #[cfg(feature = "rsa")]
     #[serde(rename = "RSA")]
-    Rsa(rsa::Parameters),
+    Rsa(jwa::Rsa),
 
     #[cfg(feature = "ec")]
     #[serde(rename = "EC")]
-    EllipticCurve(ec::Parameters),
+    EllipticCurve(jwa::EllipticCurve),
 
     #[cfg(feature = "hmac")]
     #[serde(rename = "oct")]
-    Hmac(hmac::Parameters),
+    Hmac(jwa::Hmac),
 }
 
 impl Parameters {
     /// Generates new JWK parameters based on the algorithm specified
     #[cfg(feature = "private-keys")]
-    pub fn generate(alg: jwa::Algorithm) -> anyhow::Result<Self> {
+    pub fn generate(alg: jws::Algorithm) -> anyhow::Result<Self> {
         match alg {
             #[cfg(feature = "hmac")]
-            jwa::Algorithm::HS256 => Self::generate_hmac(256),
+            jws::Algorithm::HS256 => Self::generate_hmac(256),
             #[cfg(feature = "hmac")]
-            jwa::Algorithm::HS384 => Self::generate_hmac(384),
+            jws::Algorithm::HS384 => Self::generate_hmac(384),
             #[cfg(feature = "hmac")]
-            jwa::Algorithm::HS512 => Self::generate_hmac(512),
+            jws::Algorithm::HS512 => Self::generate_hmac(512),
 
             #[cfg(feature = "rsa")]
-            jwa::Algorithm::RS256
-            | jwa::Algorithm::RS384
-            | jwa::Algorithm::RS512
-            | jwa::Algorithm::PS256
-            | jwa::Algorithm::PS384
-            | jwa::Algorithm::PS512 => Self::generate_rsa(),
+            jws::Algorithm::RS256
+            | jws::Algorithm::RS384
+            | jws::Algorithm::RS512
+            | jws::Algorithm::PS256
+            | jws::Algorithm::PS384
+            | jws::Algorithm::PS512 => Self::generate_rsa(),
 
             #[cfg(feature = "ec")]
-            jwa::Algorithm::ES256 => Self::generate_ec(ec::Curve::P256),
+            jws::Algorithm::ES256 => Self::generate_ec(jwa::ec::Curve::P256),
             #[cfg(feature = "ec")]
-            jwa::Algorithm::ES384 => Self::generate_ec(ec::Curve::P384),
+            jws::Algorithm::ES384 => Self::generate_ec(jwa::ec::Curve::P384),
 
-            jwa::Algorithm::Unknown => Err(anyhow::anyhow!("unknown algorithm")),
+            jws::Algorithm::Unknown => Err(anyhow::anyhow!("unknown algorithm")),
         }
     }
 
     #[cfg(all(feature = "rsa", feature = "private-keys"))]
     pub fn generate_rsa() -> anyhow::Result<Self> {
-        Ok(Parameters::Rsa(rsa::Parameters::generate()?))
+        Ok(Parameters::Rsa(jwa::Rsa::generate()?))
     }
 
     #[cfg(all(feature = "ec", feature = "private-keys"))]
-    pub fn generate_ec(curve: ec::Curve) -> anyhow::Result<Self> {
-        Ok(Parameters::EllipticCurve(ec::Parameters::generate(curve)?))
+    pub fn generate_ec(curve: jwa::ec::Curve) -> anyhow::Result<Self> {
+        Ok(Parameters::EllipticCurve(jwa::EllipticCurve::generate(
+            curve,
+        )?))
     }
 
     #[cfg(all(feature = "hmac", feature = "private-keys"))]
     pub fn generate_hmac(bits: usize) -> anyhow::Result<Self> {
-        Ok(Parameters::Hmac(hmac::Parameters::generate(bits)?))
+        Ok(Parameters::Hmac(jwa::Hmac::generate(bits)?))
     }
 
     fn verify_key(&self) -> jsonwebtoken::DecodingKey {
@@ -207,22 +229,22 @@ impl Parameters {
     }
 
     /// Returns the algorithm family used by the key.
-    pub fn to_key_type(&self) -> jwa::KeyType {
+    pub fn to_key_type(&self) -> KeyType {
         match self {
             #[cfg(feature = "rsa")]
-            Self::Rsa(_) => jwa::KeyType::Rsa,
+            Self::Rsa(_) => KeyType::Rsa,
 
             #[cfg(feature = "ec")]
-            Self::EllipticCurve(_) => jwa::KeyType::EllipticCurve,
+            Self::EllipticCurve(_) => KeyType::EllipticCurve,
 
             #[cfg(feature = "hmac")]
-            Self::Hmac(_) => jwa::KeyType::Hmac,
+            Self::Hmac(_) => KeyType::Hmac,
         }
     }
 
     /// Returns the RSA parameters for the public key, if the key is an RSA key.
     #[cfg(feature = "rsa")]
-    pub fn as_rsa_params(&self) -> Option<&rsa::Parameters> {
+    pub fn as_rsa_params(&self) -> Option<&jwa::Rsa> {
         match self {
             Self::Rsa(p) => Some(&p),
 
@@ -233,7 +255,7 @@ impl Parameters {
 
     /// Returns the elliptic curve parameters for the public key, if the key is an RSA key.
     #[cfg(feature = "ec")]
-    pub fn as_ec_params(&self) -> Option<&ec::Parameters> {
+    pub fn as_ec_params(&self) -> Option<&jwa::EllipticCurve> {
         match self {
             Self::EllipticCurve(p) => Some(&p),
 
@@ -243,7 +265,7 @@ impl Parameters {
     }
 
     #[cfg(feature = "hmac")]
-    pub fn as_sym_params(&self) -> Option<&hmac::Parameters> {
+    pub fn as_sym_params(&self) -> Option<&jwa::Hmac> {
         match self {
             Self::Hmac(p) => Some(&p),
 
@@ -331,7 +353,7 @@ mod tests {
 
     #[cfg(feature = "private-keys")]
     mod key_generation {
-        use crate::{jwa::Algorithm, test};
+        use crate::{jws::Algorithm, test};
 
         use super::*;
 

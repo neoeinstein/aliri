@@ -1,6 +1,9 @@
 use std::borrow::Borrow;
 
-use crate::{jwa::Algorithm, jwk::Jwk, KeyIdRef};
+use crate::{
+    jwk::{self, Jwk},
+    jws,
+};
 
 use serde::{Deserialize, Serialize};
 
@@ -18,13 +21,13 @@ impl Jwks {
     fn keys_with_good_algorithms(&self) -> impl Iterator<Item = &Jwk> {
         self.keys
             .iter()
-            .filter(|k| k.algorithm != Some(Algorithm::Unknown))
+            .filter(|k| k.algorithm != Some(jws::Algorithm::Unknown))
     }
 
     fn find_exact_matches<'a, 'b: 'a>(
         &'a self,
-        kid: &'b KeyIdRef,
-        alg: Algorithm,
+        kid: &'b jwk::KeyIdRef,
+        alg: jws::Algorithm,
     ) -> impl Iterator<Item = &'a Jwk> {
         self.keys_with_good_algorithms()
             .filter(move |k| k.id.as_deref() == Some(kid) && k.algorithm == Some(alg))
@@ -32,15 +35,16 @@ impl Jwks {
 
     fn find_kid_only_matches<'a, 'b: 'a>(
         &'a self,
-        kid: &'b KeyIdRef,
+        kid: &'b jwk::KeyIdRef,
     ) -> impl Iterator<Item = &'a Jwk> {
         self.keys_with_good_algorithms()
             .filter(move |k| k.id.as_deref() == Some(kid) && k.algorithm == None)
     }
 
-    fn find_anon_alg_matches(&self, alg: Algorithm) -> impl Iterator<Item = &Jwk> {
-        self.keys_with_good_algorithms()
-            .filter(move |k| alg != Algorithm::Unknown && k.id == None && k.algorithm == Some(alg))
+    fn find_anon_alg_matches(&self, alg: jws::Algorithm) -> impl Iterator<Item = &Jwk> {
+        self.keys_with_good_algorithms().filter(move |k| {
+            alg != jws::Algorithm::Unknown && k.id == None && k.algorithm == Some(alg)
+        })
     }
 
     fn find_anon_no_alg_matches(&self) -> impl Iterator<Item = &Jwk> {
@@ -48,9 +52,10 @@ impl Jwks {
             .filter(move |k| k.id == None && k.algorithm == None)
     }
 
-    fn find_any_alg_matches(&self, alg: Algorithm) -> impl Iterator<Item = &Jwk> {
-        self.keys_with_good_algorithms()
-            .filter(move |k| alg != Algorithm::Unknown && k.id == None && k.algorithm == Some(alg))
+    fn find_any_alg_matches(&self, alg: jws::Algorithm) -> impl Iterator<Item = &Jwk> {
+        self.keys_with_good_algorithms().filter(move |k| {
+            alg != jws::Algorithm::Unknown && k.id == None && k.algorithm == Some(alg)
+        })
     }
 
     fn find_any_no_alg_matches(&self) -> impl Iterator<Item = &Jwk> {
@@ -59,10 +64,10 @@ impl Jwks {
     }
 
     /// Gets the identified key for the given algorithm.
-    pub fn get_key_by_id<'a, 'b: 'a, K: Borrow<KeyIdRef> + ?Sized + 'b>(
+    pub fn get_key_by_id<'a, 'b: 'a, K: Borrow<jwk::KeyIdRef> + ?Sized + 'b>(
         &'a self,
         kid: &'b K,
-        alg: Algorithm,
+        alg: jws::Algorithm,
     ) -> impl Iterator<Item = &'a Jwk> + 'a {
         let borrowed_kid = kid.borrow();
         self.find_exact_matches(borrowed_kid, alg)
@@ -72,7 +77,7 @@ impl Jwks {
     }
 
     /// Gets the any key for the given algorithm.
-    pub fn get_key(&self, alg: Algorithm) -> impl Iterator<Item = &Jwk> {
+    pub fn get_key(&self, alg: jws::Algorithm) -> impl Iterator<Item = &Jwk> {
         self.find_any_alg_matches(alg)
             .chain(self.find_any_no_alg_matches())
     }
@@ -82,8 +87,8 @@ impl Jwks {
 mod tests {
     #[cfg(all(feature = "rsa", feature = "private-keys"))]
     use crate::{
-        jwk::{rsa, Parameters, Usage},
-        KeyId,
+        jwa,
+        jwk::{KeyId, Parameters, Usage},
     };
 
     #[cfg(feature = "rsa")]
@@ -106,8 +111,8 @@ mod tests {
         let rsa = Jwk {
             id: Some(KeyId::new("rsa")),
             usage: Some(Usage::Signing),
-            algorithm: Some(Algorithm::RS256),
-            params: Parameters::Rsa(rsa::Parameters::generate()?),
+            algorithm: Some(jws::Algorithm::RS256),
+            params: Parameters::Rsa(jwa::Rsa::generate()?),
         };
 
         let mut jwks = Jwks::default();
