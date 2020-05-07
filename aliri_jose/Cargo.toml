@@ -7,10 +7,10 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
-ec = [ "openssl" ]
+ec = [ "openssl", "lazy_static" ]
 rsa = []
 hmac = []
-private-keys = [ "openssl" ]
+private-keys = [ "openssl", "lazy_static" ]
 default = [ "rsa" ]
 
 [dependencies]
@@ -18,8 +18,9 @@ aliri_core = { path = "../aliri_core" }
 aliri_macros = { path = "../aliri_macros" }
 anyhow = "1"
 jsonwebtoken = { git = "https://github.com/neoeinstein/jsonwebtoken", branch = "less-decoding" }
-lazy_static = "1"
+lazy_static = { optional = true, version = "1" }
 openssl = { optional = true, version = "0.10" }
+ring = "0.16"
 serde = { version = "1", features = [ "derive" ] }
 serde_json = "1"
 static_assertions = "1"

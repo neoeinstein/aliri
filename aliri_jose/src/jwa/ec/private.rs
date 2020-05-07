@@ -1,7 +1,7 @@
 use std::convert::TryFrom;
 use std::fmt;
 
-use aliri_core::Base64Url;
+use aliri_core::{Base64Url, Base64UrlRef};
 use openssl::{
     bn::{BigNum, BigNumContext},
     ec::EcKey,
@@ -28,6 +28,7 @@ pub struct PrivateKeyDto {
 pub struct PrivateKeyParameters {
     pub public_key: PublicKeyParameters,
     pem: String,
+    pkcs8: Base64Url,
 }
 
 impl fmt::Debug for PrivateKeyParameters {
@@ -75,10 +76,12 @@ impl TryFrom<PrivateKeyDto> for PrivateKeyParameters {
 
         let pkey = PKey::from_ec_key(key)?;
         let pem = pkey.private_key_to_pem_pkcs8()?;
+        let pkcs8 = Base64Url::from(pkey.private_key_to_der()?);
 
         Ok(Self {
             public_key: PublicKeyParameters::try_from(dto.public_key)?,
             pem: String::from_utf8(pem)?,
+            pkcs8,
         })
     }
 }
@@ -89,8 +92,13 @@ impl<T: HasPrivate> From<EcKey<T>> for PrivateKeyParameters {
 
         let pkey = PKey::from_ec_key(key).unwrap();
         let pem = String::from_utf8(pkey.private_key_to_pem_pkcs8().unwrap()).unwrap();
+        let pkcs8 = Base64Url::from(pkey.private_key_to_der().unwrap());
 
-        Self { public_key, pem }
+        Self {
+            public_key,
+            pem,
+            pkcs8,
+        }
     }
 }
 
@@ -108,5 +116,9 @@ impl PrivateKeyParameters {
 
     pub fn pem(&self) -> &str {
         &self.pem
+    }
+
+    pub fn pkcs8(&self) -> &Base64UrlRef {
+        &self.pkcs8
     }
 }

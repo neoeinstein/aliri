@@ -1,9 +1,13 @@
+use aliri_core::Base64Url;
 use aliri_macros::typed_string;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    jwa, jws,
-    jwt::{BasicValidation, CoreClaims, PayloadWithBasicClaims},
+    jwa,
+    jws::{self, Verifier},
+    jwt::{
+        BasicValidation, CoreHeaders, EmptyClaims, HeaderWithBasicClaims, PayloadWithBasicClaims,
+    },
 };
 
 typed_string! {
@@ -29,6 +33,31 @@ pub enum KeyType {
     Hmac,
 }
 
+impl KeyType {
+    pub fn is_compatible_with_alg(self, alg: jws::Algorithm) -> bool {
+        match (self, alg) {
+            #[cfg(feature = "rsa")]
+            (Self::Rsa, jws::Algorithm::RS256)
+            | (Self::Rsa, jws::Algorithm::RS384)
+            | (Self::Rsa, jws::Algorithm::RS512)
+            | (Self::Rsa, jws::Algorithm::PS256)
+            | (Self::Rsa, jws::Algorithm::PS384)
+            | (Self::Rsa, jws::Algorithm::PS512) => true,
+
+            #[cfg(feature = "hmac")]
+            (Self::Hmac, jws::Algorithm::HS256)
+            | (Self::Hmac, jws::Algorithm::HS384)
+            | (Self::Hmac, jws::Algorithm::HS512) => true,
+
+            #[cfg(feature = "ec")]
+            (Self::EllipticCurve, jws::Algorithm::ES256)
+            | (Self::EllipticCurve, jws::Algorithm::ES384) => true,
+
+            _ => false,
+        }
+    }
+}
+
 /// An identified JSON Web Key
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Jwk {
@@ -45,77 +74,79 @@ pub struct Jwk {
     pub params: Parameters,
 }
 
-#[cfg(feature = "hmac")]
-lazy_static::lazy_static! {
-    static ref HMAC_BLANK_CHECK: jsonwebtoken::Validation = jsonwebtoken::Validation {
-        validate_exp: false,
-        algorithms: vec![
-            jsonwebtoken::Algorithm::HS256,
-            jsonwebtoken::Algorithm::HS384,
-            jsonwebtoken::Algorithm::HS512,
-        ],
-        ..Default::default()
-    };
-}
-
-#[cfg(feature = "rsa")]
-lazy_static::lazy_static! {
-    static ref RSA_BLANK_CHECK: jsonwebtoken::Validation = jsonwebtoken::Validation {
-        validate_exp: false,
-        algorithms: vec![
-            jsonwebtoken::Algorithm::RS256,
-            jsonwebtoken::Algorithm::RS384,
-            jsonwebtoken::Algorithm::RS512,
-            jsonwebtoken::Algorithm::PS256,
-            jsonwebtoken::Algorithm::PS384,
-            jsonwebtoken::Algorithm::PS512,
-        ],
-        ..Default::default()
-    };
-}
-
-#[cfg(feature = "ec")]
-lazy_static::lazy_static! {
-    static ref EC_BLANK_CHECK: jsonwebtoken::Validation = jsonwebtoken::Validation {
-        validate_exp: false,
-        algorithms: vec![
-            jsonwebtoken::Algorithm::ES256,
-            jsonwebtoken::Algorithm::ES384,
-        ],
-        ..Default::default()
-    };
-}
-
-fn get_blank_check(kty: KeyType) -> &'static jsonwebtoken::Validation {
-    match kty {
-        #[cfg(feature = "hmac")]
-        KeyType::Hmac => &*HMAC_BLANK_CHECK,
-
-        #[cfg(feature = "rsa")]
-        KeyType::Rsa => &*RSA_BLANK_CHECK,
-
-        #[cfg(feature = "ec")]
-        KeyType::EllipticCurve => &*EC_BLANK_CHECK,
-    }
+macro_rules! expect_two {
+    ($iter:expr) => {{
+        let mut i = $iter;
+        match (i.next(), i.next(), i.next()) {
+            (Some(first), Some(second), None) => (first, second),
+            _ => return Err(anyhow::anyhow!("malformed JWT")),
+        }
+    }};
 }
 
 impl Jwk {
     #[doc(hidden)]
-    pub fn verify_token<C: for<'de> serde::Deserialize<'de> + CoreClaims>(
+    pub fn verify_token<C: for<'de> serde::Deserialize<'de>>(
         &self,
         token: &str,
         validation: &BasicValidation,
     ) -> anyhow::Result<C> {
-        let decoder = self.params.verify_key();
+        let (s_str, message) = expect_two!(token.rsplitn(2, '.'));
+        let (p_str, h_str) = expect_two!(message.rsplitn(2, '.'));
+        let h_raw = Base64Url::from_encoded(h_str)?;
+        let signature = Base64Url::from_encoded(s_str)?;
+        let header: HeaderWithBasicClaims<EmptyClaims> = serde_json::from_slice(h_raw.as_slice())?;
 
-        let blank = get_blank_check(self.params.to_key_type());
+        if let Some(u) = self.usage {
+            if u != Usage::Signing {
+                return Err(anyhow::anyhow!("JWK cannot be used for verification"));
+            }
+        }
 
-        let token_data: jsonwebtoken::TokenData<PayloadWithBasicClaims<C>> =
-            jsonwebtoken::decode(token, &decoder, &blank)?;
+        if let Some(a) = self.algorithm {
+            if a != header.alg() {
+                return Err(anyhow::anyhow!(
+                    "token algorithm does not match JWK algorithm"
+                ));
+            }
+        }
 
-        validation.validate(&token_data.header, &token_data.claims)?;
+        if self
+            .params
+            .to_key_type()
+            .is_compatible_with_alg(header.alg())
+        {
+            match (&self.params, header.alg()) {
+                #[cfg(feature = "hmac")]
+                (Parameters::Hmac(p), jws::Algorithm::Hmac(sa)) => {
+                    p.verify(sa, message.as_bytes(), signature.as_slice())?
+                }
 
-        Ok(token_data.claims.payload)
+                #[cfg(feature = "rsa")]
+                (Parameters::Rsa(p), jws::Algorithm::Rsa(sa)) => {
+                    p.verify(sa, message.as_bytes(), signature.as_slice())?
+                }
+
+                #[cfg(feature = "ec")]
+                (Parameters::EllipticCurve(p), jws::Algorithm::EllipticCurve(sa)) => {
+                    p.verify(sa, message.as_bytes(), signature.as_slice())?
+                }
+
+                _ => unreachable!(),
+            }
+
+            let p_raw = Base64Url::from_encoded(p_str)?;
+
+            let payload: PayloadWithBasicClaims<C> = serde_json::from_slice(p_raw.as_slice())?;
+
+            validation.validate(&header, &payload)?;
+
+            Ok(payload.payload)
+        } else {
+            Err(anyhow::anyhow!(
+                "JWK is not compatible with token algorithm"
+            ))
+        }
     }
 
     #[doc(hidden)]
@@ -161,11 +192,7 @@ impl Parameters {
     pub fn generate(alg: jws::Algorithm) -> anyhow::Result<Self> {
         match alg {
             #[cfg(feature = "hmac")]
-            jws::Algorithm::HS256 => Self::generate_hmac(256),
-            #[cfg(feature = "hmac")]
-            jws::Algorithm::HS384 => Self::generate_hmac(384),
-            #[cfg(feature = "hmac")]
-            jws::Algorithm::HS512 => Self::generate_hmac(512),
+            jws::Algorithm::Hmac(a) => Self::generate_hmac(a),
 
             #[cfg(feature = "rsa")]
             jws::Algorithm::RS256
@@ -197,21 +224,8 @@ impl Parameters {
     }
 
     #[cfg(all(feature = "hmac", feature = "private-keys"))]
-    pub fn generate_hmac(bits: usize) -> anyhow::Result<Self> {
-        Ok(Parameters::Hmac(jwa::Hmac::generate(bits)?))
-    }
-
-    fn verify_key(&self) -> jsonwebtoken::DecodingKey {
-        match self {
-            #[cfg(feature = "rsa")]
-            Self::Rsa(p) => p.verify_key(),
-
-            #[cfg(feature = "ec")]
-            Self::EllipticCurve(p) => p.verify_key(),
-
-            #[cfg(feature = "hmac")]
-            Self::Hmac(p) => p.verify_key(),
-        }
+    pub fn generate_hmac(alg: jwa::hmac::SigningAlgorithm) -> anyhow::Result<Self> {
+        Ok(Parameters::Hmac(jwa::Hmac::generate(alg)?))
     }
 
     #[cfg(feature = "private-keys")]
@@ -229,7 +243,7 @@ impl Parameters {
     }
 
     /// Returns the algorithm family used by the key.
-    pub fn to_key_type(&self) -> KeyType {
+    fn to_key_type(&self) -> KeyType {
         match self {
             #[cfg(feature = "rsa")]
             Self::Rsa(_) => KeyType::Rsa,
@@ -239,38 +253,6 @@ impl Parameters {
 
             #[cfg(feature = "hmac")]
             Self::Hmac(_) => KeyType::Hmac,
-        }
-    }
-
-    /// Returns the RSA parameters for the public key, if the key is an RSA key.
-    #[cfg(feature = "rsa")]
-    pub fn as_rsa_params(&self) -> Option<&jwa::Rsa> {
-        match self {
-            Self::Rsa(p) => Some(&p),
-
-            #[allow(unreachable_patterns)]
-            _ => None,
-        }
-    }
-
-    /// Returns the elliptic curve parameters for the public key, if the key is an RSA key.
-    #[cfg(feature = "ec")]
-    pub fn as_ec_params(&self) -> Option<&jwa::EllipticCurve> {
-        match self {
-            Self::EllipticCurve(p) => Some(&p),
-
-            #[allow(unreachable_patterns)]
-            _ => None,
-        }
-    }
-
-    #[cfg(feature = "hmac")]
-    pub fn as_sym_params(&self) -> Option<&jwa::Hmac> {
-        match self {
-            Self::Hmac(p) => Some(&p),
-
-            #[allow(unreachable_patterns)]
-            _ => None,
         }
     }
 }
@@ -294,7 +276,15 @@ mod tests {
 
                 #[test]
                 fn deserialize() -> anyhow::Result<()> {
-                    let _key: Parameters = serde_json::from_str(test::ec::JWK_MINIMAL)?;
+                    let key: Jwk = serde_json::from_str(test::ec::JWK)?;
+                    assert_eq!(key.algorithm, Some(jws::Algorithm::ES256));
+                    Ok(())
+                }
+
+                #[test]
+                fn deserialize_minimal() -> anyhow::Result<()> {
+                    let key: Jwk = serde_json::from_str(test::ec::JWK_MINIMAL)?;
+                    assert_eq!(key.algorithm, None);
                     Ok(())
                 }
             }
@@ -305,8 +295,15 @@ mod tests {
 
                 #[test]
                 fn deserialize_with_private_key() -> anyhow::Result<()> {
-                    let _key: Parameters =
-                        serde_json::from_str(test::ec::JWK_WITH_MINIMAL_PRIVATE_KEY)?;
+                    let key: Jwk = serde_json::from_str(test::ec::JWK_WITH_PRIVATE_KEY)?;
+                    assert_eq!(key.algorithm, Some(jws::Algorithm::ES256));
+                    Ok(())
+                }
+
+                #[test]
+                fn deserialize_minimal_with_private_key() -> anyhow::Result<()> {
+                    let key: Jwk = serde_json::from_str(test::ec::JWK_WITH_MINIMAL_PRIVATE_KEY)?;
+                    assert_eq!(key.algorithm, None);
                     Ok(())
                 }
             }
@@ -318,7 +315,15 @@ mod tests {
 
             #[test]
             fn deserialize() -> anyhow::Result<()> {
-                let _key: Parameters = serde_json::from_str(test::hmac::JWK_MINIMAL)?;
+                let key: Jwk = serde_json::from_str(test::hmac::JWK)?;
+                assert_eq!(key.algorithm, Some(jws::Algorithm::HS256));
+                Ok(())
+            }
+
+            #[test]
+            fn deserialize_minimal() -> anyhow::Result<()> {
+                let key: Jwk = serde_json::from_str(test::hmac::JWK_MINIMAL)?;
+                assert_eq!(key.algorithm, None);
                 Ok(())
             }
         }
@@ -331,8 +336,16 @@ mod tests {
                 use super::*;
 
                 #[test]
-                fn deserialize() -> anyhow::Result<()> {
-                    let _key: Parameters = serde_json::from_str(test::rsa::JWK_MINIMAL)?;
+                fn deserialize_with_private_key() -> anyhow::Result<()> {
+                    let key: Jwk = serde_json::from_str(test::rsa::JWK_WITH_PRIVATE_KEY)?;
+                    assert_eq!(key.algorithm, Some(jws::Algorithm::RS256));
+                    Ok(())
+                }
+
+                #[test]
+                fn deserialize_minimal_with_private_key() -> anyhow::Result<()> {
+                    let key: Jwk = serde_json::from_str(test::rsa::JWK_WITH_MINIMAL_PRIVATE_KEY)?;
+                    assert_eq!(key.algorithm, None);
                     Ok(())
                 }
             }
@@ -343,8 +356,15 @@ mod tests {
 
                 #[test]
                 fn deserialize_with_private_key() -> anyhow::Result<()> {
-                    let _key: Parameters =
-                        serde_json::from_str(test::rsa::JWK_WITH_MINIMAL_PRIVATE_KEY)?;
+                    let key: Jwk = serde_json::from_str(test::rsa::JWK_WITH_PRIVATE_KEY)?;
+                    assert_eq!(key.algorithm, Some(jws::Algorithm::RS256));
+                    Ok(())
+                }
+
+                #[test]
+                fn deserialize_minimal_with_private_key() -> anyhow::Result<()> {
+                    let key: Jwk = serde_json::from_str(test::rsa::JWK_WITH_MINIMAL_PRIVATE_KEY)?;
+                    assert_eq!(key.algorithm, None);
                     Ok(())
                 }
             }
@@ -353,7 +373,7 @@ mod tests {
 
     #[cfg(feature = "private-keys")]
     mod key_generation {
-        use crate::{jws::Algorithm, test};
+        use crate::test;
 
         use super::*;
 
@@ -364,13 +384,13 @@ mod tests {
             #[test]
             #[allow(non_snake_case)]
             fn get_and_rt_ES256() -> anyhow::Result<()> {
-                gen_and_rt(Algorithm::ES256)
+                gen_and_rt(jws::Algorithm::ES256)
             }
 
             #[test]
             #[allow(non_snake_case)]
             fn get_and_rt_ES384() -> anyhow::Result<()> {
-                gen_and_rt(Algorithm::ES384)
+                gen_and_rt(jws::Algorithm::ES384)
             }
         }
 
@@ -381,19 +401,19 @@ mod tests {
             #[test]
             #[allow(non_snake_case)]
             fn get_and_rt_HS256() -> anyhow::Result<()> {
-                gen_and_rt(Algorithm::HS256)
+                gen_and_rt(jws::Algorithm::HS256)
             }
 
             #[test]
             #[allow(non_snake_case)]
             fn get_and_rt_HS384() -> anyhow::Result<()> {
-                gen_and_rt(Algorithm::HS384)
+                gen_and_rt(jws::Algorithm::HS384)
             }
 
             #[test]
             #[allow(non_snake_case)]
             fn get_and_rt_HS512() -> anyhow::Result<()> {
-                gen_and_rt(Algorithm::HS512)
+                gen_and_rt(jws::Algorithm::HS512)
             }
         }
 
@@ -404,41 +424,41 @@ mod tests {
             #[test]
             #[allow(non_snake_case)]
             fn get_and_rt_RS256() -> anyhow::Result<()> {
-                gen_and_rt(Algorithm::RS256)
+                gen_and_rt(jws::Algorithm::RS256)
             }
 
             #[test]
             #[allow(non_snake_case)]
             fn get_and_rt_RS384() -> anyhow::Result<()> {
-                gen_and_rt(Algorithm::RS384)
+                gen_and_rt(jws::Algorithm::RS384)
             }
 
             #[test]
             #[allow(non_snake_case)]
             fn get_and_rt_RS512() -> anyhow::Result<()> {
-                gen_and_rt(Algorithm::RS512)
+                gen_and_rt(jws::Algorithm::RS512)
             }
 
             #[test]
             #[allow(non_snake_case)]
             fn get_and_rt_PS256() -> anyhow::Result<()> {
-                gen_and_rt(Algorithm::PS256)
+                gen_and_rt(jws::Algorithm::PS256)
             }
 
             #[test]
             #[allow(non_snake_case)]
             fn get_and_rt_PS384() -> anyhow::Result<()> {
-                gen_and_rt(Algorithm::PS384)
+                gen_and_rt(jws::Algorithm::PS384)
             }
 
             #[test]
             #[allow(non_snake_case)]
             fn get_and_rt_PS512() -> anyhow::Result<()> {
-                gen_and_rt(Algorithm::PS512)
+                gen_and_rt(jws::Algorithm::PS512)
             }
         }
 
-        fn gen_and_rt(alg: Algorithm) -> anyhow::Result<()> {
+        fn gen_and_rt(alg: jws::Algorithm) -> anyhow::Result<()> {
             let jwk_params = Parameters::generate(alg)?;
             dbg!(&jwk_params);
 

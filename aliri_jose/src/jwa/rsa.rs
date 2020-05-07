@@ -1,7 +1,8 @@
-use jsonwebtoken::DecodingKey;
 #[cfg(feature = "private-keys")]
 use jsonwebtoken::EncodingKey;
 use serde::{Deserialize, Serialize};
+
+use crate::jws;
 
 #[cfg(feature = "private-keys")]
 mod private;
@@ -59,17 +60,89 @@ impl Rsa {
         }
     }
 
-    pub(crate) fn verify_key(&self) -> DecodingKey {
-        let pk = self.public_params();
-
-        DecodingKey::from_rsa_raw_components(pk.modulus.as_slice(), pk.exponent.as_slice())
-    }
-
     #[doc(hidden)]
     #[cfg(feature = "private-keys")]
     pub fn signing_key(&self) -> Option<EncodingKey> {
         let der = self.private_params()?.der();
 
         Some(EncodingKey::from_rsa_der(der))
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "UPPERCASE")]
+#[non_exhaustive]
+pub enum SigningAlgorithm {
+    RS256,
+    RS384,
+    RS512,
+    PS256,
+    PS384,
+    PS512,
+}
+
+impl From<SigningAlgorithm> for &'_ ring::signature::RsaParameters {
+    fn from(alg: SigningAlgorithm) -> Self {
+        match alg {
+            SigningAlgorithm::RS256 => &ring::signature::RSA_PKCS1_2048_8192_SHA256,
+            SigningAlgorithm::RS384 => &ring::signature::RSA_PKCS1_2048_8192_SHA384,
+            SigningAlgorithm::RS512 => &ring::signature::RSA_PKCS1_2048_8192_SHA512,
+            SigningAlgorithm::PS256 => &ring::signature::RSA_PSS_2048_8192_SHA256,
+            SigningAlgorithm::PS384 => &ring::signature::RSA_PSS_2048_8192_SHA384,
+            SigningAlgorithm::PS512 => &ring::signature::RSA_PSS_2048_8192_SHA512,
+        }
+    }
+}
+
+impl From<SigningAlgorithm> for &'_ dyn ring::signature::RsaEncoding {
+    fn from(alg: SigningAlgorithm) -> Self {
+        match alg {
+            SigningAlgorithm::RS256 => &ring::signature::RSA_PKCS1_SHA256,
+            SigningAlgorithm::RS384 => &ring::signature::RSA_PKCS1_SHA384,
+            SigningAlgorithm::RS512 => &ring::signature::RSA_PKCS1_SHA512,
+            SigningAlgorithm::PS256 => &ring::signature::RSA_PSS_SHA256,
+            SigningAlgorithm::PS384 => &ring::signature::RSA_PSS_SHA384,
+            SigningAlgorithm::PS512 => &ring::signature::RSA_PSS_SHA512,
+        }
+    }
+}
+
+impl jws::Signer for Rsa {
+    type Algorithm = SigningAlgorithm;
+    type Error = anyhow::Error;
+
+    fn sign(&self, alg: Self::Algorithm, data: &[u8]) -> Result<Vec<u8>, Self::Error> {
+        if let Some(p) = self.private_params() {
+            let pk = ring::signature::RsaKeyPair::from_der(p.der())
+                .map_err(|e| anyhow::anyhow!("key rejected: {}", e))?;
+
+            let mut buf = vec![0; pk.public_modulus_len()];
+            pk.sign(alg.into(), &*super::CRATE_RNG, data, &mut buf)
+                .map_err(|_| anyhow::anyhow!("error while signing message"))?;
+            Ok(buf)
+        } else {
+            Err(anyhow::anyhow!("no private components, unable to sign"))
+        }
+    }
+}
+
+impl jws::Verifier for Rsa {
+    type Algorithm = SigningAlgorithm;
+    type Error = anyhow::Error;
+
+    fn verify(
+        &self,
+        alg: Self::Algorithm,
+        data: &[u8],
+        signature: &[u8],
+    ) -> Result<(), Self::Error> {
+        let p = self.public_params();
+        let pk = ring::signature::RsaPublicKeyComponents {
+            n: p.modulus.as_slice(),
+            e: p.exponent.as_slice(),
+        };
+
+        pk.verify(alg.into(), data, signature)
+            .map_err(|_| anyhow::anyhow!("invalid signature"))
     }
 }

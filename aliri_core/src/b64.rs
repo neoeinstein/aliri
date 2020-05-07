@@ -19,6 +19,12 @@ impl Base64Url {
         Self(raw)
     }
 
+    pub fn from_encoded(enc: &str) -> Result<Self, anyhow::Error> {
+        let data = base64::decode_config(enc, base64::URL_SAFE_NO_PAD)
+            .map_err(|err| anyhow::anyhow!("{}", err))?;
+        Ok(Self(data))
+    }
+
     #[inline]
     pub fn into_inner(self) -> Vec<u8> {
         self.0
@@ -35,6 +41,13 @@ impl From<Vec<u8>> for Base64Url {
     #[inline]
     fn from(raw: Vec<u8>) -> Self {
         Self::new(raw)
+    }
+}
+
+impl From<&'_ [u8]> for Base64Url {
+    #[inline]
+    fn from(raw: &[u8]) -> Self {
+        Self::new(raw.to_owned())
     }
 }
 

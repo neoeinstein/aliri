@@ -1,40 +1,70 @@
+use std::fmt;
+
 use serde::{Deserialize, Serialize};
 
+use crate::jwa;
+
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "UPPERCASE")]
+#[serde(untagged)]
 #[non_exhaustive]
 pub enum Algorithm {
     #[cfg(feature = "hmac")]
-    HS256,
-    #[cfg(feature = "hmac")]
-    HS384,
-    #[cfg(feature = "hmac")]
-    HS512,
+    Hmac(jwa::hmac::SigningAlgorithm),
 
     #[cfg(feature = "rsa")]
-    RS256,
-    #[cfg(feature = "rsa")]
-    RS384,
-    #[cfg(feature = "rsa")]
-    RS512,
-    #[cfg(feature = "rsa")]
-    PS256,
-    #[cfg(feature = "rsa")]
-    PS384,
-    #[cfg(feature = "rsa")]
-    PS512,
+    Rsa(jwa::rsa::SigningAlgorithm),
 
     #[cfg(feature = "ec")]
-    ES256,
-    #[cfg(feature = "ec")]
-    ES384,
+    EllipticCurve(jwa::ec::SigningAlgorithm),
 
-    #[serde(other)]
     #[doc(hidden)]
     Unknown,
 }
 
+#[cfg(feature = "hmac")]
 impl Algorithm {
+    pub const HS256: Algorithm = Self::Hmac(jwa::hmac::SigningAlgorithm::HS256);
+    pub const HS384: Algorithm = Self::Hmac(jwa::hmac::SigningAlgorithm::HS384);
+    pub const HS512: Algorithm = Self::Hmac(jwa::hmac::SigningAlgorithm::HS512);
+}
+
+#[cfg(feature = "rsa")]
+impl Algorithm {
+    pub const RS256: Algorithm = Self::Rsa(jwa::rsa::SigningAlgorithm::RS256);
+    pub const RS384: Algorithm = Self::Rsa(jwa::rsa::SigningAlgorithm::RS384);
+    pub const RS512: Algorithm = Self::Rsa(jwa::rsa::SigningAlgorithm::RS512);
+    pub const PS256: Algorithm = Self::Rsa(jwa::rsa::SigningAlgorithm::PS256);
+    pub const PS384: Algorithm = Self::Rsa(jwa::rsa::SigningAlgorithm::PS384);
+    pub const PS512: Algorithm = Self::Rsa(jwa::rsa::SigningAlgorithm::PS512);
+}
+
+#[cfg(feature = "ec")]
+impl Algorithm {
+    pub const ES256: Algorithm = Self::EllipticCurve(jwa::ec::SigningAlgorithm::ES256);
+    pub const ES384: Algorithm = Self::EllipticCurve(jwa::ec::SigningAlgorithm::ES384);
+}
+
+pub trait Signer {
+    type Algorithm;
+    type Error: fmt::Debug + fmt::Display + 'static;
+
+    fn sign(&self, alg: Self::Algorithm, data: &[u8]) -> Result<Vec<u8>, Self::Error>;
+}
+
+pub trait Verifier {
+    type Algorithm;
+    type Error: fmt::Debug + fmt::Display + 'static;
+
+    fn verify(
+        &self,
+        alg: Self::Algorithm,
+        data: &[u8],
+        signature: &[u8],
+    ) -> Result<(), Self::Error>;
+}
+
+impl Algorithm {
+    #[cfg(test)]
     pub(crate) fn to_jsonwebtoken(self) -> Option<jsonwebtoken::Algorithm> {
         match self {
             #[cfg(feature = "hmac")]

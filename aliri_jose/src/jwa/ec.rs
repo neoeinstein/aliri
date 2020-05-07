@@ -1,4 +1,3 @@
-use jsonwebtoken::DecodingKey;
 #[cfg(feature = "private-keys")]
 use jsonwebtoken::EncodingKey;
 use lazy_static::lazy_static;
@@ -6,7 +5,10 @@ use openssl::{
     ec::{EcGroup, EcGroupRef},
     nid::Nid,
 };
+use ring::signature::VerificationAlgorithm;
 use serde::{Deserialize, Serialize};
+
+use crate::jws;
 
 #[cfg(feature = "private-keys")]
 mod private;
@@ -93,12 +95,6 @@ impl EllipticCurve {
         }
     }
 
-    pub(crate) fn verify_key(&self) -> DecodingKey {
-        let pk = self.public_params();
-
-        DecodingKey::from_ec_der(pk.uncompressed_point.as_slice())
-    }
-
     #[cfg(feature = "private-keys")]
     pub(crate) fn signing_key(&self) -> Option<EncodingKey> {
         let pem = self.private_params()?.pem();
@@ -106,5 +102,70 @@ impl EllipticCurve {
         println!("{}", pem);
 
         Some(EncodingKey::from_ec_pem(pem.as_bytes()).unwrap())
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "UPPERCASE")]
+#[non_exhaustive]
+pub enum SigningAlgorithm {
+    ES256,
+    ES384,
+}
+
+impl SigningAlgorithm {
+    fn verification_algorithm(self) -> &'static ring::signature::EcdsaVerificationAlgorithm {
+        match self {
+            SigningAlgorithm::ES256 => &ring::signature::ECDSA_P256_SHA256_FIXED,
+            SigningAlgorithm::ES384 => &ring::signature::ECDSA_P384_SHA384_FIXED,
+        }
+    }
+
+    fn signing_algorithm(self) -> &'static ring::signature::EcdsaSigningAlgorithm {
+        match self {
+            SigningAlgorithm::ES256 => &ring::signature::ECDSA_P256_SHA256_FIXED_SIGNING,
+            SigningAlgorithm::ES384 => &ring::signature::ECDSA_P384_SHA384_FIXED_SIGNING,
+        }
+    }
+}
+
+impl jws::Signer for EllipticCurve {
+    type Algorithm = SigningAlgorithm;
+    type Error = anyhow::Error;
+
+    fn sign(&self, alg: Self::Algorithm, data: &[u8]) -> Result<Vec<u8>, Self::Error> {
+        if let Some(p) = self.private_params() {
+            let pk = ring::signature::EcdsaKeyPair::from_pkcs8(
+                alg.signing_algorithm(),
+                p.pkcs8().as_slice(),
+            )
+            .map_err(|e| anyhow::anyhow!("key rejected: {}", e))?;
+
+            let signature = pk
+                .sign(&*super::CRATE_RNG, data)
+                .map_err(|_| anyhow::anyhow!("error while signing message"))?;
+
+            Ok(signature.as_ref().to_owned())
+        } else {
+            Err(anyhow::anyhow!("no private components, unable to sign"))
+        }
+    }
+}
+
+impl jws::Verifier for EllipticCurve {
+    type Algorithm = SigningAlgorithm;
+    type Error = anyhow::Error;
+
+    fn verify(
+        &self,
+        alg: Self::Algorithm,
+        data: &[u8],
+        signature: &[u8],
+    ) -> Result<(), Self::Error> {
+        let pk = self.public_params().uncompressed_point.as_slice();
+
+        alg.verification_algorithm()
+            .verify(pk.into(), data.into(), signature.into())
+            .map_err(|_| anyhow::anyhow!("invalid signature"))
     }
 }

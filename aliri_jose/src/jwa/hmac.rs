@@ -1,8 +1,10 @@
 use aliri_core::Base64Url;
-use jsonwebtoken::DecodingKey;
 #[cfg(feature = "private-keys")]
 use jsonwebtoken::EncodingKey;
+use ring::rand::SecureRandom;
 use serde::{Deserialize, Serialize};
+
+use crate::jws;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Hmac {
@@ -12,22 +14,83 @@ pub struct Hmac {
 
 impl Hmac {
     #[cfg(feature = "private-keys")]
-    pub fn generate(bits: usize) -> anyhow::Result<Self> {
-        let mut buf = Vec::new();
-        buf.resize_with(bits.saturating_add(1) / 8, || 0);
-        openssl::rand::rand_bytes(&mut buf[..])?;
-        Ok(Self {
-            key: Base64Url::new(buf),
-        })
+    pub fn generate(alg: SigningAlgorithm) -> anyhow::Result<Self> {
+        Self::generate_with_rng(alg, &*super::CRATE_RNG)
     }
 
-    pub(crate) fn verify_key(&self) -> DecodingKey {
-        DecodingKey::from_secret(self.key.as_slice())
+    #[cfg(feature = "private-keys")]
+    pub fn generate_with_rng(
+        alg: SigningAlgorithm,
+        rng: &dyn SecureRandom,
+    ) -> anyhow::Result<Self> {
+        let bytes = alg.recommended_key_size();
+        let mut key = Base64Url::from(vec![0; bytes]);
+
+        rng.fill(key.as_mut_slice())
+            .map_err(|_| anyhow::anyhow!("unable to generate a random value"))?;
+
+        Ok(Self { key })
     }
 
     #[doc(hidden)]
     #[cfg(feature = "private-keys")]
     pub fn signing_key(&self) -> EncodingKey {
         EncodingKey::from_secret(self.key.as_slice())
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "UPPERCASE")]
+#[non_exhaustive]
+pub enum SigningAlgorithm {
+    HS256,
+    HS384,
+    HS512,
+}
+
+impl SigningAlgorithm {
+    fn recommended_key_size(self) -> usize {
+        match self {
+            Self::HS256 => 256 / 8,
+            Self::HS384 => 384 / 8,
+            Self::HS512 => 512 / 8,
+        }
+    }
+}
+
+impl From<SigningAlgorithm> for ring::hmac::Algorithm {
+    fn from(alg: SigningAlgorithm) -> Self {
+        match alg {
+            SigningAlgorithm::HS256 => ring::hmac::HMAC_SHA256,
+            SigningAlgorithm::HS384 => ring::hmac::HMAC_SHA384,
+            SigningAlgorithm::HS512 => ring::hmac::HMAC_SHA512,
+        }
+    }
+}
+
+impl jws::Signer for Hmac {
+    type Algorithm = SigningAlgorithm;
+    type Error = std::convert::Infallible;
+
+    fn sign(&self, alg: Self::Algorithm, data: &[u8]) -> Result<Vec<u8>, Self::Error> {
+        let key = ring::hmac::Key::new(alg.into(), self.key.as_slice());
+        let digest = ring::hmac::sign(&key, data);
+        Ok(digest.as_ref().to_owned())
+    }
+}
+
+impl jws::Verifier for Hmac {
+    type Algorithm = SigningAlgorithm;
+    type Error = anyhow::Error;
+
+    fn verify(
+        &self,
+        alg: Self::Algorithm,
+        data: &[u8],
+        signature: &[u8],
+    ) -> Result<(), Self::Error> {
+        let key = ring::hmac::Key::new(alg.into(), self.key.as_slice());
+        ring::hmac::verify(&key, data, signature)
+            .map_err(|_| anyhow::anyhow!("signature is not valid"))
     }
 }
