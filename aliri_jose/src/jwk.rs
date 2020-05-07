@@ -1,3 +1,9 @@
+//! Implementations of the JSON Web Keys (JWK) standard
+//!
+//! The specifications for JSON Web Keys can be found in [RFC7517][].
+//!
+//! [RFC7517]: https://tools.ietf.org/html/rfc7517
+
 use aliri_core::base64::Base64Url;
 use aliri_macros::typed_string;
 use serde::{Deserialize, Serialize};
@@ -5,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     jwa,
     jws::{self, Signer, Verifier},
-    jwt::{self, HasAlgorithm},
+    jwt::{self, HasSigningAlgorithm},
     Jwt,
 };
 
@@ -17,23 +23,27 @@ typed_string! {
     pub struct KeyIdRef(str);
 }
 
+/// The type of JWK
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum KeyType {
+    /// RSA key
     #[cfg(feature = "rsa")]
     #[serde(rename = "RSA")]
     Rsa,
 
+    /// Elliptic curve cryptography key
     #[cfg(feature = "ec")]
     #[serde(rename = "EC")]
     EllipticCurve,
 
+    /// HMAC shared secret
     #[cfg(feature = "hmac")]
     #[serde(rename = "oct")]
     Hmac,
 }
 
 impl KeyType {
-    pub fn is_compatible_with_alg(self, alg: jws::Algorithm) -> bool {
+    fn is_compatible_with_alg(self, alg: jws::Algorithm) -> bool {
         match (self, alg) {
             #[cfg(feature = "rsa")]
             (Self::Rsa, jws::Algorithm::RS256)
@@ -60,15 +70,19 @@ impl KeyType {
 /// An identified JSON Web Key
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Jwk {
+    /// The key ID
     #[serde(rename = "kid")]
     pub id: Option<KeyId>,
 
+    /// The intended usage of the key
     #[serde(rename = "use")]
     pub usage: Option<Usage>,
 
+    /// The algorithm to be used with this JWK
     #[serde(rename = "alg")]
     pub algorithm: Option<jws::Algorithm>,
 
+    /// JWK parameters
     #[serde(flatten)]
     pub params: Parameters,
 }
@@ -78,10 +92,10 @@ impl Jwk {
         &self,
         jwt: jwt::Decomposed<H>,
         validation: &jwt::Validation,
-    ) -> anyhow::Result<jwt::TokenData<C, H>>
+    ) -> anyhow::Result<jwt::Validated<C, H>>
     where
-        C: for<'de> serde::Deserialize<'de>,
-        H: for<'de> serde::Deserialize<'de>,
+        C: for<'de> Deserialize<'de>,
+        H: for<'de> Deserialize<'de>,
     {
         if let Some(u) = self.usage {
             if u != Usage::Signing {
@@ -127,10 +141,10 @@ impl Jwk {
 
             validation.validate(&jwt.header, &payload)?;
 
-            Ok(jwt::TokenData {
-                header: jwt.header.take_headers(),
-                claims: payload.take_payload(),
-            })
+            Ok(jwt::Validated::new(
+                jwt.header.take_headers(),
+                payload.take_payload(),
+            ))
         } else {
             Err(anyhow::anyhow!(
                 "JWK is not compatible with token algorithm"
@@ -138,8 +152,9 @@ impl Jwk {
         }
     }
 
+    /// Produces a signed JWT with the given header and claims
     #[cfg(feature = "private-keys")]
-    pub fn sign<H: serde::Serialize + HasAlgorithm, C: serde::Serialize>(
+    pub fn sign<H: Serialize + HasSigningAlgorithm, C: Serialize>(
         &self,
         header: &H,
         claims: &C,
@@ -206,10 +221,14 @@ impl Jwk {
     }
 }
 
+/// The intended use for a JWK
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Usage {
+    /// The JWK is intended signing and verification
     #[serde(rename = "sig")]
     Signing,
+
+    /// The JWK is intended for encryption
     #[serde(rename = "enc")]
     Encryption,
 }
@@ -218,14 +237,17 @@ pub enum Usage {
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "kty")]
 pub enum Parameters {
+    /// RSA
     #[cfg(feature = "rsa")]
     #[serde(rename = "RSA")]
     Rsa(jwa::Rsa),
 
+    /// Elliptic curve cryptography
     #[cfg(feature = "ec")]
     #[serde(rename = "EC")]
     EllipticCurve(jwa::EllipticCurve),
 
+    /// HMAC symmetric
     #[cfg(feature = "hmac")]
     #[serde(rename = "oct")]
     Hmac(jwa::Hmac),
@@ -256,11 +278,13 @@ impl Parameters {
         }
     }
 
+    /// Generates a JWK using a newly minted RSA key pair
     #[cfg(all(feature = "rsa", feature = "private-keys"))]
     pub fn generate_rsa() -> anyhow::Result<Self> {
         Ok(Parameters::Rsa(jwa::Rsa::generate()?))
     }
 
+    /// Generates a JWK using a newly minted ECC key pair
     #[cfg(all(feature = "ec", feature = "private-keys"))]
     pub fn generate_ec(curve: jwa::ec::Curve) -> anyhow::Result<Self> {
         Ok(Parameters::EllipticCurve(jwa::EllipticCurve::generate(
@@ -268,6 +292,7 @@ impl Parameters {
         )?))
     }
 
+    /// Generates a JWK using a newly minted HMAC secret
     #[cfg(all(feature = "hmac", feature = "private-keys"))]
     pub fn generate_hmac(alg: jwa::hmac::SigningAlgorithm) -> anyhow::Result<Self> {
         Ok(Parameters::Hmac(jwa::Hmac::generate(alg)?))
@@ -514,8 +539,8 @@ mod tests {
                 .add_approved_algorithm(alg)
                 .add_allowed_audience(test::TEST_AUD.to_owned());
 
-            let data: jwt::TokenData<jwt::Claims> = encoded.verify(&jwk, &validator)?;
-            dbg!(data.claims);
+            let data: jwt::Validated<jwt::Claims> = encoded.verify(&jwk, &validator)?;
+            dbg!(data.claims());
 
             Ok(())
         }

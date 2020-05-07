@@ -2,7 +2,12 @@
 //!
 //! Macros used by the `aliri` family of crates.
 
-#![warn(missing_docs, unused_import_braces, unused_imports, unused_qualifications)]
+#![warn(
+    missing_docs,
+    unused_import_braces,
+    unused_imports,
+    unused_qualifications
+)]
 #![deny(
     missing_debug_implementations,
     missing_copy_implementations,

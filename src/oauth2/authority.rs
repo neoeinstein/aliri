@@ -1,7 +1,7 @@
 use std::future::Future;
 
 use aliri_jose::{
-    jwt::{self, CoreHeaders, HasAlgorithm},
+    jwt::{self, CoreHeaders, HasSigningAlgorithm},
     Jwks, JwtRef,
 };
 
@@ -79,9 +79,9 @@ impl JwksAuthority {
             })?
         };
 
-        let data: jwt::TokenData<T> = decomposed.verify(&key, &self.validator)?;
+        let data: jwt::Validated<T> = decomposed.verify(&key, &self.validator)?;
 
-        let claims = data.claims;
+        let (_, claims) = data.take();
 
         if directives.is_empty() {
             return Ok(claims);
@@ -103,7 +103,7 @@ pub trait ScopeClaims {
     }
 }
 
-impl ScopeClaims for jwt::EmptyClaims {}
+impl ScopeClaims for jwt::Empty {}
 
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug, PartialEq, Eq)]
 struct Claims {
@@ -232,7 +232,7 @@ mod tests {
 
         let validator = jwt::Validation::default()
             .add_approved_algorithm(alg)
-            .set_issuer(test_issuer)
+            .require_issuer(test_issuer)
             .add_allowed_audience(test_audience)
             .with_leeway(Duration::from_secs(60));
 
@@ -248,7 +248,7 @@ mod tests {
 
         let directives = vec![Directive::default(), both, t];
 
-        let c: jwt::EmptyClaims = auth.verify(&encoded, &directives).await?;
+        let c: jwt::Empty = auth.verify(&encoded, &directives).await?;
 
         dbg!(c);
 
@@ -260,7 +260,7 @@ mod tests {
     async fn request() -> anyhow::Result<()> {
         let validator = jwt::Validation::default()
             .add_approved_algorithm(jws::Algorithm::RS256)
-            .set_issuer(jwt::Issuer::new("https://demo.auth0.com/"))
+            .require_issuer(jwt::Issuer::new("https://demo.auth0.com/"))
             .add_allowed_audience(jwt::Audience::new("test"))
             .with_leeway(Duration::from_secs(0));
 

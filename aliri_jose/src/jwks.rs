@@ -14,6 +14,7 @@ pub struct Jwks {
 }
 
 impl Jwks {
+    /// Adds a key to the set
     pub fn add_key(&mut self, key: Jwk) {
         self.keys.push(key);
     }
@@ -63,8 +64,8 @@ impl Jwks {
             .filter(move |k| k.algorithm == None)
     }
 
-    /// Gets the identified key for the given algorithm.
-    pub fn get_key_by_id<'a: 'b, 'b, K: Borrow<jwk::KeyIdRef> + ?Sized + 'b>(
+    /// Gets matching keys for the given algorithm, preferring identified keys
+    pub fn get_keys_by_id<'a: 'b, 'b, K: Borrow<jwk::KeyIdRef> + ?Sized + 'b>(
         &'a self,
         kid: &'b K,
         alg: jws::Algorithm,
@@ -76,19 +77,20 @@ impl Jwks {
             .chain(self.find_anon_no_alg_matches())
     }
 
-    /// Gets the any key for the given algorithm.
+    /// Gets keys for the given algorithm
     pub fn get_key(&self, alg: jws::Algorithm) -> impl Iterator<Item = &Jwk> {
         self.find_any_alg_matches(alg)
             .chain(self.find_any_no_alg_matches())
     }
 
+    /// Gets matching keys for the given algorithm, preferring identified keys if requested
     pub fn get_key_by_opt<'a: 'b, 'b, K: Borrow<jwk::KeyIdRef> + ?Sized + 'b>(
         &'a self,
         kid: Option<&'b K>,
         alg: jws::Algorithm,
     ) -> impl Iterator<Item = &'a Jwk> + 'b {
         if let Some(kid) = kid {
-            Either::A(self.get_key_by_id(kid, alg))
+            Either::A(self.get_keys_by_id(kid, alg))
         } else {
             Either::B(self.get_key(alg))
         }

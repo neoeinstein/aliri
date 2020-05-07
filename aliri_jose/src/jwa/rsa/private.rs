@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use super::PublicKeyParameters;
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
-pub struct PrivateKeyDto {
+struct PrivateKeyDto {
     #[serde(rename = "d")]
     key: Base64Url,
 
@@ -27,10 +27,11 @@ pub struct PrivateKeyDto {
     crt: Option<ChineseRemainderTheorem>,
 }
 
+/// RSA private key components
 #[derive(Clone, Eq, PartialEq, Serialize, Deserialize)] // Should we allow serialization here?
 #[serde(try_from = "PrivateKeyDto", into = "PrivateKeyDto")]
 pub struct PrivateKeyParameters {
-    pub public_key: PublicKeyParameters,
+    public_key: PublicKeyParameters,
     der: Vec<u8>,
 }
 
@@ -111,13 +112,13 @@ impl std::convert::TryFrom<PrivateKeyDto> for PrivateKeyParameters {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
-pub struct Factors {
+struct Factors {
     pub p: Base64Url,
     pub q: Base64Url,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
-pub struct ChineseRemainderTheorem {
+struct ChineseRemainderTheorem {
     #[serde(rename = "dp")]
     pub dmp1: Base64Url,
     #[serde(rename = "dq")]
@@ -141,23 +142,37 @@ impl<T: HasPrivate> From<Rsa<T>> for PrivateKeyParameters {
 
 #[cfg(feature = "private-keys")]
 impl PrivateKeyParameters {
+    /// Generates a new 2048-bit RSA key pair
     pub fn generate() -> anyhow::Result<Self> {
-        let rsa = Rsa::generate(2_048)?;
+        let rsa = Rsa::generate(2048)?;
         Ok(Self::from(rsa))
     }
 
+    /// Imports an RSA key pair from a PEM file
     pub fn from_pem(pem: &str) -> anyhow::Result<Self> {
         let rsa = Rsa::private_key_from_pem(pem.as_bytes())?;
         Ok(Self::from(rsa))
     }
 
+    /// The RSA key pair in DER encoding
     pub fn der(&self) -> &[u8] {
         &self.der
     }
 
+    /// Exports the RSA key pair as a PEM file
     pub fn to_pem(&self) -> String {
         let key = Rsa::private_key_from_der(&self.der).unwrap();
         let pem = key.private_key_to_pem().unwrap();
         String::from_utf8(pem).unwrap()
+    }
+
+    /// Provides access to the public key parameters
+    pub fn public_key(&self) -> &PublicKeyParameters {
+        &self.public_key
+    }
+
+    /// Extracts the public key
+    pub fn into_public_key(self) -> PublicKeyParameters {
+        self.public_key
     }
 }

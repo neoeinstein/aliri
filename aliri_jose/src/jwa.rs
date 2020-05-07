@@ -1,3 +1,9 @@
+//! Implementations of the JSON Web Algorithms (JWA) standard
+//!
+//! The specifications for these algorithms can be found in [RFC7518][].
+//!
+//! [RFC7518]: https://tools.ietf.org/html/rfc7518
+
 #[cfg(feature = "ec")]
 pub mod ec;
 #[cfg(feature = "hmac")]

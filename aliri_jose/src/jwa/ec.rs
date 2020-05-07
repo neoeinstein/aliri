@@ -1,3 +1,5 @@
+//! ECC JSON Web Algorithm implementations
+
 use std::fmt;
 
 use lazy_static::lazy_static;
@@ -24,12 +26,18 @@ lazy_static! {
     static ref P521: EcGroup = EcGroup::from_curve_name(Nid::SECP521R1).unwrap();
 }
 
+/// A named ECC curve
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Serialize, Deserialize)]
 pub enum Curve {
+    /// The P-256 curve (prime256v1/secp256r1)
     #[serde(rename = "P-256")]
     P256,
+
+    /// The P-384 curve (secp384r1)
     #[serde(rename = "P-384")]
     P384,
+
+    /// The P-521 curve (secp521r1)
     #[serde(rename = "P-521")]
     P521,
 }
@@ -57,15 +65,20 @@ impl Curve {
     }
 }
 
+/// Elliptic curve cryptography key
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum EllipticCurve {
+    /// Public and private keys
     #[cfg(feature = "private-keys")]
     PublicAndPrivate(PrivateKeyParameters),
+
+    /// Only the public key
     PublicOnly(PublicKeyParameters),
 }
 
 impl EllipticCurve {
+    /// Generates a newly minted key pair using the specified curve
     #[cfg(feature = "private-keys")]
     pub fn generate(curve: Curve) -> anyhow::Result<Self> {
         PrivateKeyParameters::generate(curve).map(Self::PublicAndPrivate)
@@ -82,25 +95,31 @@ impl EllipticCurve {
     fn public_params(&self) -> &PublicKeyParameters {
         match self {
             #[cfg(feature = "private-keys")]
-            Self::PublicAndPrivate(p) => &p.public_key,
+            Self::PublicAndPrivate(p) => p.public_key(),
             Self::PublicOnly(p) => p,
         }
     }
 
+    /// Removes the private key components
     pub fn remove_private_key(self) -> Self {
         match self {
             #[cfg(feature = "private-keys")]
-            Self::PublicAndPrivate(p) => Self::PublicOnly(p.public_key),
+            Self::PublicAndPrivate(p) => Self::PublicOnly(p.into_public_key()),
             Self::PublicOnly(p) => Self::PublicOnly(p),
         }
     }
 }
 
+/// Elliptic curve cryptography signing algorithms
+///
+/// This list may be expanded in the future.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "UPPERCASE")]
 #[non_exhaustive]
 pub enum SigningAlgorithm {
+    /// Elliptic curve cryptography using the P-256 curve and SHA-256
     ES256,
+    /// Elliptic curve cryptography using the P-384 curve and SHA-384
     ES384,
 }
 
@@ -119,6 +138,7 @@ impl SigningAlgorithm {
         }
     }
 
+    /// Size in bytes of an ECDSA signature
     pub fn signature_size(self) -> usize {
         match self {
             Self::ES256 => 64,
@@ -160,7 +180,7 @@ impl jws::Verifier for EllipticCurve {
         data: &[u8],
         signature: &[u8],
     ) -> Result<(), Self::Error> {
-        let pk = self.public_params().uncompressed_point.as_slice();
+        let pk = self.public_params().public_key.as_slice();
 
         alg.verification_algorithm()
             .verify(pk.into(), data.into(), signature.into())

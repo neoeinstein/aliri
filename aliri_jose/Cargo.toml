@@ -11,7 +11,7 @@ ec = [ "openssl", "lazy_static" ]
 rsa = []
 hmac = []
 private-keys = [ "openssl", "lazy_static" ]
-default = [ "rsa" ]
+default = [ "hmac", "rsa" ]
 
 [dependencies]
 aliri_core = { path = "../aliri_core" }

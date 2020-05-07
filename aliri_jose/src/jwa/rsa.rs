@@ -1,3 +1,5 @@
+//! RSA JSON Web Algorithm implementations
+
 use std::fmt;
 
 use serde::{Deserialize, Serialize};
@@ -12,25 +14,32 @@ mod public;
 pub use private::PrivateKeyParameters;
 pub use public::PublicKeyParameters;
 
+/// RSA key
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum Rsa {
+    /// Public and private keys
     #[cfg(feature = "private-keys")]
     PublicAndPrivate(PrivateKeyParameters),
+
+    /// Only the public key
     PublicOnly(PublicKeyParameters),
 }
 
 impl Rsa {
+    /// Generates a newly minted RSA public/private key pair
     #[cfg(feature = "private-keys")]
     pub fn generate() -> anyhow::Result<Self> {
         PrivateKeyParameters::generate().map(Rsa::PublicAndPrivate)
     }
 
+    /// Constructs a private key from a PEM file
     #[cfg(feature = "private-keys")]
     pub fn private_key_from_pem(pem: &str) -> anyhow::Result<Self> {
         PrivateKeyParameters::from_pem(pem).map(Self::PublicAndPrivate)
     }
 
+    /// Constructs a public key from a PEM file
     #[cfg(feature = "openssl")]
     pub fn public_key_from_pem(pem: &str) -> anyhow::Result<Self> {
         PublicKeyParameters::from_pem(pem).map(Self::PublicOnly)
@@ -47,34 +56,45 @@ impl Rsa {
     fn public_params(&self) -> &PublicKeyParameters {
         match self {
             #[cfg(feature = "private-keys")]
-            Self::PublicAndPrivate(p) => &p.public_key,
+            Self::PublicAndPrivate(p) => p.public_key(),
             Self::PublicOnly(p) => p,
         }
     }
 
+    /// Removes the private key components, if any
     pub fn remove_private_key(self) -> Self {
         match self {
             #[cfg(feature = "private-keys")]
-            Self::PublicAndPrivate(p) => Self::PublicOnly(p.public_key),
+            Self::PublicAndPrivate(p) => Self::PublicOnly(p.into_public_key()),
             Self::PublicOnly(p) => Self::PublicOnly(p),
         }
     }
 }
 
+/// RSA public/private key signing algorithms
+///
+/// This list may be expanded in the future.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "UPPERCASE")]
 #[non_exhaustive]
 pub enum SigningAlgorithm {
+    /// RSA using a 2048-bit key, producing a 8192-bit signature, using SHA-256 and PKCS 1.5
     RS256,
+    /// RSA using a 2048-bit key, producing a 8192-bit signature, using SHA-384 and PKCS 1.5
     RS384,
+    /// RSA using a 2048-bit key, producing a 8192-bit signature, using SHA-512 and PKCS 1.5
     RS512,
+    /// RSA using a 2048-bit key, producing a 8192-bit signature, using SHA-256 and PSS
     PS256,
+    /// RSA using a 2048-bit key, producing a 8192-bit signature, using SHA-256 and PSS
     PS384,
+    /// RSA using a 2048-bit key, producing a 8192-bit signature, using SHA-256 and PSS
     PS512,
 }
 
 impl SigningAlgorithm {
-    pub fn signature_size(self) -> usize {
+    /// The size in bytes of RSA signatures
+    pub const fn signature_size(self) -> usize {
         256
     }
 

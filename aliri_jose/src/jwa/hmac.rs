@@ -1,3 +1,5 @@
+//! HMAC JSON Web Algorithm implementations
+
 use std::fmt;
 
 use aliri_core::base64::Base64Url;
@@ -6,43 +8,64 @@ use serde::{Deserialize, Serialize};
 
 use crate::jws;
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+/// HMAC secret
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Hmac {
     #[serde(rename = "k")]
-    key: Base64Url,
+    secret: Base64Url,
+}
+
+impl fmt::Debug for Hmac {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str("Hmac { secret }")
+    }
 }
 
 impl Hmac {
+    /// HMAC using the provided secret
+    pub fn new(secret: Base64Url) -> Self {
+        Self { secret }
+    }
+
+    /// Generates a new HMAC secret
     #[cfg(feature = "private-keys")]
     pub fn generate(alg: SigningAlgorithm) -> anyhow::Result<Self> {
         Self::generate_with_rng(alg, &*super::CRATE_RNG)
     }
 
+    /// Generates a new HMAC secret using the provided source of randomness
     #[cfg(feature = "private-keys")]
     pub fn generate_with_rng(
         alg: SigningAlgorithm,
         rng: &dyn SecureRandom,
     ) -> anyhow::Result<Self> {
         let bytes = alg.recommended_key_size();
-        let mut key = Base64Url::from_raw(vec![0; bytes]);
+        let mut secret = Base64Url::from_raw(vec![0; bytes]);
 
-        rng.fill(key.as_mut_slice())
+        rng.fill(secret.as_mut_slice())
             .map_err(|_| anyhow::anyhow!("unable to generate a random value"))?;
 
-        Ok(Self { key })
+        Ok(Self { secret })
     }
 }
 
+/// HMAC signing algorithms
+///
+/// This list may be expanded in the future.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "UPPERCASE")]
 #[non_exhaustive]
 pub enum SigningAlgorithm {
+    /// HMAC using SHA-256
     HS256,
+    /// HMAC using SHA-384
     HS384,
+    /// HMAC using SHA-512
     HS512,
 }
 
 impl SigningAlgorithm {
+    /// Recommended key size in bytes for an HMAC secret
     fn recommended_key_size(self) -> usize {
         match self {
             Self::HS256 => 256 / 8,
@@ -51,6 +74,7 @@ impl SigningAlgorithm {
         }
     }
 
+    /// The size in bytes of an HMAC signature
     pub fn signature_size(self) -> usize {
         match self {
             Self::HS256 => 256 / 8,
@@ -73,7 +97,7 @@ impl jws::Signer for Hmac {
     type Error = std::convert::Infallible;
 
     fn sign(&self, alg: Self::Algorithm, data: &[u8]) -> Result<Vec<u8>, Self::Error> {
-        let key = ring::hmac::Key::new(alg.into_ring_algorithm(), self.key.as_slice());
+        let key = ring::hmac::Key::new(alg.into_ring_algorithm(), self.secret.as_slice());
         let digest = ring::hmac::sign(&key, data);
         Ok(digest.as_ref().to_owned())
     }
@@ -89,7 +113,7 @@ impl jws::Verifier for Hmac {
         data: &[u8],
         signature: &[u8],
     ) -> Result<(), Self::Error> {
-        let key = ring::hmac::Key::new(alg.into_ring_algorithm(), self.key.as_slice());
+        let key = ring::hmac::Key::new(alg.into_ring_algorithm(), self.secret.as_slice());
         ring::hmac::verify(&key, data, signature)
             .map_err(|_| anyhow::anyhow!("signature is not valid"))
     }

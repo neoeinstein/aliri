@@ -15,7 +15,7 @@ use super::{
 };
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
-pub struct PrivateKeyDto {
+struct PrivateKeyDto {
     #[serde(rename = "d")]
     key: Base64Url,
 
@@ -23,10 +23,11 @@ pub struct PrivateKeyDto {
     public_key: PublicKeyDto,
 }
 
+/// ECC private key parameters
 #[derive(Clone, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(try_from = "PrivateKeyDto", into = "PrivateKeyDto")]
 pub struct PrivateKeyParameters {
-    pub public_key: PublicKeyParameters,
+    public_key: PublicKeyParameters,
     pkcs8: Base64,
 }
 
@@ -52,7 +53,7 @@ impl From<PrivateKeyParameters> for PrivateKeyDto {
 
         Self {
             key: Base64Url::from_raw(key.private_key().to_vec()),
-            public_key: pk.public_key.into(),
+            public_key: PublicKeyDto::from(pk.into_public_key()),
         }
     }
 }
@@ -73,13 +74,30 @@ impl TryFrom<PrivateKeyDto> for PrivateKeyParameters {
 
         let key = EcKey::from_private_components(&group, &private_number, public_key)?;
 
-        Ok(Self::from(key))
+        Ok(Self::from_openssl_eckey(key))
     }
 }
 
-impl<T: HasPrivate> From<EcKey<T>> for PrivateKeyParameters {
-    fn from(key: EcKey<T>) -> Self {
-        let public_key = PublicKeyParameters::from(&*key);
+impl PrivateKeyParameters {
+    /// Generates a new ECC key pair using the specified curve
+    pub fn generate(curve: Curve) -> anyhow::Result<Self> {
+        let key = EcKey::generate(curve.to_group())?;
+
+        Ok(Self::from_openssl_eckey(key))
+    }
+
+    /// Constructs an ECC key pair from a PEM file
+    pub fn from_pem(pem: &str) -> anyhow::Result<Self> {
+        let key = PKey::private_key_from_pem(pem.as_bytes())?;
+        Ok(Self::from_openssl_eckey(key.ec_key()?))
+    }
+
+    pub(super) fn pkcs8(&self) -> &Base64Ref {
+        &self.pkcs8
+    }
+
+    fn from_openssl_eckey<T: HasPrivate>(key: EcKey<T>) -> Self {
+        let public_key = PublicKeyParameters::from_openssl_eckey(&*key);
 
         let pkey = PKey::from_ec_key(key).unwrap();
         let pkcs8_pem = String::from_utf8(pkey.private_key_to_pem_pkcs8().unwrap()).unwrap();
@@ -93,21 +111,14 @@ impl<T: HasPrivate> From<EcKey<T>> for PrivateKeyParameters {
 
         Self { public_key, pkcs8 }
     }
-}
 
-impl PrivateKeyParameters {
-    pub fn generate(curve: Curve) -> anyhow::Result<Self> {
-        let key = EcKey::generate(curve.to_group())?;
-
-        Ok(Self::from(key))
+    /// Provides access to the public key parameters
+    pub fn public_key(&self) -> &PublicKeyParameters {
+        &self.public_key
     }
 
-    pub fn from_pem(pem: &str) -> anyhow::Result<Self> {
-        let key = PKey::private_key_from_pem(pem.as_bytes())?;
-        Ok(Self::from(key.ec_key()?))
-    }
-
-    pub fn pkcs8(&self) -> &Base64Ref {
-        &self.pkcs8
+    /// Extracts the public key
+    pub fn into_public_key(self) -> PublicKeyParameters {
+        self.public_key
     }
 }

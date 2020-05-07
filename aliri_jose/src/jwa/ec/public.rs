@@ -11,30 +11,49 @@ use serde::{Deserialize, Serialize};
 use super::Curve;
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
-pub struct PublicKeyDto {
+pub(super) struct PublicKeyDto {
     #[serde(rename = "crv")]
-    pub curve: Curve,
-    pub x: Base64Url,
-    pub y: Base64Url,
+    pub(super) curve: Curve,
+    pub(super) x: Base64Url,
+    pub(super) y: Base64Url,
 }
 
+/// Elliptic curve cryptography public key components
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(try_from = "PublicKeyDto", into = "PublicKeyDto")]
 pub struct PublicKeyParameters {
+    /// The named elliptic curve
     pub curve: Curve,
-    pub uncompressed_point: Base64Url,
-    pub pkcs8: Base64Url,
+
+    /// The public key represented as the uncompressed point on the curve
+    pub public_key: Base64Url,
 }
 
 impl PublicKeyParameters {
+    /// Exports the public key as a PEM
     pub fn to_pem(&self) -> String {
         let group = self.curve.to_group();
         let ctx = &mut BigNumContext::new().unwrap();
-        let point = EcPoint::from_bytes(group, self.uncompressed_point.as_slice(), ctx).unwrap();
+        let point = EcPoint::from_bytes(group, self.public_key.as_slice(), ctx).unwrap();
 
         let key = EcKey::from_public_key(group, &point).unwrap();
         let pem = PKey::from_ec_key(key).unwrap().public_key_to_pem().unwrap();
         String::from_utf8(pem).unwrap()
+    }
+
+    pub(super) fn from_openssl_eckey<T: HasPublic>(key: &'_ EcKeyRef<T>) -> Self {
+        let group = key.group();
+
+        let mut ctx = BigNumContext::new().unwrap();
+        let public_key = key
+            .public_key()
+            .to_bytes(group, PointConversionForm::UNCOMPRESSED, &mut ctx)
+            .unwrap();
+
+        Self {
+            curve: Curve::from_group(group).unwrap(),
+            public_key: Base64Url::from_raw(public_key),
+        }
     }
 }
 
@@ -49,17 +68,14 @@ impl TryFrom<PublicKeyDto> for PublicKeyParameters {
             &*BigNum::from_slice(dto.y.as_slice())?,
         )?;
         let mut ctx = BigNumContext::new()?;
-        let uncompressed_point =
+        let public_key =
             public
                 .public_key()
                 .to_bytes(&group, PointConversionForm::UNCOMPRESSED, &mut ctx)?;
 
-        let pkcs8 = PKey::from_ec_key(public)?.public_key_to_der()?;
-
         Ok(Self {
             curve: dto.curve,
-            uncompressed_point: Base64Url::from_raw(uncompressed_point),
-            pkcs8: Base64Url::from_raw(pkcs8),
+            public_key: Base64Url::from_raw(public_key),
         })
     }
 }
@@ -68,7 +84,7 @@ impl From<PublicKeyParameters> for PublicKeyDto {
     fn from(p: PublicKeyParameters) -> Self {
         let group = p.curve.to_group();
         let mut ctx = BigNumContext::new().unwrap();
-        let point = EcPoint::from_bytes(&group, p.uncompressed_point.as_slice(), &mut ctx).unwrap();
+        let point = EcPoint::from_bytes(&group, p.public_key.as_slice(), &mut ctx).unwrap();
         let mut x = BigNum::new().unwrap();
         let mut y = BigNum::new().unwrap();
 
@@ -80,29 +96,6 @@ impl From<PublicKeyParameters> for PublicKeyDto {
             curve: p.curve,
             x: Base64Url::from_raw(x.to_vec()),
             y: Base64Url::from_raw(y.to_vec()),
-        }
-    }
-}
-
-impl<T: HasPublic> From<&'_ EcKeyRef<T>> for PublicKeyParameters {
-    fn from(key: &'_ EcKeyRef<T>) -> Self {
-        let group = key.group();
-
-        let mut ctx = BigNumContext::new().unwrap();
-        let uncompressed_point = key
-            .public_key()
-            .to_bytes(group, PointConversionForm::UNCOMPRESSED, &mut ctx)
-            .unwrap();
-
-        let pkcs8 = PKey::from_ec_key(key.to_owned())
-            .unwrap()
-            .public_key_to_der()
-            .unwrap();
-
-        Self {
-            curve: Curve::from_group(group).unwrap(),
-            uncompressed_point: Base64Url::from_raw(uncompressed_point),
-            pkcs8: Base64Url::from_raw(pkcs8),
         }
     }
 }
