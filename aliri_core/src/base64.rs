@@ -1,6 +1,25 @@
-#![deny(unsafe_code)]
+//! Wrappers for values that should be serialized or represented as base64
+//!
+//! ## Example
+//!
+//! ```
+//! use aliri_core::base64::Base64;
+//!
+//! let data = Base64::from_raw("👋 hello, world! 👋".as_bytes());
+//! let enc = data.to_string();
+//! assert_eq!(enc, "8J+RiyBoZWxsbywgd29ybGQhIPCfkYs=");
+//! ```
+//!
+//! ```
+//! use aliri_core::base64::{Base64, Base64Url};
+//!
+//! let data = Base64Url::from_encoded("8J-RiyBoZWxsbywgd29ybGQhIPCfkYs").unwrap();
+//! assert_eq!(data.as_slice(), "👋 hello, world! 👋".as_bytes());
+//! let transcode = Base64::from_raw(data.into_inner());
+//! let enc = transcode.to_string();
+//! assert_eq!(enc, "8J+RiyBoZWxsbywgd29ybGQhIPCfkYs=");
+//! ```
 
-#[macro_export]
 macro_rules! b64_builder {
     {
         $(#[$meta:meta])*
@@ -12,26 +31,40 @@ macro_rules! b64_builder {
         #[derive(Clone, Eq, PartialEq, Hash)]
         #[repr(transparent)]
         $(#[$meta])*
+        ///
+        /// Data is held in memory in its raw form. Costs of serialization
+        /// are only incurred when serializing or displaying the value in
+        /// its base64 representation.
+        ///
+        /// Data is held in memory in its raw form. Costs of converting to
+        /// base64 form are only incurred when serializing or displaying the
+        /// value. Cost of converting from base64 form are incurred on calling
+        /// `from_encoded`.
         $v struct $ty(Vec<u8>);
 
         impl $ty {
+            /// Creates a new buffer from an owned value
+            ///
+            /// To decode a base64-encoded buffer, use `from_encoded`.
             #[inline]
-            pub fn new<T: Into<Vec<u8>>>(raw: T) -> Self {
+            pub fn from_raw<T: Into<Vec<u8>>>(raw: T) -> Self {
                 Self(raw.into())
             }
 
-            pub fn from_encoded(enc: &str) -> Result<Self, ::anyhow::Error> {
+            /// Constructs a new buffer from a base64-encoded slice
+            pub fn from_encoded<T: AsRef<[u8]>>(enc: T) -> Result<Self, ::anyhow::Error> {
                 let data = ::base64::decode_config(enc, $config)
                     .map_err(|err| anyhow::anyhow!("{}", err))?;
                 Ok(Self(data))
             }
 
-            /// Unwraps the underlying value.
+            /// Unwraps the underlying buffer
             #[inline]
             pub fn into_inner(self) -> Vec<u8> {
                 self.0
             }
 
+            /// Calculates the expected length of the base64-encoding for a buffer of size `len`
             #[inline]
             pub fn calc_encoded_len(len: usize) -> usize {
                 if $is_padded {
@@ -48,33 +81,33 @@ macro_rules! b64_builder {
             }
         }
 
-        impl From<Vec<u8>> for $ty {
-            #[inline]
-            fn from(buf: Vec<u8>) -> Self {
-                Self(buf)
-            }
-        }
+        // impl From<Vec<u8>> for $ty {
+        //     #[inline]
+        //     fn from(buf: Vec<u8>) -> Self {
+        //         Self(buf)
+        //     }
+        // }
 
-        impl From<&'_ [u8]> for $ty {
-            #[inline]
-            fn from(slice: &[u8]) -> Self {
-                Self::new(slice)
-            }
-        }
+        // impl From<&'_ [u8]> for $ty {
+        //     #[inline]
+        //     fn from(slice: &[u8]) -> Self {
+        //         Self::new(slice)
+        //     }
+        // }
 
-        impl From<&'_ $ty_ref> for $ty {
-            #[inline]
-            fn from(val: &$ty_ref) -> Self {
-                Self::from(val.as_slice())
-            }
-        }
+        // impl From<&'_ $ty_ref> for $ty {
+        //     #[inline]
+        //     fn from(val: &$ty_ref) -> Self {
+        //         Self::from(val.as_slice())
+        //     }
+        // }
 
-        impl From<$ty> for Vec<u8> {
-            #[inline]
-            fn from(val: $ty) -> Self {
-                val.0
-            }
-        }
+        // impl From<$ty> for Vec<u8> {
+        //     #[inline]
+        //     fn from(val: $ty) -> Self {
+        //         val.0
+        //     }
+        // }
 
         impl ::std::borrow::Borrow<$ty_ref> for $ty {
             #[inline]
@@ -86,6 +119,7 @@ macro_rules! b64_builder {
         impl ::std::ops::Deref for $ty {
             type Target = $ty_ref;
 
+            #[inline]
             fn deref(&self) -> &Self::Target {
                 $ty_ref::from_slice(self.0.as_slice())
             }
@@ -120,6 +154,7 @@ macro_rules! b64_builder {
         }
 
         impl ::serde::Serialize for $ty {
+            #[inline]
             fn serialize<S: ::serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
                 self.as_ref().serialize(serializer)
             }
@@ -137,6 +172,9 @@ macro_rules! b64_builder {
         #[derive(Hash, PartialEq, Eq)]
         #[repr(transparent)]
         $(#[$meta_ref])*
+        ///
+        /// Data is borrowed in its raw form. Costs of converting to base64
+        /// form are only incurred when serializing or displaying the value.
         $v_ref struct $ty_ref([u8]);
 
         impl $ty_ref {
@@ -144,10 +182,12 @@ macro_rules! b64_builder {
             #[inline]
             /// Transparently reinterprets the slice as base64
             pub fn from_slice(raw: &[u8]) -> &Self {
-                // `$ty_ref` is a transparent wrapper around an `[u8]`, so this
+                let ptr: *const [u8] = raw;
+
+                // This type is a transparent wrapper around an `[u8]`, so this
                 // transformation is safe to do.
                 unsafe {
-                    &*(raw as *const [u8] as *const Self)
+                    &*(ptr as *const Self)
                 }
             }
 
@@ -155,25 +195,28 @@ macro_rules! b64_builder {
             #[inline]
             /// Transparently reinterprets the mutable slice as base64
             pub fn from_mut_slice(raw: &mut [u8]) -> &mut Self {
-                // `$ty_ref` is a transparent wrapper around an `[u8]`, so this
+                let ptr: *mut [u8] = raw;
+
+                // This type is a transparent wrapper around an `[u8]`, so this
                 // transformation is safe to do.
                 unsafe {
-                    &mut *(raw as *mut [u8] as *mut Self)
+                    &mut *(ptr as *mut Self)
                 }
             }
 
+            /// Calculates the expected length of the base64-encoding of this buffer
             #[inline]
             pub fn encoded_len(&self) -> usize {
                 $ty::calc_encoded_len(self.as_slice().len())
             }
 
-            /// Provides access to the underlying value as a string slice.
+            /// Provides access to the underlying slice
             #[inline]
             pub const fn as_slice(&self) -> &[u8] {
                 &self.0
             }
 
-            /// Provides access to the underlying value as a string slice.
+            /// Provides mutable access to the underlying slice
             #[inline]
             pub fn as_mut_slice(&mut self) -> &mut [u8] {
                 &mut self.0
@@ -228,11 +271,29 @@ macro_rules! b64_builder {
 }
 
 b64_builder! {
+    /// Owned data to be encoded as standard base64
+    ///
+    /// Encoding alphabet: `A`–`Z`, `a`–`z`, `0`–`9`, `+`, `/`
+    ///
+    /// Padding character: `=`
     pub struct Base64(base64::STANDARD, true);
+
+    /// Borrowed data to be encoded as standard base64
+    ///
+    /// Encoding alphabet: `A`–`Z`, `a`–`z`, `0`–`9`, `+`, `/`
+    ///
+    /// Padding character: `=`
     pub struct Base64Ref;
 }
 
 b64_builder! {
+    /// Owned data to be encoded as URL-safe base64 (no padding)
+    ///
+    /// Encoding alphabet: `A`–`Z`, `a`–`z`, `0`–`9`, `-`, `_`
     pub struct Base64Url(base64::URL_SAFE_NO_PAD, false);
+
+    /// Borrowed data to be encoded as URL-safe base64 (no padding)
+    ///
+    /// Encoding alphabet: `A`–`Z`, `a`–`z`, `0`–`9`, `-`, `_`
     pub struct Base64UrlRef;
 }

@@ -1,6 +1,6 @@
 use std::convert::TryFrom;
 
-use aliri_core::Base64Url;
+use aliri_core::base64::Base64Url;
 use openssl::{
     bn::{BigNum, BigNumContext},
     ec::{EcKey, EcKeyRef, EcPoint, PointConversionForm},
@@ -58,8 +58,8 @@ impl TryFrom<PublicKeyDto> for PublicKeyParameters {
 
         Ok(Self {
             curve: dto.curve,
-            uncompressed_point: Base64Url::new(uncompressed_point),
-            pkcs8: Base64Url::from(pkcs8),
+            uncompressed_point: Base64Url::from_raw(uncompressed_point),
+            pkcs8: Base64Url::from_raw(pkcs8),
         })
     }
 }
@@ -78,8 +78,8 @@ impl From<PublicKeyParameters> for PublicKeyDto {
 
         Self {
             curve: p.curve,
-            x: Base64Url::new(x.to_vec()),
-            y: Base64Url::new(y.to_vec()),
+            x: Base64Url::from_raw(x.to_vec()),
+            y: Base64Url::from_raw(y.to_vec()),
         }
     }
 }
@@ -101,8 +101,8 @@ impl<T: HasPublic> From<&'_ EcKeyRef<T>> for PublicKeyParameters {
 
         Self {
             curve: Curve::from_group(group).unwrap(),
-            uncompressed_point: Base64Url::new(uncompressed_point),
-            pkcs8: Base64Url::from(pkcs8),
+            uncompressed_point: Base64Url::from_raw(uncompressed_point),
+            pkcs8: Base64Url::from_raw(pkcs8),
         }
     }
 }

@@ -1,6 +1,6 @@
 use std::fmt;
 
-use aliri_core::Base64Url;
+use aliri_core::base64::Base64Url;
 use ring::rand::SecureRandom;
 use serde::{Deserialize, Serialize};
 
@@ -24,7 +24,7 @@ impl Hmac {
         rng: &dyn SecureRandom,
     ) -> anyhow::Result<Self> {
         let bytes = alg.recommended_key_size();
-        let mut key = Base64Url::from(vec![0; bytes]);
+        let mut key = Base64Url::from_raw(vec![0; bytes]);
 
         rng.fill(key.as_mut_slice())
             .map_err(|_| anyhow::anyhow!("unable to generate a random value"))?;

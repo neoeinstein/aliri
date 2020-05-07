@@ -1,7 +1,7 @@
 use std::convert::TryFrom;
 use std::fmt;
 
-use aliri_core::{Base64, Base64Ref, Base64Url};
+use aliri_core::base64::{Base64, Base64Ref, Base64Url};
 use openssl::{
     bn::{BigNum, BigNumContext},
     ec::EcKey,
@@ -51,7 +51,7 @@ impl From<PrivateKeyParameters> for PrivateKeyDto {
             .unwrap();
 
         Self {
-            key: Base64Url::new(key.private_key().to_vec()),
+            key: Base64Url::from_raw(key.private_key().to_vec()),
             public_key: pk.public_key.into(),
         }
     }

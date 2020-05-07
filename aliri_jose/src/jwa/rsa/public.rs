@@ -1,4 +1,4 @@
-use aliri_core::Base64Url;
+use aliri_core::base64::Base64Url;
 #[cfg(feature = "openssl")]
 use openssl::{bn::BigNum, pkey::HasPublic, rsa::Rsa};
 use serde::{Deserialize, Serialize};
@@ -34,8 +34,8 @@ impl PublicKeyParameters {
 impl<T: HasPublic> From<Rsa<T>> for PublicKeyParameters {
     fn from(rsa: Rsa<T>) -> Self {
         PublicKeyParameters {
-            modulus: Base64Url::new(rsa.n().to_vec()),
-            exponent: Base64Url::new(rsa.e().to_vec()),
+            modulus: Base64Url::from_raw(rsa.n().to_vec()),
+            exponent: Base64Url::from_raw(rsa.e().to_vec()),
         }
     }
 }

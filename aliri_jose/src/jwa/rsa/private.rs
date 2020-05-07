@@ -1,6 +1,6 @@
 use std::fmt;
 
-use aliri_core::Base64Url;
+use aliri_core::base64::Base64Url;
 use openssl::{
     bn::BigNum,
     pkey::HasPrivate,
@@ -49,26 +49,26 @@ impl From<PrivateKeyParameters> for PrivateKeyDto {
 
         let factors = match (rsa.p(), rsa.q()) {
             (Some(p), Some(q)) => Some(Factors {
-                p: Base64Url::new(p.to_vec()),
-                q: Base64Url::new(q.to_vec()),
+                p: Base64Url::from_raw(p.to_vec()),
+                q: Base64Url::from_raw(q.to_vec()),
             }),
             _ => None,
         };
 
         let crt = match (rsa.dmp1(), rsa.dmq1(), rsa.iqmp()) {
             (Some(dmp1), Some(dmq1), Some(iqmp)) => Some(ChineseRemainderTheorem {
-                dmp1: Base64Url::new(dmp1.to_vec()),
-                dmq1: Base64Url::new(dmq1.to_vec()),
-                iqmp: Base64Url::new(iqmp.to_vec()),
+                dmp1: Base64Url::from_raw(dmp1.to_vec()),
+                dmq1: Base64Url::from_raw(dmq1.to_vec()),
+                iqmp: Base64Url::from_raw(iqmp.to_vec()),
             }),
             _ => None,
         };
 
         Self {
-            key: Base64Url::new(rsa.d().to_vec()),
+            key: Base64Url::from_raw(rsa.d().to_vec()),
             public_key: PublicKeyParameters {
-                modulus: Base64Url::new(rsa.n().to_vec()),
-                exponent: Base64Url::new(rsa.e().to_vec()),
+                modulus: Base64Url::from_raw(rsa.n().to_vec()),
+                exponent: Base64Url::from_raw(rsa.e().to_vec()),
             },
             factors,
             crt,
@@ -131,8 +131,8 @@ impl<T: HasPrivate> From<Rsa<T>> for PrivateKeyParameters {
         let der = rsa.private_key_to_der().unwrap();
 
         let public_key = PublicKeyParameters {
-            modulus: Base64Url::new(rsa.n().to_vec()),
-            exponent: Base64Url::new(rsa.e().to_vec()),
+            modulus: Base64Url::from_raw(rsa.n().to_vec()),
+            exponent: Base64Url::from_raw(rsa.e().to_vec()),
         };
 
         Self { public_key, der }

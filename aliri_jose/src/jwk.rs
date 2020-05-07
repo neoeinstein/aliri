@@ -1,4 +1,4 @@
-use aliri_core::Base64Url;
+use aliri_core::base64::Base64Url;
 use aliri_macros::typed_string;
 use serde::{Deserialize, Serialize};
 
@@ -160,8 +160,8 @@ impl Jwk {
             }
         }
 
-        let h_raw = Base64Url::new(serde_json::to_vec(header)?);
-        let p_raw = Base64Url::new(serde_json::to_vec(claims)?);
+        let h_raw = Base64Url::from_raw(serde_json::to_vec(header)?);
+        let p_raw = Base64Url::from_raw(serde_json::to_vec(claims)?);
 
         let expected_len = h_raw.encoded_len()
             + p_raw.encoded_len()
@@ -176,7 +176,7 @@ impl Jwk {
             .to_key_type()
             .is_compatible_with_alg(header.alg())
         {
-            let s = Base64Url::new(match (&self.params, header.alg()) {
+            let s = Base64Url::from_raw(match (&self.params, header.alg()) {
                 #[cfg(feature = "hmac")]
                 (Parameters::Hmac(p), jws::Algorithm::Hmac(sa)) => {
                     p.sign(sa, message.as_bytes())?
