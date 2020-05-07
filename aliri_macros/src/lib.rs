@@ -1,5 +1,21 @@
-#![deny(unsafe_code)]
+//! # aliri_macros
+//!
+//! Macros used by the `aliri` family of crates.
 
+#![warn(missing_docs, unused_import_braces, unused_imports, unused_qualifications)]
+#![deny(
+    missing_debug_implementations,
+    missing_copy_implementations,
+    trivial_casts,
+    trivial_numeric_casts,
+    unsafe_code,
+    unused_must_use
+)]
+
+/// Constructs a strongly-typed wrapper around strings
+///
+/// This macro exports a line of unsafe code to manage the reinterpretation
+/// of `&str` as the new reference type.
 #[macro_export]
 macro_rules! typed_string {
     {
@@ -72,6 +88,7 @@ macro_rules! typed_string {
         impl ::std::ops::Deref for $ty {
             type Target = $ty_ref;
 
+            #[inline]
             fn deref(&self) -> &Self::Target {
                 $ty_ref::from_str(self.0.as_str())
             }
@@ -102,10 +119,11 @@ macro_rules! typed_string {
             /// Transparently reinterprets the string slice as a strongly-typed
             /// value.
             pub fn from_str<'a>(raw: &'a str) -> &'a Self {
+                let ptr: *const str = raw;
                 // `$ty_ref` is a transparent wrapper around an `str`, so this
                 // transformation is safe to do.
                 unsafe {
-                    &*(raw as *const str as *const Self)
+                    &*(ptr as *const Self)
                 }
             }
 
