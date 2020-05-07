@@ -1,6 +1,6 @@
+use std::fmt;
+
 use aliri_core::Base64Url;
-#[cfg(feature = "private-keys")]
-use jsonwebtoken::EncodingKey;
 use ring::rand::SecureRandom;
 use serde::{Deserialize, Serialize};
 
@@ -30,12 +30,6 @@ impl Hmac {
             .map_err(|_| anyhow::anyhow!("unable to generate a random value"))?;
 
         Ok(Self { key })
-    }
-
-    #[doc(hidden)]
-    #[cfg(feature = "private-keys")]
-    pub fn signing_key(&self) -> EncodingKey {
-        EncodingKey::from_secret(self.key.as_slice())
     }
 }
 
@@ -92,5 +86,17 @@ impl jws::Verifier for Hmac {
         let key = ring::hmac::Key::new(alg.into(), self.key.as_slice());
         ring::hmac::verify(&key, data, signature)
             .map_err(|_| anyhow::anyhow!("signature is not valid"))
+    }
+}
+
+impl fmt::Display for SigningAlgorithm {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let s = match self {
+            Self::HS256 => "HS256",
+            Self::HS384 => "HS384",
+            Self::HS512 => "HS512",
+        };
+
+        f.write_str(s)
     }
 }

@@ -23,6 +23,7 @@ pub struct PublicKeyDto {
 pub struct PublicKeyParameters {
     pub curve: Curve,
     pub uncompressed_point: Base64Url,
+    pub pkcs8: Base64Url,
 }
 
 impl PublicKeyParameters {
@@ -53,9 +54,12 @@ impl TryFrom<PublicKeyDto> for PublicKeyParameters {
                 .public_key()
                 .to_bytes(&group, PointConversionForm::UNCOMPRESSED, &mut ctx)?;
 
+        let pkcs8 = PKey::from_ec_key(public)?.public_key_to_der()?;
+
         Ok(Self {
             curve: dto.curve,
             uncompressed_point: Base64Url::new(uncompressed_point),
+            pkcs8: Base64Url::from(pkcs8),
         })
     }
 }
@@ -90,9 +94,15 @@ impl<T: HasPublic> From<&'_ EcKeyRef<T>> for PublicKeyParameters {
             .to_bytes(group, PointConversionForm::UNCOMPRESSED, &mut ctx)
             .unwrap();
 
+        let pkcs8 = PKey::from_ec_key(key.to_owned())
+            .unwrap()
+            .public_key_to_der()
+            .unwrap();
+
         Self {
             curve: Curve::from_group(group).unwrap(),
             uncompressed_point: Base64Url::new(uncompressed_point),
+            pkcs8: Base64Url::from(pkcs8),
         }
     }
 }

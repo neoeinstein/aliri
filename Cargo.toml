@@ -18,7 +18,6 @@ aliri_core = { path = "./aliri_core" }
 aliri_jose = { path = "./aliri_jose", default-features = false }
 aliri_macros = { path = "./aliri_macros" }
 base64 = "0.12"
-jsonwebtoken = { git = "https://github.com/neoeinstein/jsonwebtoken", branch = "less-decoding" }
 lazy_static = "1"
 reqwest = { optional = true, version = "0.10", features = [ "json" ] }
 serde = { version = "1", features = [ "derive" ] }

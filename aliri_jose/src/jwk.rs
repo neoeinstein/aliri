@@ -4,9 +4,10 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     jwa,
-    jws::{self, Verifier},
+    jws::{self, Signer, Verifier},
     jwt::{
-        BasicValidation, CoreHeaders, EmptyClaims, HeaderWithBasicClaims, PayloadWithBasicClaims,
+        BasicValidation, DecomposedJwt, HasAlgorithm, HeaderWithBasicClaims,
+        PayloadWithBasicClaims, TokenData,
     },
 };
 
@@ -86,16 +87,20 @@ macro_rules! expect_two {
 
 impl Jwk {
     #[doc(hidden)]
-    pub fn verify_token<C: for<'de> serde::Deserialize<'de>>(
+    pub fn verify_token<C, H>(
         &self,
         token: &str,
         validation: &BasicValidation,
-    ) -> anyhow::Result<C> {
+    ) -> anyhow::Result<TokenData<C, H>>
+    where
+        C: for<'de> serde::Deserialize<'de>,
+        H: for<'de> serde::Deserialize<'de>,
+    {
         let (s_str, message) = expect_two!(token.rsplitn(2, '.'));
         let (p_str, h_str) = expect_two!(message.rsplitn(2, '.'));
         let h_raw = Base64Url::from_encoded(h_str)?;
         let signature = Base64Url::from_encoded(s_str)?;
-        let header: HeaderWithBasicClaims<EmptyClaims> = serde_json::from_slice(h_raw.as_slice())?;
+        let header: HeaderWithBasicClaims<H> = serde_json::from_slice(h_raw.as_slice())?;
 
         if let Some(u) = self.usage {
             if u != Usage::Signing {
@@ -141,7 +146,75 @@ impl Jwk {
 
             validation.validate(&header, &payload)?;
 
-            Ok(payload.payload)
+            Ok(TokenData {
+                header: header.header,
+                claims: payload.payload,
+            })
+        } else {
+            Err(anyhow::anyhow!(
+                "JWK is not compatible with token algorithm"
+            ))
+        }
+    }
+
+    #[doc(hidden)]
+    pub fn verify_token_with_header<C, H>(
+        &self,
+        jwt: DecomposedJwt<H>,
+        validation: &BasicValidation,
+    ) -> anyhow::Result<TokenData<C, H>>
+    where
+        C: for<'de> serde::Deserialize<'de>,
+        H: for<'de> serde::Deserialize<'de>,
+    {
+        if let Some(u) = self.usage {
+            if u != Usage::Signing {
+                return Err(anyhow::anyhow!("JWK cannot be used for verification"));
+            }
+        }
+
+        if let Some(a) = self.algorithm {
+            if a != jwt.header.alg() {
+                return Err(anyhow::anyhow!(
+                    "token algorithm does not match JWK algorithm"
+                ));
+            }
+        }
+
+        if self
+            .params
+            .to_key_type()
+            .is_compatible_with_alg(jwt.header.alg())
+        {
+            match (&self.params, jwt.header.alg()) {
+                #[cfg(feature = "hmac")]
+                (Parameters::Hmac(p), jws::Algorithm::Hmac(sa)) => {
+                    p.verify(sa, jwt.message.as_bytes(), jwt.signature.as_slice())?
+                }
+
+                #[cfg(feature = "rsa")]
+                (Parameters::Rsa(p), jws::Algorithm::Rsa(sa)) => {
+                    p.verify(sa, jwt.message.as_bytes(), jwt.signature.as_slice())?
+                }
+
+                #[cfg(feature = "ec")]
+                (Parameters::EllipticCurve(p), jws::Algorithm::EllipticCurve(sa)) => {
+                    p.verify(sa, jwt.message.as_bytes(), jwt.signature.as_slice())?
+                }
+
+                _ => unreachable!(),
+            }
+
+            let p_raw = Base64Url::from_encoded(jwt.payload)?;
+
+            let payload: PayloadWithBasicClaims<C> = serde_json::from_slice(p_raw.as_slice())?;
+
+            validation.validate(&jwt.header, &payload)?;
+
+            Ok(TokenData {
+                header: jwt.header.header,
+                claims: payload.payload,
+            })
         } else {
             Err(anyhow::anyhow!(
                 "JWK is not compatible with token algorithm"
@@ -151,13 +224,64 @@ impl Jwk {
 
     #[doc(hidden)]
     #[cfg(feature = "private-keys")]
-    pub fn sign<C: serde::Serialize>(
+    pub fn sign<H: serde::Serialize + HasAlgorithm, C: serde::Serialize>(
         &self,
-        header: &jsonwebtoken::Header,
+        header: &H,
         claims: &C,
-    ) -> Result<String, jsonwebtoken::errors::Error> {
-        let encoder = self.params.signing_key().unwrap();
-        Ok(jsonwebtoken::encode(header, claims, &encoder)?)
+    ) -> Result<String, anyhow::Error> {
+        use std::fmt::Write;
+
+        if let Some(u) = self.usage {
+            if u != Usage::Signing {
+                return Err(anyhow::anyhow!("JWK cannot be used for signing"));
+            }
+        }
+
+        if let Some(a) = self.algorithm {
+            if a != header.alg() {
+                return Err(anyhow::anyhow!(
+                    "token algorithm does not match JWK algorithm"
+                ));
+            }
+        }
+
+        let h_raw = Base64Url::new(serde_json::to_vec(header)?);
+        let p_raw = Base64Url::new(serde_json::to_vec(claims)?);
+
+        let message = format!("{}.{}", h_raw, p_raw);
+
+        if self
+            .params
+            .to_key_type()
+            .is_compatible_with_alg(header.alg())
+        {
+            let s = Base64Url::new(match (&self.params, header.alg()) {
+                #[cfg(feature = "hmac")]
+                (Parameters::Hmac(p), jws::Algorithm::Hmac(sa)) => {
+                    p.sign(sa, message.as_bytes())?
+                }
+
+                #[cfg(feature = "rsa")]
+                (Parameters::Rsa(p), jws::Algorithm::Rsa(sa)) => p.sign(sa, message.as_bytes())?,
+
+                #[cfg(feature = "ec")]
+                (Parameters::EllipticCurve(p), jws::Algorithm::EllipticCurve(sa)) => {
+                    p.sign(sa, message.as_bytes())?
+                }
+
+                _ => unreachable!(),
+            });
+
+            let mut token = message;
+            token.reserve_exact(s.encoded_len() + 1);
+            write!(token, ".{}", s).expect("writes to strings never fail");
+
+            Ok(token)
+        } else {
+            Err(anyhow::anyhow!(
+                "JWK is not compatible with token algorithm"
+            ))
+        }
     }
 }
 
@@ -226,20 +350,6 @@ impl Parameters {
     #[cfg(all(feature = "hmac", feature = "private-keys"))]
     pub fn generate_hmac(alg: jwa::hmac::SigningAlgorithm) -> anyhow::Result<Self> {
         Ok(Parameters::Hmac(jwa::Hmac::generate(alg)?))
-    }
-
-    #[cfg(feature = "private-keys")]
-    fn signing_key(&self) -> Option<jsonwebtoken::EncodingKey> {
-        match self {
-            #[cfg(feature = "rsa")]
-            Self::Rsa(p) => p.signing_key(),
-
-            #[cfg(feature = "ec")]
-            Self::EllipticCurve(p) => p.signing_key(),
-
-            #[cfg(feature = "hmac")]
-            Self::Hmac(p) => Some(p.signing_key()),
-        }
     }
 
     /// Returns the algorithm family used by the key.
@@ -469,7 +579,7 @@ mod tests {
                 params: jwk_params,
             };
 
-            let header = jsonwebtoken::Header::new(alg.to_jsonwebtoken().unwrap());
+            let header = test::MinimalHeaders::new(alg);
 
             let claims = test::MinimalClaims::default()
                 .with_audience(*test::TEST_AUD)
@@ -479,16 +589,12 @@ mod tests {
 
             dbg!(&encoded);
 
-            let dec_head = jsonwebtoken::decode_header(&encoded)?;
-
-            dbg!(&dec_head);
-
             let validator = BasicValidation::default()
                 .add_approved_algorithm(alg)
                 .add_allowed_audience(test::TEST_AUD.to_owned());
 
-            let claims: test::MinimalClaims = jwk.verify_token(&encoded, &validator)?;
-            dbg!(claims);
+            let data: TokenData<test::MinimalClaims> = jwk.verify_token(&encoded, &validator)?;
+            dbg!(data.claims);
 
             Ok(())
         }

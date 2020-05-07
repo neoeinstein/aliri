@@ -3,7 +3,7 @@ use std::{collections::HashSet, time::SystemTime};
 use aliri_core::clock::UnixTime;
 use lazy_static::lazy_static;
 
-use crate::jwt;
+use crate::{jwk, jws, jwt};
 
 #[cfg(feature = "rsa")]
 pub mod rsa {
@@ -48,6 +48,36 @@ lazy_static! {
         .iter()
         .map(|&s| String::from(s))
         .collect();
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug, PartialEq, Eq)]
+pub struct MinimalHeaders {
+    alg: jws::Algorithm,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    kid: Option<jwk::KeyId>,
+}
+
+impl jwt::HasAlgorithm for MinimalHeaders {
+    fn alg(&self) -> jws::Algorithm {
+        self.alg
+    }
+}
+
+impl jwt::CoreHeaders for MinimalHeaders {
+    fn kid(&self) -> Option<&jwk::KeyIdRef> {
+        self.kid.as_deref()
+    }
+}
+
+impl MinimalHeaders {
+    pub const fn new(alg: jws::Algorithm) -> Self {
+        Self { alg, kid: None }
+    }
+
+    pub fn with_key_id(mut self, kid: impl Into<jwk::KeyId>) -> Self {
+        self.kid = Some(kid.into());
+        self
+    }
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug, Default, PartialEq, Eq)]

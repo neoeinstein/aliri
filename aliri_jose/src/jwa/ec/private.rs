@@ -27,7 +27,6 @@ pub struct PrivateKeyDto {
 #[serde(try_from = "PrivateKeyDto", into = "PrivateKeyDto")]
 pub struct PrivateKeyParameters {
     pub public_key: PublicKeyParameters,
-    pem: String,
     pkcs8: Base64Url,
 }
 
@@ -42,7 +41,7 @@ impl fmt::Debug for PrivateKeyParameters {
 
 impl From<PrivateKeyParameters> for PrivateKeyDto {
     fn from(pk: PrivateKeyParameters) -> Self {
-        let key = EcKey::private_key_from_pem(pk.pem.as_bytes()).unwrap();
+        let key = EcKey::private_key_from_der(pk.pkcs8.as_slice()).unwrap();
         let ctx = &mut BigNumContext::new().unwrap();
         let mut x = BigNum::new().unwrap();
         let mut y = BigNum::new().unwrap();
@@ -74,15 +73,7 @@ impl TryFrom<PrivateKeyDto> for PrivateKeyParameters {
 
         let key = EcKey::from_private_components(&group, &private_number, public_key)?;
 
-        let pkey = PKey::from_ec_key(key)?;
-        let pem = pkey.private_key_to_pem_pkcs8()?;
-        let pkcs8 = Base64Url::from(pkey.private_key_to_der()?);
-
-        Ok(Self {
-            public_key: PublicKeyParameters::try_from(dto.public_key)?,
-            pem: String::from_utf8(pem)?,
-            pkcs8,
-        })
+        Ok(Self::from(key))
     }
 }
 
@@ -91,14 +82,16 @@ impl<T: HasPrivate> From<EcKey<T>> for PrivateKeyParameters {
         let public_key = PublicKeyParameters::from(&*key);
 
         let pkey = PKey::from_ec_key(key).unwrap();
-        let pem = String::from_utf8(pkey.private_key_to_pem_pkcs8().unwrap()).unwrap();
-        let pkcs8 = Base64Url::from(pkey.private_key_to_der().unwrap());
+        let pkcs8_pem = String::from_utf8(pkey.private_key_to_pem_pkcs8().unwrap()).unwrap();
 
-        Self {
-            public_key,
-            pem,
-            pkcs8,
-        }
+        let pkcs8_str = pkcs8_pem
+            .replace("-----BEGIN PRIVATE KEY-----", "")
+            .replace("-----END PRIVATE KEY-----", "")
+            .replace("\n", "");
+
+        let pkcs8 = Base64Url::from_encoded_base64(dbg!(&pkcs8_str)).unwrap();
+
+        Self { public_key, pkcs8 }
     }
 }
 
@@ -112,10 +105,6 @@ impl PrivateKeyParameters {
     pub fn from_pem(pem: &str) -> anyhow::Result<Self> {
         let key = PKey::private_key_from_pem(pem.as_bytes())?;
         Ok(Self::from(key.ec_key()?))
-    }
-
-    pub fn pem(&self) -> &str {
-        &self.pem
     }
 
     pub fn pkcs8(&self) -> &Base64UrlRef {

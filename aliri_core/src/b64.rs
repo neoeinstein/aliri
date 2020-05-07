@@ -25,6 +25,11 @@ impl Base64Url {
         Ok(Self(data))
     }
 
+    pub fn from_encoded_base64(enc: &str) -> Result<Self, anyhow::Error> {
+        let data = base64::decode(enc).map_err(|err| anyhow::anyhow!("{}", err))?;
+        Ok(Self(data))
+    }
+
     #[inline]
     pub fn into_inner(self) -> Vec<u8> {
         self.0
@@ -65,10 +70,17 @@ impl AsRef<[u8]> for Base64Url {
     }
 }
 
-impl fmt::Debug for Base64Url {
+impl fmt::Display for Base64Url {
+    #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let encoded = base64::encode_config(&self.0, base64::URL_SAFE_NO_PAD);
-        write!(f, "`{}`", encoded)
+        fmt::Display::fmt(&**self, f)
+    }
+}
+
+impl fmt::Debug for Base64Url {
+    #[inline]
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Debug::fmt(&**self, f)
     }
 }
 
@@ -144,6 +156,13 @@ impl Base64UrlRef {
         unsafe { &mut *(raw as *mut [u8] as *mut Self) }
     }
 
+    /// The length of the base64url encoded value of the underlying data
+    #[inline]
+    pub fn encoded_len(&self) -> usize {
+        let len = self.as_slice().len();
+        len / 3 + len % 3
+    }
+
     /// Returns a reference to the underlying raw byte slice.
     #[inline]
     pub const fn as_slice(&self) -> &[u8] {
@@ -191,6 +210,13 @@ impl PartialEq<Base64Url> for Base64UrlRef {
     #[inline]
     fn eq(&self, other: &Base64Url) -> bool {
         other.0 == &self.0
+    }
+}
+
+impl fmt::Display for Base64UrlRef {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let encoded = base64::encode_config(&self.0, base64::URL_SAFE_NO_PAD);
+        f.write_str(&encoded)
     }
 }
 

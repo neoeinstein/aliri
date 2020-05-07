@@ -1,7 +1,9 @@
 use std::future::Future;
 
-use aliri_jose::{jwk, jws, jwt, Jwks};
-use jsonwebtoken::Algorithm;
+use aliri_jose::{
+    jwt::{self, CoreHeaders, HasAlgorithm},
+    Jwks,
+};
 
 use super::Directive;
 use crate::TokenRef;
@@ -63,21 +65,21 @@ impl JwksAuthority {
         token: &TokenRef,
         directives: &[Directive],
     ) -> anyhow::Result<T> {
-        let dec_head = jsonwebtoken::decode_header(token.as_str())?;
-        let kid = dec_head
-            .kid
-            .ok_or_else(|| anyhow::anyhow!("missing kid in header"))?;
-        let header_alg = dec_head.alg;
-        let alg = jwk_algo_from_jsonwebtoken(header_alg)
-            .ok_or_else(|| anyhow::anyhow!("unsupported algorithm type {:?}", header_alg))?;
+        let decomposed: jwt::DecomposedJwt = jwt::DecomposedJwt::try_from_raw(token.as_str())?;
 
-        let key = self
-            .jwks
-            .get_key_by_id(jwk::KeyIdRef::from_str(&kid), alg)
-            .next()
-            .ok_or_else(|| anyhow::anyhow!("unable to find key with matching kid {}", kid))?;
+        let kid = decomposed.kid();
+        let alg = decomposed.alg();
 
-        let claims: T = key.verify_token(token.as_str(), &self.validator)?;
+        let key = self.jwks.get_key_by_opt(kid, alg).next().ok_or_else(|| {
+            if let Some(kid) = kid {
+                anyhow::anyhow!("unable to find key with kid {} for alg {}", kid, alg)
+            } else {
+                anyhow::anyhow!("unable to find key for alg {}", alg)
+            }
+        })?;
+
+        let data: jwt::TokenData<T> = key.verify_token(token.as_str(), &self.validator)?;
+        let claims = data.claims;
 
         if directives.is_empty() {
             return Ok(claims);
@@ -128,38 +130,6 @@ where
     }
 }
 
-fn jwk_algo_from_jsonwebtoken(alg: Algorithm) -> Option<jws::Algorithm> {
-    match alg {
-        #[cfg(feature = "hmac")]
-        Algorithm::HS256 => Some(jws::Algorithm::HS256),
-        #[cfg(feature = "hmac")]
-        Algorithm::HS384 => Some(jws::Algorithm::HS384),
-        #[cfg(feature = "hmac")]
-        Algorithm::HS512 => Some(jws::Algorithm::HS512),
-
-        #[cfg(feature = "rsa")]
-        Algorithm::RS256 => Some(jws::Algorithm::RS256),
-        #[cfg(feature = "rsa")]
-        Algorithm::RS384 => Some(jws::Algorithm::RS384),
-        #[cfg(feature = "rsa")]
-        Algorithm::RS512 => Some(jws::Algorithm::RS512),
-        #[cfg(feature = "rsa")]
-        Algorithm::PS256 => Some(jws::Algorithm::PS256),
-        #[cfg(feature = "rsa")]
-        Algorithm::PS384 => Some(jws::Algorithm::PS384),
-        #[cfg(feature = "rsa")]
-        Algorithm::PS512 => Some(jws::Algorithm::PS512),
-
-        #[cfg(feature = "ec")]
-        Algorithm::ES256 => Some(jws::Algorithm::ES256),
-        #[cfg(feature = "ec")]
-        Algorithm::ES384 => Some(jws::Algorithm::ES384),
-
-        #[allow(unreachable_patterns)]
-        _ => None,
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use std::time::Duration;
@@ -173,72 +143,70 @@ mod tests {
     #[tokio::test]
     #[cfg(feature = "rsa")]
     async fn async_validate_rs256() -> anyhow::Result<()> {
-        async_validate(jws::Algorithm::RS256, jsonwebtoken::Algorithm::RS256).await
+        async_validate(jws::Algorithm::RS256).await
     }
 
     #[tokio::test]
     #[cfg(feature = "rsa")]
     async fn async_validate_rs384() -> anyhow::Result<()> {
-        async_validate(jws::Algorithm::RS384, jsonwebtoken::Algorithm::RS384).await
+        async_validate(jws::Algorithm::RS384).await
     }
 
     #[tokio::test]
     #[cfg(feature = "rsa")]
     async fn async_validate_rs512() -> anyhow::Result<()> {
-        async_validate(jws::Algorithm::RS512, jsonwebtoken::Algorithm::RS512).await
+        async_validate(jws::Algorithm::RS512).await
     }
 
     #[tokio::test]
     #[cfg(feature = "rsa")]
     async fn async_validate_ps256() -> anyhow::Result<()> {
-        async_validate(jws::Algorithm::PS256, jsonwebtoken::Algorithm::PS256).await
+        async_validate(jws::Algorithm::PS256).await
     }
 
     #[tokio::test]
     #[cfg(feature = "rsa")]
     async fn async_validate_ps384() -> anyhow::Result<()> {
-        async_validate(jws::Algorithm::PS384, jsonwebtoken::Algorithm::PS384).await
+        async_validate(jws::Algorithm::PS384).await
     }
 
     #[tokio::test]
     #[cfg(feature = "rsa")]
     async fn async_validate_ps512() -> anyhow::Result<()> {
-        async_validate(jws::Algorithm::PS512, jsonwebtoken::Algorithm::PS512).await
+        async_validate(jws::Algorithm::PS512).await
     }
 
     #[tokio::test]
     #[cfg(feature = "hmac")]
     async fn async_validate_hs256() -> anyhow::Result<()> {
-        async_validate(jws::Algorithm::HS256, jsonwebtoken::Algorithm::HS256).await
+        async_validate(jws::Algorithm::HS256).await
     }
 
     #[tokio::test]
     #[cfg(feature = "hmac")]
     async fn async_validate_hs384() -> anyhow::Result<()> {
-        async_validate(jws::Algorithm::HS384, jsonwebtoken::Algorithm::HS384).await
+        async_validate(jws::Algorithm::HS384).await
     }
 
     #[tokio::test]
     #[cfg(feature = "hmac")]
     async fn async_validate_hs512() -> anyhow::Result<()> {
-        async_validate(jws::Algorithm::HS512, jsonwebtoken::Algorithm::HS512).await
+        async_validate(jws::Algorithm::HS512).await
     }
 
     #[tokio::test]
     #[cfg(feature = "ec")]
     async fn async_validate_es256() -> anyhow::Result<()> {
-        async_validate(jws::Algorithm::ES256, jsonwebtoken::Algorithm::ES256).await
+        async_validate(jws::Algorithm::ES256).await
     }
 
     #[tokio::test]
     #[cfg(feature = "ec")]
     async fn async_validate_es384() -> anyhow::Result<()> {
-        async_validate(jws::Algorithm::ES384, jsonwebtoken::Algorithm::ES384).await
+        async_validate(jws::Algorithm::ES384).await
     }
-    async fn async_validate(
-        alg: jws::Algorithm,
-        jalg: jsonwebtoken::Algorithm,
-    ) -> anyhow::Result<()> {
+
+    async fn async_validate(alg: jws::Algorithm) -> anyhow::Result<()> {
         let jwk_params = jwk::Parameters::generate(alg)?;
         dbg!(&jwk_params);
 
@@ -253,8 +221,7 @@ mod tests {
             params: jwk_params,
         };
 
-        let mut header = jsonwebtoken::Header::new(jalg);
-        header.kid = Some(String::from("test_key"));
+        let header = aliri_jose::test::MinimalHeaders::new(alg).with_key_id(test_kid);
 
         let claims = aliri_jose::test::MinimalClaims::default()
             .with_audience(test_audience.clone())
@@ -266,9 +233,6 @@ mod tests {
 
         let mut jwks = Jwks::default();
         jwks.add_key(jwk);
-
-        let dec_head = jsonwebtoken::decode_header(&encoded)?;
-        dbg!(&dec_head);
 
         let validator = jwt::BasicValidation::default()
             .add_approved_algorithm(alg)

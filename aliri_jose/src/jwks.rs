@@ -81,6 +81,37 @@ impl Jwks {
         self.find_any_alg_matches(alg)
             .chain(self.find_any_no_alg_matches())
     }
+
+    pub fn get_key_by_opt<'a, 'b: 'a, K: Borrow<jwk::KeyIdRef> + ?Sized + 'b>(
+        &'a self,
+        kid: Option<&'b K>,
+        alg: jws::Algorithm,
+    ) -> impl Iterator<Item = &'a Jwk> + 'a {
+        if let Some(kid) = kid {
+            Either::A(self.get_key_by_id(kid, alg))
+        } else {
+            Either::B(self.get_key(alg))
+        }
+    }
+}
+
+enum Either<A, B> {
+    A(A),
+    B(B),
+}
+
+impl<A, B> Iterator for Either<A, B>
+where
+    A: Iterator,
+    B: Iterator<Item = A::Item>,
+{
+    type Item = A::Item;
+    fn next(&mut self) -> Option<Self::Item> {
+        match self {
+            Self::A(a) => a.next(),
+            Self::B(b) => b.next(),
+        }
+    }
 }
 
 #[cfg(test)]

@@ -17,7 +17,6 @@ default = [ "rsa" ]
 aliri_core = { path = "../aliri_core" }
 aliri_macros = { path = "../aliri_macros" }
 anyhow = "1"
-jsonwebtoken = { git = "https://github.com/neoeinstein/jsonwebtoken", branch = "less-decoding" }
 lazy_static = { optional = true, version = "1" }
 openssl = { optional = true, version = "0.10" }
 ring = "0.16"

@@ -2,13 +2,69 @@ use std::time::Duration;
 
 use aliri_core::{
     clock::{Clock, System, UnixTime},
-    OneOrMany,
+    Base64Url, OneOrMany,
 };
 use aliri_macros::typed_string;
 use anyhow::anyhow;
 use serde::{Deserialize, Serialize};
 
 use crate::{jwk, jws};
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct TokenData<C = EmptyClaims, H = EmptyClaims> {
+    pub header: H,
+    pub claims: C,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct DecomposedJwt<'a, H = EmptyClaims> {
+    pub(crate) header: HeaderWithBasicClaims<H>,
+    pub(crate) message: &'a str,
+    pub(crate) payload: &'a str,
+    pub(crate) signature: Base64Url,
+}
+
+macro_rules! expect_two {
+    ($iter:expr) => {{
+        let mut i = $iter;
+        match (i.next(), i.next(), i.next()) {
+            (Some(first), Some(second), None) => (first, second),
+            _ => return Err(anyhow::anyhow!("malformed JWT")),
+        }
+    }};
+}
+
+impl<'a, H> DecomposedJwt<'a, H>
+where
+    H: for<'de> Deserialize<'de>,
+{
+    #[doc(hidden)]
+    pub fn try_from_raw(token: &'a str) -> Result<Self, anyhow::Error> {
+        let (s_str, message) = expect_two!(token.rsplitn(2, '.'));
+        let (payload, h_str) = expect_two!(message.rsplitn(2, '.'));
+        let h_raw = Base64Url::from_encoded(h_str)?;
+        let signature = Base64Url::from_encoded(s_str)?;
+        let header: HeaderWithBasicClaims<H> = serde_json::from_slice(h_raw.as_slice())?;
+        Ok(Self {
+            header,
+            message,
+            payload,
+            signature,
+        })
+    }
+}
+
+impl<'a, H> HasAlgorithm for DecomposedJwt<'a, H> {
+    fn alg(&self) -> jws::Algorithm {
+        self.header.alg()
+    }
+}
+
+impl<'a, H> CoreHeaders for DecomposedJwt<'a, H> {
+    fn kid(&self) -> Option<&jwk::KeyIdRef> {
+        self.header.kid()
+    }
+}
 
 pub trait CoreClaims {
     fn nbf(&self) -> Option<UnixTime> {
@@ -28,15 +84,17 @@ pub trait CoreClaims {
     }
 }
 
-pub trait CoreHeaders {
+pub trait HasAlgorithm {
     fn alg(&self) -> jws::Algorithm;
+}
 
+pub trait CoreHeaders: HasAlgorithm {
     fn kid(&self) -> Option<&jwk::KeyIdRef> {
         None
     }
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
 pub(crate) struct HeaderWithBasicClaims<H> {
     #[serde(flatten)]
     basic: BasicHeader,
@@ -44,11 +102,13 @@ pub(crate) struct HeaderWithBasicClaims<H> {
     pub header: H,
 }
 
-impl<H> CoreHeaders for HeaderWithBasicClaims<H> {
+impl<H> HasAlgorithm for HeaderWithBasicClaims<H> {
     fn alg(&self) -> jws::Algorithm {
         self.basic.alg()
     }
+}
 
+impl<H> CoreHeaders for HeaderWithBasicClaims<H> {
     fn kid(&self) -> Option<&jwk::KeyIdRef> {
         self.basic.kid()
     }
@@ -62,17 +122,19 @@ pub(crate) struct BasicHeader {
     key_id: Option<jwk::KeyId>,
 }
 
-impl CoreHeaders for BasicHeader {
+impl HasAlgorithm for BasicHeader {
     fn alg(&self) -> jws::Algorithm {
         self.algorithm
     }
+}
 
+impl CoreHeaders for BasicHeader {
     fn kid(&self) -> Option<&jwk::KeyIdRef> {
         self.key_id.as_deref()
     }
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
 pub(crate) struct PayloadWithBasicClaims<P> {
     #[serde(flatten)]
     basic: BasicClaims,

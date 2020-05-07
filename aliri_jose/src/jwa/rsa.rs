@@ -1,5 +1,5 @@
-#[cfg(feature = "private-keys")]
-use jsonwebtoken::EncodingKey;
+use std::fmt;
+
 use serde::{Deserialize, Serialize};
 
 use crate::jws;
@@ -58,14 +58,6 @@ impl Rsa {
             Self::PublicAndPrivate(p) => Self::PublicOnly(p.public_key),
             Self::PublicOnly(p) => Self::PublicOnly(p),
         }
-    }
-
-    #[doc(hidden)]
-    #[cfg(feature = "private-keys")]
-    pub fn signing_key(&self) -> Option<EncodingKey> {
-        let der = self.private_params()?.der();
-
-        Some(EncodingKey::from_rsa_der(der))
     }
 }
 
@@ -144,5 +136,20 @@ impl jws::Verifier for Rsa {
 
         pk.verify(alg.into(), data, signature)
             .map_err(|_| anyhow::anyhow!("invalid signature"))
+    }
+}
+
+impl fmt::Display for SigningAlgorithm {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let s = match self {
+            Self::RS256 => "RS256",
+            Self::RS384 => "RS384",
+            Self::RS512 => "RS512",
+            Self::PS256 => "PS256",
+            Self::PS384 => "PS384",
+            Self::PS512 => "PS512",
+        };
+
+        f.write_str(s)
     }
 }

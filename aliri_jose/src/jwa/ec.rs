@@ -1,5 +1,5 @@
-#[cfg(feature = "private-keys")]
-use jsonwebtoken::EncodingKey;
+use std::fmt;
+
 use lazy_static::lazy_static;
 use openssl::{
     ec::{EcGroup, EcGroupRef},
@@ -94,15 +94,6 @@ impl EllipticCurve {
             Self::PublicOnly(p) => Self::PublicOnly(p),
         }
     }
-
-    #[cfg(feature = "private-keys")]
-    pub(crate) fn signing_key(&self) -> Option<EncodingKey> {
-        let pem = self.private_params()?.pem();
-
-        println!("{}", pem);
-
-        Some(EncodingKey::from_ec_pem(pem.as_bytes()).unwrap())
-    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -167,5 +158,16 @@ impl jws::Verifier for EllipticCurve {
         alg.verification_algorithm()
             .verify(pk.into(), data.into(), signature.into())
             .map_err(|_| anyhow::anyhow!("invalid signature"))
+    }
+}
+
+impl fmt::Display for SigningAlgorithm {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let s = match self {
+            Self::ES256 => "ES256",
+            Self::ES384 => "ES384",
+        };
+
+        f.write_str(s)
     }
 }
