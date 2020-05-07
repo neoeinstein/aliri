@@ -5,10 +5,8 @@ use serde::{Deserialize, Serialize};
 use crate::{
     jwa,
     jws::{self, Signer, Verifier},
-    jwt::{
-        BasicValidation, DecomposedJwt, HasAlgorithm, HeaderWithBasicClaims,
-        PayloadWithBasicClaims, TokenData,
-    },
+    jwt::{self, HasAlgorithm},
+    Jwt,
 };
 
 typed_string! {
@@ -75,94 +73,12 @@ pub struct Jwk {
     pub params: Parameters,
 }
 
-macro_rules! expect_two {
-    ($iter:expr) => {{
-        let mut i = $iter;
-        match (i.next(), i.next(), i.next()) {
-            (Some(first), Some(second), None) => (first, second),
-            _ => return Err(anyhow::anyhow!("malformed JWT")),
-        }
-    }};
-}
-
 impl Jwk {
-    #[doc(hidden)]
-    pub fn verify_token<C, H>(
+    pub(crate) fn verify_decomposed<C, H>(
         &self,
-        token: &str,
-        validation: &BasicValidation,
-    ) -> anyhow::Result<TokenData<C, H>>
-    where
-        C: for<'de> serde::Deserialize<'de>,
-        H: for<'de> serde::Deserialize<'de>,
-    {
-        let (s_str, message) = expect_two!(token.rsplitn(2, '.'));
-        let (p_str, h_str) = expect_two!(message.rsplitn(2, '.'));
-        let h_raw = Base64Url::from_encoded(h_str)?;
-        let signature = Base64Url::from_encoded(s_str)?;
-        let header: HeaderWithBasicClaims<H> = serde_json::from_slice(h_raw.as_slice())?;
-
-        if let Some(u) = self.usage {
-            if u != Usage::Signing {
-                return Err(anyhow::anyhow!("JWK cannot be used for verification"));
-            }
-        }
-
-        if let Some(a) = self.algorithm {
-            if a != header.alg() {
-                return Err(anyhow::anyhow!(
-                    "token algorithm does not match JWK algorithm"
-                ));
-            }
-        }
-
-        if self
-            .params
-            .to_key_type()
-            .is_compatible_with_alg(header.alg())
-        {
-            match (&self.params, header.alg()) {
-                #[cfg(feature = "hmac")]
-                (Parameters::Hmac(p), jws::Algorithm::Hmac(sa)) => {
-                    p.verify(sa, message.as_bytes(), signature.as_slice())?
-                }
-
-                #[cfg(feature = "rsa")]
-                (Parameters::Rsa(p), jws::Algorithm::Rsa(sa)) => {
-                    p.verify(sa, message.as_bytes(), signature.as_slice())?
-                }
-
-                #[cfg(feature = "ec")]
-                (Parameters::EllipticCurve(p), jws::Algorithm::EllipticCurve(sa)) => {
-                    p.verify(sa, message.as_bytes(), signature.as_slice())?
-                }
-
-                _ => unreachable!(),
-            }
-
-            let p_raw = Base64Url::from_encoded(p_str)?;
-
-            let payload: PayloadWithBasicClaims<C> = serde_json::from_slice(p_raw.as_slice())?;
-
-            validation.validate(&header, &payload)?;
-
-            Ok(TokenData {
-                header: header.header,
-                claims: payload.payload,
-            })
-        } else {
-            Err(anyhow::anyhow!(
-                "JWK is not compatible with token algorithm"
-            ))
-        }
-    }
-
-    #[doc(hidden)]
-    pub fn verify_token_with_header<C, H>(
-        &self,
-        jwt: DecomposedJwt<H>,
-        validation: &BasicValidation,
-    ) -> anyhow::Result<TokenData<C, H>>
+        jwt: jwt::Decomposed<H>,
+        validation: &jwt::Validation,
+    ) -> anyhow::Result<jwt::TokenData<C, H>>
     where
         C: for<'de> serde::Deserialize<'de>,
         H: for<'de> serde::Deserialize<'de>,
@@ -207,13 +123,13 @@ impl Jwk {
 
             let p_raw = Base64Url::from_encoded(jwt.payload)?;
 
-            let payload: PayloadWithBasicClaims<C> = serde_json::from_slice(p_raw.as_slice())?;
+            let payload: jwt::Claims<C> = serde_json::from_slice(p_raw.as_slice())?;
 
             validation.validate(&jwt.header, &payload)?;
 
-            Ok(TokenData {
-                header: jwt.header.header,
-                claims: payload.payload,
+            Ok(jwt::TokenData {
+                header: jwt.header.take_headers(),
+                claims: payload.take_payload(),
             })
         } else {
             Err(anyhow::anyhow!(
@@ -222,13 +138,12 @@ impl Jwk {
         }
     }
 
-    #[doc(hidden)]
     #[cfg(feature = "private-keys")]
     pub fn sign<H: serde::Serialize + HasAlgorithm, C: serde::Serialize>(
         &self,
         header: &H,
         claims: &C,
-    ) -> Result<String, anyhow::Error> {
+    ) -> Result<Jwt, anyhow::Error> {
         use std::fmt::Write;
 
         if let Some(u) = self.usage {
@@ -248,7 +163,10 @@ impl Jwk {
         let h_raw = Base64Url::new(serde_json::to_vec(header)?);
         let p_raw = Base64Url::new(serde_json::to_vec(claims)?);
 
-        let message = format!("{}.{}", h_raw, p_raw);
+        let expected_len = h_raw.encoded_len() + p_raw.encoded_len() + Base64Url::calc_encoded_len(header.alg().signature_size()) + 2;
+
+        let mut message = String::with_capacity(expected_len);
+        write!(message, "{}.{}", h_raw, p_raw).expect("writes to strings never fail");
 
         if self
             .params
@@ -272,11 +190,11 @@ impl Jwk {
                 _ => unreachable!(),
             });
 
-            let mut token = message;
-            token.reserve_exact(s.encoded_len() + 1);
-            write!(token, ".{}", s).expect("writes to strings never fail");
+            write!(message, ".{}", s).expect("writes to strings never fail");
 
-            Ok(token)
+            debug_assert_eq!(message.len(), expected_len);
+
+            Ok(Jwt::new(message))
         } else {
             Err(anyhow::anyhow!(
                 "JWK is not compatible with token algorithm"
@@ -579,9 +497,9 @@ mod tests {
                 params: jwk_params,
             };
 
-            let header = test::MinimalHeaders::new(alg);
+            let header = jwt::Headers::new(alg);
 
-            let claims = test::MinimalClaims::default()
+            let claims = jwt::Claims::new()
                 .with_audience(*test::TEST_AUD)
                 .with_future_expiration(60 * 5);
 
@@ -589,11 +507,11 @@ mod tests {
 
             dbg!(&encoded);
 
-            let validator = BasicValidation::default()
+            let validator = jwt::Validation::default()
                 .add_approved_algorithm(alg)
                 .add_allowed_audience(test::TEST_AUD.to_owned());
 
-            let data: TokenData<test::MinimalClaims> = jwk.verify_token(&encoded, &validator)?;
+            let data: jwt::TokenData<jwt::Claims> = encoded.verify(&jwk, &validator)?;
             dbg!(data.claims);
 
             Ok(())

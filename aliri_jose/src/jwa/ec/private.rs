@@ -1,7 +1,7 @@
 use std::convert::TryFrom;
 use std::fmt;
 
-use aliri_core::{Base64Url, Base64UrlRef};
+use aliri_core::{Base64, Base64Ref, Base64Url};
 use openssl::{
     bn::{BigNum, BigNumContext},
     ec::EcKey,
@@ -27,7 +27,7 @@ pub struct PrivateKeyDto {
 #[serde(try_from = "PrivateKeyDto", into = "PrivateKeyDto")]
 pub struct PrivateKeyParameters {
     pub public_key: PublicKeyParameters,
-    pkcs8: Base64Url,
+    pkcs8: Base64,
 }
 
 impl fmt::Debug for PrivateKeyParameters {
@@ -89,7 +89,7 @@ impl<T: HasPrivate> From<EcKey<T>> for PrivateKeyParameters {
             .replace("-----END PRIVATE KEY-----", "")
             .replace("\n", "");
 
-        let pkcs8 = Base64Url::from_encoded_base64(dbg!(&pkcs8_str)).unwrap();
+        let pkcs8 = Base64::from_encoded(dbg!(&pkcs8_str)).unwrap();
 
         Self { public_key, pkcs8 }
     }
@@ -107,7 +107,7 @@ impl PrivateKeyParameters {
         Ok(Self::from(key.ec_key()?))
     }
 
-    pub fn pkcs8(&self) -> &Base64UrlRef {
+    pub fn pkcs8(&self) -> &Base64Ref {
         &self.pkcs8
     }
 }

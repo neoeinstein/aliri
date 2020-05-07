@@ -2,12 +2,11 @@ use std::future::Future;
 
 use anyhow::Result;
 
-use super::TokenRef;
-
 pub trait Authority<'a, Payload> {
     type Directive;
+    type Token;
     type Verify: Future<Output = Result<Payload, Self::VerifyError>> + 'a;
     type VerifyError;
 
-    fn verify(&'a mut self, token: &'a TokenRef, dir: Self::Directive) -> Self::Verify;
+    fn verify(&'a mut self, token: Self::Token, dir: Self::Directive) -> Self::Verify;
 }

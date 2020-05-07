@@ -24,19 +24,19 @@ impl Jwks {
             .filter(|k| k.algorithm != Some(jws::Algorithm::Unknown))
     }
 
-    fn find_exact_matches<'a, 'b: 'a>(
+    fn find_exact_matches<'a: 'b, 'b>(
         &'a self,
         kid: &'b jwk::KeyIdRef,
         alg: jws::Algorithm,
-    ) -> impl Iterator<Item = &'a Jwk> {
+    ) -> impl Iterator<Item = &'a Jwk> + 'b {
         self.keys_with_good_algorithms()
             .filter(move |k| k.id.as_deref() == Some(kid) && k.algorithm == Some(alg))
     }
 
-    fn find_kid_only_matches<'a, 'b: 'a>(
+    fn find_kid_only_matches<'a: 'b, 'b>(
         &'a self,
         kid: &'b jwk::KeyIdRef,
-    ) -> impl Iterator<Item = &'a Jwk> {
+    ) -> impl Iterator<Item = &'a Jwk> + 'b {
         self.keys_with_good_algorithms()
             .filter(move |k| k.id.as_deref() == Some(kid) && k.algorithm == None)
     }
@@ -64,11 +64,11 @@ impl Jwks {
     }
 
     /// Gets the identified key for the given algorithm.
-    pub fn get_key_by_id<'a, 'b: 'a, K: Borrow<jwk::KeyIdRef> + ?Sized + 'b>(
+    pub fn get_key_by_id<'a: 'b, 'b, K: Borrow<jwk::KeyIdRef> + ?Sized + 'b>(
         &'a self,
         kid: &'b K,
         alg: jws::Algorithm,
-    ) -> impl Iterator<Item = &'a Jwk> + 'a {
+    ) -> impl Iterator<Item = &'a Jwk> + 'b {
         let borrowed_kid = kid.borrow();
         self.find_exact_matches(borrowed_kid, alg)
             .chain(self.find_kid_only_matches(borrowed_kid))
@@ -82,11 +82,11 @@ impl Jwks {
             .chain(self.find_any_no_alg_matches())
     }
 
-    pub fn get_key_by_opt<'a, 'b: 'a, K: Borrow<jwk::KeyIdRef> + ?Sized + 'b>(
+    pub fn get_key_by_opt<'a: 'b, 'b, K: Borrow<jwk::KeyIdRef> + ?Sized + 'b>(
         &'a self,
         kid: Option<&'b K>,
         alg: jws::Algorithm,
-    ) -> impl Iterator<Item = &'a Jwk> + 'a {
+    ) -> impl Iterator<Item = &'a Jwk> + 'b {
         if let Some(kid) = kid {
             Either::A(self.get_key_by_id(kid, alg))
         } else {

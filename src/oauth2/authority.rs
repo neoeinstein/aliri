@@ -3,20 +3,20 @@ use std::future::Future;
 use aliri_jose::{
     jwt::{self, CoreHeaders, HasAlgorithm},
     Jwks,
+    JwtRef,
 };
 
 use super::Directive;
-use crate::TokenRef;
 
 #[derive(Debug, Clone)]
 pub struct JwksAuthority {
     jwks: Jwks,
     jwks_url: String,
-    validator: jwt::BasicValidation,
+    validator: jwt::Validation,
 }
 
 impl JwksAuthority {
-    pub fn new(validator: jwt::BasicValidation) -> Self {
+    pub fn new(validator: jwt::Validation) -> Self {
         let jwks_url = format!("{}.well-known/jwks.json", validator.issuer().unwrap());
 
         Self {
@@ -62,23 +62,26 @@ impl JwksAuthority {
         T: for<'de> serde::Deserialize<'de> + jwt::CoreClaims + ScopeClaims,
     >(
         &mut self,
-        token: &TokenRef,
+        token: &JwtRef,
         directives: &[Directive],
     ) -> anyhow::Result<T> {
-        let decomposed: jwt::DecomposedJwt = jwt::DecomposedJwt::try_from_raw(token.as_str())?;
+        let decomposed = token.decompose()?;
 
-        let kid = decomposed.kid();
-        let alg = decomposed.alg();
+        let key = {
+            let kid = decomposed.kid();
+            let alg = decomposed.alg();
+    
+            self.jwks.get_key_by_opt(kid, alg).next().ok_or_else(|| {
+                if let Some(kid) = kid {
+                    anyhow::anyhow!("unable to find key with kid {} for alg {}", kid, alg)
+                } else {
+                    anyhow::anyhow!("unable to find key for alg {}", alg)
+                }
+            })?
+        };
 
-        let key = self.jwks.get_key_by_opt(kid, alg).next().ok_or_else(|| {
-            if let Some(kid) = kid {
-                anyhow::anyhow!("unable to find key with kid {} for alg {}", kid, alg)
-            } else {
-                anyhow::anyhow!("unable to find key for alg {}", alg)
-            }
-        })?;
+        let data: jwt::TokenData<T> = decomposed.verify(&key, &self.validator)?;
 
-        let data: jwt::TokenData<T> = key.verify_token(token.as_str(), &self.validator)?;
         let claims = data.claims;
 
         if directives.is_empty() {
@@ -95,16 +98,9 @@ impl JwksAuthority {
     }
 }
 
-lazy_static::lazy_static! {
-    static ref SCOPES: Vec<super::Scope> = vec![
-        // super::Scope::new("other"),
-        // super::Scope::new("testing"),
-    ];
-}
-
 pub trait ScopeClaims {
     fn scopes(&self) -> &[super::Scope] {
-        &*SCOPES
+        &[]
     }
 }
 
@@ -122,10 +118,11 @@ where
     T: for<'de> serde::Deserialize<'de> + jwt::CoreClaims + ScopeClaims + 'a,
 {
     type Directive = &'a [super::Directive];
+    type Token = &'a JwtRef;
     type Verify = std::pin::Pin<Box<dyn Future<Output = Result<T, Self::VerifyError>> + 'a>>;
     type VerifyError = anyhow::Error;
 
-    fn verify(&'a mut self, token: &'a TokenRef, dir: Self::Directive) -> Self::Verify {
+    fn verify(&'a mut self, token: Self::Token, dir: Self::Directive) -> Self::Verify {
         Box::pin(self.verify_token(token, dir))
     }
 }
@@ -221,9 +218,9 @@ mod tests {
             params: jwk_params,
         };
 
-        let header = aliri_jose::test::MinimalHeaders::new(alg).with_key_id(test_kid);
+        let header = jwt::Headers::new(alg).with_key_id(test_kid);
 
-        let claims = aliri_jose::test::MinimalClaims::default()
+        let claims = jwt::Claims::new()
             .with_audience(test_audience.clone())
             .with_issuer(test_issuer.clone())
             .with_future_expiration(60 * 5);
@@ -234,7 +231,7 @@ mod tests {
         let mut jwks = Jwks::default();
         jwks.add_key(jwk);
 
-        let validator = jwt::BasicValidation::default()
+        let validator = jwt::Validation::default()
             .add_approved_algorithm(alg)
             .set_issuer(test_issuer)
             .add_allowed_audience(test_audience)
@@ -253,7 +250,7 @@ mod tests {
         let directives = vec![Directive::default(), both, t];
 
         let c: jwt::EmptyClaims = auth
-            .verify(&TokenRef::from_str(&encoded), &directives)
+            .verify(&encoded, &directives)
             .await?;
 
         dbg!(c);
@@ -264,7 +261,7 @@ mod tests {
     #[tokio::test]
     #[cfg(all(any(feature = "reqwest"), feature = "rsa"))]
     async fn request() -> anyhow::Result<()> {
-        let validator = jwt::BasicValidation::default()
+        let validator = jwt::Validation::default()
             .add_approved_algorithm(jws::Algorithm::RS256)
             .set_issuer(jwt::Issuer::new("https://demo.auth0.com/"))
             .add_allowed_audience(jwt::Audience::new("test"))

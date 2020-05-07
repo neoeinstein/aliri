@@ -118,6 +118,13 @@ impl SigningAlgorithm {
             SigningAlgorithm::ES384 => &ring::signature::ECDSA_P384_SHA384_FIXED_SIGNING,
         }
     }
+
+    pub fn signature_size(self) -> usize {
+        match self {
+            Self::ES256 => 64,
+            Self::ES384 => 96,
+        }
+    }
 }
 
 impl jws::Signer for EllipticCurve {

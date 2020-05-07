@@ -1,235 +1,238 @@
-use std::{
-    borrow::Borrow,
-    fmt,
-    ops::{Deref, DerefMut},
-};
+#![deny(unsafe_code)]
 
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
+#[macro_export]
+macro_rules! b64_builder {
+    {
+        $(#[$meta:meta])*
+        $v:vis struct $ty:ident ($config:expr, $is_padded:expr);
 
-/// A buffer of bytes that are serialized as Base64 strings in URL-safe form
-///
-/// Buffer can be otherwise treated as a vector of raw bytes.
-#[derive(Clone, Eq, PartialEq)]
-#[repr(transparent)]
-pub struct Base64Url(Vec<u8>);
+        $(#[$meta_ref:meta])*
+        $v_ref:vis struct $ty_ref:ident;
+    } => {
+        #[derive(Clone, Eq, PartialEq, Hash)]
+        #[repr(transparent)]
+        $(#[$meta])*
+        $v struct $ty(Vec<u8>);
 
-impl Base64Url {
-    #[inline]
-    pub const fn new(raw: Vec<u8>) -> Self {
-        Self(raw)
-    }
+        impl $ty {
+            #[inline]
+            pub fn new<T: Into<Vec<u8>>>(raw: T) -> Self {
+                Self(raw.into())
+            }
 
-    pub fn from_encoded(enc: &str) -> Result<Self, anyhow::Error> {
-        let data = base64::decode_config(enc, base64::URL_SAFE_NO_PAD)
-            .map_err(|err| anyhow::anyhow!("{}", err))?;
-        Ok(Self(data))
-    }
+            pub fn from_encoded(enc: &str) -> Result<Self, ::anyhow::Error> {
+                let data = ::base64::decode_config(enc, $config)
+                    .map_err(|err| anyhow::anyhow!("{}", err))?;
+                Ok(Self(data))
+            }
+        
+            /// Unwraps the underlying value.
+            #[inline]
+            pub fn into_inner(self) -> Vec<u8> {
+                self.0
+            }
 
-    pub fn from_encoded_base64(enc: &str) -> Result<Self, anyhow::Error> {
-        let data = base64::decode(enc).map_err(|err| anyhow::anyhow!("{}", err))?;
-        Ok(Self(data))
-    }
+            #[inline]
+            pub fn calc_encoded_len(len: usize) -> usize {
+                if $is_padded {
+                    (len + 2) / 3 * 4
+                } else {
+                    let d = len / 3 * 4;
+                    let m = len % 3;
+                    if m > 0 {
+                        d + m + 1
+                    } else {
+                        d
+                    }
+                }
+            }
+        }
 
-    #[inline]
-    pub fn into_inner(self) -> Vec<u8> {
-        self.0
-    }
+        impl From<Vec<u8>> for $ty {
+            #[inline]
+            fn from(buf: Vec<u8>) -> Self {
+                Self(buf)
+            }
+        }
 
-    /// Provides mutable access to the underlying vector
-    #[inline]
-    pub fn as_mut_vec(&mut self) -> &mut Vec<u8> {
-        &mut self.0
+        impl From<&'_ [u8]> for $ty {
+            #[inline]
+            fn from(slice: &[u8]) -> Self {
+                Self::new(slice)
+            }
+        }
+
+        impl From<&'_ $ty_ref> for $ty {
+            #[inline]
+            fn from(val: &$ty_ref) -> Self {
+                Self::from(val.as_slice())
+            }
+        }
+
+        impl From<$ty> for Vec<u8> {
+            #[inline]
+            fn from(val: $ty) -> Self {
+                val.0
+            }
+        }
+
+        impl ::std::borrow::Borrow<$ty_ref> for $ty {
+            #[inline]
+            fn borrow(&self) -> &$ty_ref {
+                &self
+            }
+        }
+
+        impl ::std::ops::Deref for $ty {
+            type Target = $ty_ref;
+
+            fn deref(&self) -> &Self::Target {
+                $ty_ref::from_slice(self.0.as_slice())
+            }
+        }
+
+        impl ::std::ops::DerefMut for $ty {
+            #[inline]
+            fn deref_mut(&mut self) -> &mut $ty_ref {
+                $ty_ref::from_mut_slice(self.0.as_mut_slice())
+            }
+        }
+        
+        impl AsRef<$ty_ref> for $ty {
+            #[inline]
+            fn as_ref(&self) -> &$ty_ref {
+                &self
+            }
+        }
+
+        impl ::std::fmt::Display for $ty {
+            #[inline]
+            fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+                ::std::fmt::Display::fmt(&**self, f)
+            }
+        }
+        
+        impl ::std::fmt::Debug for $ty {
+            #[inline]
+            fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+                ::std::fmt::Debug::fmt(&**self, f)
+            }
+        }
+        
+        impl ::serde::Serialize for $ty {
+            fn serialize<S: ::serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+                self.as_ref().serialize(serializer)
+            }
+        }
+        
+        impl<'de> ::serde::Deserialize<'de> for $ty {
+            fn deserialize<D: ::serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+                let raw: &[u8] = ::serde::Deserialize::deserialize(deserializer)?;
+                let data = base64::decode_config(raw, $config)
+                    .map_err(serde::de::Error::custom)?;
+                Ok(Self(data))
+            }
+        }
+
+        #[derive(Hash, PartialEq, Eq)]
+        #[repr(transparent)]
+        $(#[$meta_ref])*
+        $v_ref struct $ty_ref([u8]);
+
+        impl $ty_ref {
+            #[allow(unsafe_code)]
+            #[inline]
+            /// Transparently reinterprets the slice as base64
+            pub fn from_slice(raw: &[u8]) -> &Self {
+                // `$ty_ref` is a transparent wrapper around an `[u8]`, so this
+                // transformation is safe to do.
+                unsafe {
+                    &*(raw as *const [u8] as *const Self)
+                }
+            }
+
+            #[allow(unsafe_code)]
+            #[inline]
+            /// Transparently reinterprets the mutable slice as base64
+            pub fn from_mut_slice(raw: &mut [u8]) -> &mut Self {
+                // `$ty_ref` is a transparent wrapper around an `[u8]`, so this
+                // transformation is safe to do.
+                unsafe {
+                    &mut *(raw as *mut [u8] as *mut Self)
+                }
+            }
+
+            #[inline]
+            pub fn encoded_len(&self) -> usize {
+                $ty::calc_encoded_len(self.as_slice().len())
+            }
+
+            /// Provides access to the underlying value as a string slice.
+            #[inline]
+            pub const fn as_slice(&self) -> &[u8] {
+                &self.0
+            }
+
+            /// Provides access to the underlying value as a string slice.
+            #[inline]
+            pub fn as_mut_slice(&mut self) -> &mut [u8] {
+                &mut self.0
+            }
+        }
+
+        impl ToOwned for $ty_ref {
+            type Owned = $ty;
+
+            #[inline]
+            fn to_owned(&self) -> Self::Owned {
+                $ty(self.0.to_owned())
+            }
+        }
+
+        impl PartialEq<$ty_ref> for $ty {
+            #[inline]
+            fn eq(&self, other: &$ty_ref) -> bool {
+                self.0 == &other.0
+            }
+        }
+
+        impl PartialEq<$ty> for $ty_ref {
+            #[inline]
+            fn eq(&self, other: &$ty) -> bool {
+                &self.0 == other.0.as_slice()
+            }
+        }
+
+        impl<'a> ::std::fmt::Display for $ty_ref {
+            fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+                let encoded = ::base64::encode_config(&self.0, $config);
+                f.write_str(&encoded)
+            }
+        }
+
+        impl<'a> ::std::fmt::Debug for $ty_ref {
+            fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+                let encoded = ::base64::encode_config(&self.0, $config);
+                write!(f, "`{}`", encoded)
+            }
+        }
+
+        impl<'a> ::serde::Serialize for $ty_ref {
+            fn serialize<S: ::serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+                let encoded = ::base64::encode_config(&self.0, $config);
+                serializer.serialize_str(encoded.as_str())
+            }
+        }
+
     }
 }
 
-impl From<Vec<u8>> for Base64Url {
-    #[inline]
-    fn from(raw: Vec<u8>) -> Self {
-        Self::new(raw)
-    }
+b64_builder! {
+    pub struct Base64(base64::STANDARD, true);
+    pub struct Base64Ref;
 }
 
-impl From<&'_ [u8]> for Base64Url {
-    #[inline]
-    fn from(raw: &[u8]) -> Self {
-        Self::new(raw.to_owned())
-    }
-}
-
-impl From<Base64Url> for Vec<u8> {
-    #[inline]
-    fn from(wrapper: Base64Url) -> Self {
-        wrapper.0
-    }
-}
-
-impl AsRef<[u8]> for Base64Url {
-    #[inline]
-    fn as_ref(&self) -> &[u8] {
-        &self.0
-    }
-}
-
-impl fmt::Display for Base64Url {
-    #[inline]
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Display::fmt(&**self, f)
-    }
-}
-
-impl fmt::Debug for Base64Url {
-    #[inline]
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Debug::fmt(&**self, f)
-    }
-}
-
-impl Deref for Base64Url {
-    type Target = Base64UrlRef;
-
-    #[inline]
-    fn deref(&self) -> &Base64UrlRef {
-        Base64UrlRef::from_slice(self.0.as_slice())
-    }
-}
-
-impl DerefMut for Base64Url {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut Base64UrlRef {
-        Base64UrlRef::from_mut_slice(self.0.as_mut_slice())
-    }
-}
-
-impl Borrow<Base64UrlRef> for Base64Url {
-    #[inline]
-    fn borrow(&self) -> &Base64UrlRef {
-        &self
-    }
-}
-
-impl AsRef<Base64UrlRef> for Base64Url {
-    #[inline]
-    fn as_ref(&self) -> &Base64UrlRef {
-        &self
-    }
-}
-
-impl Serialize for Base64Url {
-    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        let encoded = base64::encode_config(&self.0, base64::URL_SAFE_NO_PAD);
-        serializer.serialize_str(encoded.as_str())
-    }
-}
-
-impl<'de> Deserialize<'de> for Base64Url {
-    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        let raw: &[u8] = Deserialize::deserialize(deserializer)?;
-        let data = base64::decode_config(raw, base64::URL_SAFE_NO_PAD)
-            .map_err(serde::de::Error::custom)?;
-        Ok(Self(data))
-    }
-}
-
-/// Reference to a `Base64Url`, serializes as string in Base64Url form
-#[derive(Eq, PartialEq)]
-#[repr(transparent)]
-pub struct Base64UrlRef([u8]);
-
-impl Base64UrlRef {
-    /// Reinterprets the underlying slice as one that should be serialized in
-    /// Base64Url form.
-    #[allow(unsafe_code)]
-    #[inline]
-    pub fn from_slice(raw: &[u8]) -> &Self {
-        // `Base64UrlRef` is a transparent wrapper around an `[u8]`, so this
-        // transformation is safe to do.
-        unsafe { &*(raw as *const [u8] as *const Self) }
-    }
-
-    /// Reinterprets the underlying slice as one that should be serialized in
-    /// Base64Url form.
-    #[allow(unsafe_code)]
-    #[inline]
-    pub fn from_mut_slice(raw: &mut [u8]) -> &mut Self {
-        // `Base64UrlRef` is a transparent wrapper around an `[u8]`, so this
-        // transformation is safe to do.
-        unsafe { &mut *(raw as *mut [u8] as *mut Self) }
-    }
-
-    /// The length of the base64url encoded value of the underlying data
-    #[inline]
-    pub fn encoded_len(&self) -> usize {
-        let len = self.as_slice().len();
-        len / 3 + len % 3
-    }
-
-    /// Returns a reference to the underlying raw byte slice.
-    #[inline]
-    pub const fn as_slice(&self) -> &[u8] {
-        &self.0
-    }
-
-    /// Returns a mutable reference to the underlying raw byte slice.
-    #[inline]
-    pub fn as_mut_slice(&mut self) -> &mut [u8] {
-        &mut self.0
-    }
-}
-
-impl<'a> From<&'a Base64UrlRef> for &'a [u8] {
-    #[inline]
-    fn from(s: &'a Base64UrlRef) -> Self {
-        s.as_slice()
-    }
-}
-
-impl<'a> From<&'a [u8]> for &'a Base64UrlRef {
-    #[inline]
-    fn from(s: &'a [u8]) -> Self {
-        Base64UrlRef::from_slice(s)
-    }
-}
-
-impl ToOwned for Base64UrlRef {
-    type Owned = Base64Url;
-
-    #[inline]
-    fn to_owned(&self) -> Self::Owned {
-        Base64Url::new(self.0.to_owned())
-    }
-}
-
-impl PartialEq<Base64UrlRef> for Base64Url {
-    #[inline]
-    fn eq(&self, other: &Base64UrlRef) -> bool {
-        self.0 == &other.0
-    }
-}
-
-impl PartialEq<Base64Url> for Base64UrlRef {
-    #[inline]
-    fn eq(&self, other: &Base64Url) -> bool {
-        other.0 == &self.0
-    }
-}
-
-impl fmt::Display for Base64UrlRef {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let encoded = base64::encode_config(&self.0, base64::URL_SAFE_NO_PAD);
-        f.write_str(&encoded)
-    }
-}
-
-impl fmt::Debug for Base64UrlRef {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let encoded = base64::encode_config(&self.0, base64::URL_SAFE_NO_PAD);
-        write!(f, "`{}`", encoded)
-    }
-}
-
-impl Serialize for Base64UrlRef {
-    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        let encoded = base64::encode_config(&self.0, base64::URL_SAFE_NO_PAD);
-        serializer.serialize_str(encoded.as_str())
-    }
+b64_builder! {
+    pub struct Base64Url(base64::URL_SAFE_NO_PAD, false);
+    pub struct Base64UrlRef;
 }

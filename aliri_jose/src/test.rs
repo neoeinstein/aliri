@@ -1,9 +1,8 @@
-use std::{collections::HashSet, time::SystemTime};
+use std::collections::HashSet;
 
-use aliri_core::clock::UnixTime;
 use lazy_static::lazy_static;
 
-use crate::{jwk, jws, jwt};
+use crate::jwt;
 
 #[cfg(feature = "rsa")]
 pub mod rsa {
@@ -48,76 +47,4 @@ lazy_static! {
         .iter()
         .map(|&s| String::from(s))
         .collect();
-}
-
-#[derive(serde::Serialize, serde::Deserialize, Clone, Debug, PartialEq, Eq)]
-pub struct MinimalHeaders {
-    alg: jws::Algorithm,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    kid: Option<jwk::KeyId>,
-}
-
-impl jwt::HasAlgorithm for MinimalHeaders {
-    fn alg(&self) -> jws::Algorithm {
-        self.alg
-    }
-}
-
-impl jwt::CoreHeaders for MinimalHeaders {
-    fn kid(&self) -> Option<&jwk::KeyIdRef> {
-        self.kid.as_deref()
-    }
-}
-
-impl MinimalHeaders {
-    pub const fn new(alg: jws::Algorithm) -> Self {
-        Self { alg, kid: None }
-    }
-
-    pub fn with_key_id(mut self, kid: impl Into<jwk::KeyId>) -> Self {
-        self.kid = Some(kid.into());
-        self
-    }
-}
-
-#[derive(serde::Serialize, serde::Deserialize, Clone, Debug, Default, PartialEq, Eq)]
-pub struct MinimalClaims {
-    #[serde(default, skip_serializing_if = "jwt::Audiences::is_empty")]
-    aud: jwt::Audiences,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    iss: Option<jwt::Issuer>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    exp: Option<UnixTime>,
-}
-
-impl jwt::CoreClaims for MinimalClaims {
-    fn aud(&self) -> &jwt::Audiences {
-        &self.aud
-    }
-
-    fn iss(&self) -> Option<&jwt::IssuerRef> {
-        self.iss.as_deref()
-    }
-
-    fn exp(&self) -> Option<UnixTime> {
-        self.exp
-    }
-}
-
-impl MinimalClaims {
-    pub fn with_audience(mut self, aud: impl Into<jwt::Audience>) -> Self {
-        self.aud = jwt::Audiences::from(vec![aud.into()]);
-        self
-    }
-
-    pub fn with_issuer(mut self, iss: impl Into<jwt::Issuer>) -> Self {
-        self.iss = Some(iss.into());
-        self
-    }
-
-    pub fn with_future_expiration(mut self, secs: u64) -> Self {
-        let n = UnixTime::from(SystemTime::now());
-        self.exp = Some(UnixTime(n.0 + secs));
-        self
-    }
 }

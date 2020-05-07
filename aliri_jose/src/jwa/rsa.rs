@@ -73,9 +73,13 @@ pub enum SigningAlgorithm {
     PS512,
 }
 
-impl From<SigningAlgorithm> for &'_ ring::signature::RsaParameters {
-    fn from(alg: SigningAlgorithm) -> Self {
-        match alg {
+impl SigningAlgorithm {
+    pub fn signature_size(self) -> usize {
+        256
+    }
+
+    fn into_verification_params(self) -> &'static ring::signature::RsaParameters {
+        match self {
             SigningAlgorithm::RS256 => &ring::signature::RSA_PKCS1_2048_8192_SHA256,
             SigningAlgorithm::RS384 => &ring::signature::RSA_PKCS1_2048_8192_SHA384,
             SigningAlgorithm::RS512 => &ring::signature::RSA_PKCS1_2048_8192_SHA512,
@@ -84,11 +88,9 @@ impl From<SigningAlgorithm> for &'_ ring::signature::RsaParameters {
             SigningAlgorithm::PS512 => &ring::signature::RSA_PSS_2048_8192_SHA512,
         }
     }
-}
 
-impl From<SigningAlgorithm> for &'_ dyn ring::signature::RsaEncoding {
-    fn from(alg: SigningAlgorithm) -> Self {
-        match alg {
+    fn into_signing_params(self) -> &'static dyn ring::signature::RsaEncoding {
+        match self {
             SigningAlgorithm::RS256 => &ring::signature::RSA_PKCS1_SHA256,
             SigningAlgorithm::RS384 => &ring::signature::RSA_PKCS1_SHA384,
             SigningAlgorithm::RS512 => &ring::signature::RSA_PKCS1_SHA512,
@@ -109,7 +111,7 @@ impl jws::Signer for Rsa {
                 .map_err(|e| anyhow::anyhow!("key rejected: {}", e))?;
 
             let mut buf = vec![0; pk.public_modulus_len()];
-            pk.sign(alg.into(), &*super::CRATE_RNG, data, &mut buf)
+            pk.sign(alg.into_signing_params(), &*super::CRATE_RNG, data, &mut buf)
                 .map_err(|_| anyhow::anyhow!("error while signing message"))?;
             Ok(buf)
         } else {
@@ -134,7 +136,7 @@ impl jws::Verifier for Rsa {
             e: p.exponent.as_slice(),
         };
 
-        pk.verify(alg.into(), data, signature)
+        pk.verify(alg.into_verification_params(), data, signature)
             .map_err(|_| anyhow::anyhow!("invalid signature"))
     }
 }

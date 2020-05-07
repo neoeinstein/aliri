@@ -50,11 +50,17 @@ impl SigningAlgorithm {
             Self::HS512 => 512 / 8,
         }
     }
-}
 
-impl From<SigningAlgorithm> for ring::hmac::Algorithm {
-    fn from(alg: SigningAlgorithm) -> Self {
-        match alg {
+    pub fn signature_size(self) -> usize {
+        match self {
+            Self::HS256 => 256 / 8,
+            Self::HS384 => 384 / 8,
+            Self::HS512 => 512 / 8,
+        }
+    }
+
+    fn into_ring_algorithm(self) -> ring::hmac::Algorithm {
+        match self {
             SigningAlgorithm::HS256 => ring::hmac::HMAC_SHA256,
             SigningAlgorithm::HS384 => ring::hmac::HMAC_SHA384,
             SigningAlgorithm::HS512 => ring::hmac::HMAC_SHA512,
@@ -67,7 +73,7 @@ impl jws::Signer for Hmac {
     type Error = std::convert::Infallible;
 
     fn sign(&self, alg: Self::Algorithm, data: &[u8]) -> Result<Vec<u8>, Self::Error> {
-        let key = ring::hmac::Key::new(alg.into(), self.key.as_slice());
+        let key = ring::hmac::Key::new(alg.into_ring_algorithm(), self.key.as_slice());
         let digest = ring::hmac::sign(&key, data);
         Ok(digest.as_ref().to_owned())
     }
@@ -83,7 +89,7 @@ impl jws::Verifier for Hmac {
         data: &[u8],
         signature: &[u8],
     ) -> Result<(), Self::Error> {
-        let key = ring::hmac::Key::new(alg.into(), self.key.as_slice());
+        let key = ring::hmac::Key::new(alg.into_ring_algorithm(), self.key.as_slice());
         ring::hmac::verify(&key, data, signature)
             .map_err(|_| anyhow::anyhow!("signature is not valid"))
     }

@@ -44,6 +44,23 @@ impl Algorithm {
     pub const ES384: Algorithm = Self::EllipticCurve(jwa::ec::SigningAlgorithm::ES384);
 }
 
+impl Algorithm {
+    pub fn signature_size(self) -> usize {
+        match self {
+            #[cfg(feature = "hmac")]
+            Self::Hmac(alg) => alg.signature_size(),
+        
+            #[cfg(feature = "rsa")]
+            Self::Rsa(alg) => alg.signature_size(),
+        
+            #[cfg(feature = "ec")]
+            Self::EllipticCurve(alg) => alg.signature_size(),
+        
+            Self::Unknown => 0,
+        }
+    }
+}
+
 pub trait Signer {
     type Algorithm;
     type Error: fmt::Debug + fmt::Display + 'static;

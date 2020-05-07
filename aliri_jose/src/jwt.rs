@@ -8,7 +8,7 @@ use aliri_macros::typed_string;
 use anyhow::anyhow;
 use serde::{Deserialize, Serialize};
 
-use crate::{jwk, jws};
+use crate::{jwk, jws, Jwk};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct TokenData<C = EmptyClaims, H = EmptyClaims> {
@@ -17,8 +17,8 @@ pub struct TokenData<C = EmptyClaims, H = EmptyClaims> {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct DecomposedJwt<'a, H = EmptyClaims> {
-    pub(crate) header: HeaderWithBasicClaims<H>,
+pub struct Decomposed<'a, H = EmptyClaims> {
+    pub(crate) header: Headers<H>,
     pub(crate) message: &'a str,
     pub(crate) payload: &'a str,
     pub(crate) signature: Base64Url,
@@ -34,33 +34,58 @@ macro_rules! expect_two {
     }};
 }
 
-impl<'a, H> DecomposedJwt<'a, H>
+impl<'a, H> Decomposed<'a, H>
 where
-    H: for<'de> Deserialize<'de>,
+    H: for<'de> serde::Deserialize<'de>,
 {
-    #[doc(hidden)]
-    pub fn try_from_raw(token: &'a str) -> Result<Self, anyhow::Error> {
-        let (s_str, message) = expect_two!(token.rsplitn(2, '.'));
+    pub fn verify<C>(self, key: &'_ Jwk, validator: &Validation) -> anyhow::Result<TokenData<C, H>>
+    where
+        C: for<'de> serde::Deserialize<'de>,
+    {
+        let data = key.verify_decomposed(self, validator)?;
+
+        Ok(data)
+    }
+}
+
+impl JwtRef {
+    pub fn decompose<H>(&self) -> anyhow::Result<Decomposed<H>>
+    where
+        H: for<'de> Deserialize<'de>,
+    {
+        let (s_str, message) = expect_two!(self.as_str().rsplitn(2, '.'));
         let (payload, h_str) = expect_two!(message.rsplitn(2, '.'));
         let h_raw = Base64Url::from_encoded(h_str)?;
         let signature = Base64Url::from_encoded(s_str)?;
-        let header: HeaderWithBasicClaims<H> = serde_json::from_slice(h_raw.as_slice())?;
-        Ok(Self {
+        let header: Headers<H> = serde_json::from_slice(h_raw.as_slice())?;
+        Ok(Decomposed {
             header,
             message,
             payload,
             signature,
         })
     }
+
+    pub fn verify<C, H>(&self, key: &'_ Jwk, validator: &Validation) -> anyhow::Result<TokenData<C, H>>
+    where
+        C: for<'de> serde::Deserialize<'de>,
+        H: for<'de> serde::Deserialize<'de>,
+    {
+        let decomposed = self.decompose()?;
+        
+        let data = key.verify_decomposed(decomposed, validator)?;
+
+        Ok(data)
+    }
 }
 
-impl<'a, H> HasAlgorithm for DecomposedJwt<'a, H> {
+impl<'a, H> HasAlgorithm for Decomposed<'a, H> {
     fn alg(&self) -> jws::Algorithm {
         self.header.alg()
     }
 }
 
-impl<'a, H> CoreHeaders for DecomposedJwt<'a, H> {
+impl<'a, H> CoreHeaders for Decomposed<'a, H> {
     fn kid(&self) -> Option<&jwk::KeyIdRef> {
         self.header.kid()
     }
@@ -94,103 +119,7 @@ pub trait CoreHeaders: HasAlgorithm {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
-pub(crate) struct HeaderWithBasicClaims<H> {
-    #[serde(flatten)]
-    basic: BasicHeader,
-    #[serde(flatten)]
-    pub header: H,
-}
-
-impl<H> HasAlgorithm for HeaderWithBasicClaims<H> {
-    fn alg(&self) -> jws::Algorithm {
-        self.basic.alg()
-    }
-}
-
-impl<H> CoreHeaders for HeaderWithBasicClaims<H> {
-    fn kid(&self) -> Option<&jwk::KeyIdRef> {
-        self.basic.kid()
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub(crate) struct BasicHeader {
-    #[serde(rename = "alg")]
-    algorithm: jws::Algorithm,
-    #[serde(rename = "kid", skip_serializing_if = "Option::is_none")]
-    key_id: Option<jwk::KeyId>,
-}
-
-impl HasAlgorithm for BasicHeader {
-    fn alg(&self) -> jws::Algorithm {
-        self.algorithm
-    }
-}
-
-impl CoreHeaders for BasicHeader {
-    fn kid(&self) -> Option<&jwk::KeyIdRef> {
-        self.key_id.as_deref()
-    }
-}
-
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
-pub(crate) struct PayloadWithBasicClaims<P> {
-    #[serde(flatten)]
-    basic: BasicClaims,
-    #[serde(flatten)]
-    pub payload: P,
-}
-
-impl<P> CoreClaims for PayloadWithBasicClaims<P> {
-    fn nbf(&self) -> Option<UnixTime> {
-        self.basic.nbf()
-    }
-
-    fn exp(&self) -> Option<UnixTime> {
-        self.basic.exp()
-    }
-
-    fn aud(&self) -> &Audiences {
-        self.basic.aud()
-    }
-
-    fn iss(&self) -> Option<&IssuerRef> {
-        self.basic.iss()
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub(crate) struct BasicClaims {
-    #[serde(rename = "nbf", skip_serializing_if = "Option::is_none")]
-    not_before: Option<UnixTime>,
-    #[serde(rename = "exp", skip_serializing_if = "Option::is_none")]
-    expiration: Option<UnixTime>,
-    #[serde(rename = "aud", default, skip_serializing_if = "Audiences::is_empty")]
-    audience: Audiences,
-    #[serde(rename = "iss", skip_serializing_if = "Option::is_none")]
-    issuer: Option<Issuer>,
-}
-
-impl CoreClaims for BasicClaims {
-    fn nbf(&self) -> Option<UnixTime> {
-        self.not_before
-    }
-
-    fn exp(&self) -> Option<UnixTime> {
-        self.expiration
-    }
-
-    fn aud(&self) -> &Audiences {
-        &self.audience
-    }
-
-    fn iss(&self) -> Option<&IssuerRef> {
-        self.issuer.as_deref()
-    }
-}
-
-#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, Serialize, Deserialize)]
 pub struct EmptyClaims {}
 
 impl CoreClaims for EmptyClaims {}
@@ -225,7 +154,7 @@ typed_string! {
 pub struct Audiences(Vec<Audience>);
 
 impl Audiences {
-    pub const fn new() -> Self {
+    pub const fn empty() -> Self {
         Self(Vec::new())
     }
 
@@ -235,7 +164,7 @@ impl Audiences {
         Self(v)
     }
 
-    pub const EMPTY_AUD: &'static Audiences = &Audiences::new();
+    pub const EMPTY_AUD: &'static Audiences = &Audiences::empty();
 
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
@@ -282,7 +211,7 @@ impl From<Audience> for Audiences {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct BasicValidation {
+pub struct Validation {
     approved_algorithms: Vec<jws::Algorithm>,
     leeway: Duration,
     validate_nbf: bool,
@@ -291,7 +220,7 @@ pub struct BasicValidation {
     issuer: Option<Issuer>,
 }
 
-impl Default for BasicValidation {
+impl Default for Validation {
     #[inline]
     fn default() -> Self {
         Self {
@@ -305,7 +234,7 @@ impl Default for BasicValidation {
     }
 }
 
-impl BasicValidation {
+impl Validation {
     #[inline]
     pub fn with_leeway(mut self, leeway: Duration) -> Self {
         self.leeway = leeway;
@@ -447,6 +376,155 @@ impl BasicValidation {
     }
 }
 
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug, PartialEq, Eq)]
+pub struct Headers<H = EmptyClaims> {
+    alg: jws::Algorithm,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    kid: Option<jwk::KeyId>,
+    #[serde(flatten)]
+    headers: H,
+}
+
+impl<H> HasAlgorithm for Headers<H> {
+    fn alg(&self) -> jws::Algorithm {
+        self.alg
+    }
+}
+
+impl<H> CoreHeaders for Headers<H> {
+    fn kid(&self) -> Option<&jwk::KeyIdRef> {
+        self.kid.as_deref()
+    }
+}
+
+impl Headers {
+    pub const fn new(alg: jws::Algorithm) -> Self {
+        Self { alg, kid: None, headers: EmptyClaims{} }
+    }
+}
+
+impl<H> Headers<H> {
+    pub fn with_key_id(mut self, kid: impl Into<jwk::KeyId>) -> Self {
+        self.kid = Some(kid.into());
+        self
+    }
+
+    pub fn with_headers<G>(self, headers: G) -> Headers<G> {
+        Headers {
+            alg: self.alg,
+            kid: self.kid,
+            headers,
+        }
+    }
+
+    pub fn headers(&self) -> &H {
+        &self.headers
+    }
+
+    pub fn take_headers(self) -> H {
+        self.headers
+    }
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug, PartialEq, Eq)]
+pub struct Claims<P = EmptyClaims> {
+    #[serde(default, skip_serializing_if = "Audiences::is_empty")]
+    aud: Audiences,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    iss: Option<Issuer>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    exp: Option<UnixTime>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    nbf: Option<UnixTime>,
+    #[serde(flatten)]
+    payload: P,
+}
+
+impl Claims {
+    pub const fn new() -> Self {
+        Self {
+            aud: Audiences::empty(),
+            iss: None,
+            exp: None,
+            nbf: None,
+            payload: EmptyClaims {},
+        }
+    }
+}
+
+impl<P> CoreClaims for Claims<P> {
+    fn aud(&self) -> &Audiences {
+        &self.aud
+    }
+
+    fn iss(&self) -> Option<&IssuerRef> {
+        self.iss.as_deref()
+    }
+
+    fn exp(&self) -> Option<UnixTime> {
+        self.exp
+    }
+
+    fn nbf(&self) -> Option<UnixTime> {
+        self.exp
+    }
+}
+
+impl<P> Claims<P> {
+    pub fn with_audience(mut self, aud: impl Into<Audience>) -> Self {
+        self.aud = Audiences::from(vec![aud.into()]);
+        self
+    }
+
+    pub fn with_audiences(mut self, aud: impl Into<Audiences>) -> Self {
+        self.aud = aud.into();
+        self
+    }
+
+    pub fn with_issuer(mut self, iss: impl Into<Issuer>) -> Self {
+        self.iss = Some(iss.into());
+        self
+    }
+
+    pub fn with_future_expiration(self, secs: u64) -> Self {
+        self.with_future_expiration_from_clock(secs, &System)
+    }
+
+    pub fn with_future_expiration_from_clock<C: Clock>(mut self, secs: u64, clock: &C) -> Self {
+        let n = clock.now();
+        self.exp = Some(UnixTime(n.0 + secs));
+        self
+    }
+
+    pub fn with_expiration(mut self, time: UnixTime) -> Self {
+        self.exp = Some(time);
+        self
+    }
+
+    pub fn with_not_before(mut self, time: UnixTime) -> Self {
+        self.nbf = Some(time);
+        self
+    }
+
+    pub fn with_payload<Q>(self, payload: Q) -> Claims<Q> {
+        Claims {
+            aud: self.aud,
+            iss: self.iss,
+            exp: self.exp,
+            nbf: self.nbf,
+            payload,
+        }
+    }
+
+    pub fn payload(&self) -> &P {
+        &self.payload
+    }
+
+    pub fn take_payload(self) -> P {
+        self.payload
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use aliri_core::clock::TestClock;
@@ -460,7 +538,7 @@ mod tests {
                 "iss": "me"
             }"#;
 
-        let basic: BasicClaims = serde_json::from_str(DATA)?;
+        let basic: Claims = serde_json::from_str(DATA)?;
         dbg!(&basic);
 
         Ok(())
@@ -468,26 +546,24 @@ mod tests {
 
     #[test]
     fn vdater() -> anyhow::Result<()> {
-        let validation = BasicValidation::default()
+        let validation = Validation::default()
             .with_leeway(Duration::from_secs(2))
             .check_not_before()
             .extend_allowed_audiences(vec![Audience::new("marcus"), Audience::new("other")])
             .set_issuer(Issuer::new("face"));
 
-        let claims = BasicClaims {
-            not_before: Some(UnixTime(9)),
-            expiration: Some(UnixTime(5)),
-            audience: Audiences::from(vec![Audience::new("marcus"), Audience::new("other")]),
-            issuer: Some(Issuer::new("face")),
-        };
+        let audiences = Audiences::from(vec![Audience::new("marcus"), Audience::new("other")]);
+
+        let claims = Claims::new()
+            .with_not_before(UnixTime(9))
+            .with_expiration(UnixTime(5))
+            .with_audiences(audiences)
+            .with_issuer(Issuer::new("face"));
 
         let mut clock = TestClock::default();
         clock.set(UnixTime(7));
 
-        let header = BasicHeader {
-            algorithm: jws::Algorithm::RS256,
-            key_id: None,
-        };
+        let header = Headers::new(jws::Algorithm::RS256);
 
         validation.validate_with_clock(&header, &claims, &clock)
     }
