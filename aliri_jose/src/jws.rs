@@ -49,13 +49,13 @@ impl Algorithm {
         match self {
             #[cfg(feature = "hmac")]
             Self::Hmac(alg) => alg.signature_size(),
-        
+
             #[cfg(feature = "rsa")]
             Self::Rsa(alg) => alg.signature_size(),
-        
+
             #[cfg(feature = "ec")]
             Self::EllipticCurve(alg) => alg.signature_size(),
-        
+
             Self::Unknown => 0,
         }
     }

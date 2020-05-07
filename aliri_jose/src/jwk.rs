@@ -163,7 +163,10 @@ impl Jwk {
         let h_raw = Base64Url::new(serde_json::to_vec(header)?);
         let p_raw = Base64Url::new(serde_json::to_vec(claims)?);
 
-        let expected_len = h_raw.encoded_len() + p_raw.encoded_len() + Base64Url::calc_encoded_len(header.alg().signature_size()) + 2;
+        let expected_len = h_raw.encoded_len()
+            + p_raw.encoded_len()
+            + Base64Url::calc_encoded_len(header.alg().signature_size())
+            + 2;
 
         let mut message = String::with_capacity(expected_len);
         write!(message, "{}.{}", h_raw, p_raw).expect("writes to strings never fail");

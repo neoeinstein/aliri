@@ -111,8 +111,13 @@ impl jws::Signer for Rsa {
                 .map_err(|e| anyhow::anyhow!("key rejected: {}", e))?;
 
             let mut buf = vec![0; pk.public_modulus_len()];
-            pk.sign(alg.into_signing_params(), &*super::CRATE_RNG, data, &mut buf)
-                .map_err(|_| anyhow::anyhow!("error while signing message"))?;
+            pk.sign(
+                alg.into_signing_params(),
+                &*super::CRATE_RNG,
+                data,
+                &mut buf,
+            )
+            .map_err(|_| anyhow::anyhow!("error while signing message"))?;
             Ok(buf)
         } else {
             Err(anyhow::anyhow!("no private components, unable to sign"))

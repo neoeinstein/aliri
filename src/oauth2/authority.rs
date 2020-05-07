@@ -2,8 +2,7 @@ use std::future::Future;
 
 use aliri_jose::{
     jwt::{self, CoreHeaders, HasAlgorithm},
-    Jwks,
-    JwtRef,
+    Jwks, JwtRef,
 };
 
 use super::Directive;
@@ -70,7 +69,7 @@ impl JwksAuthority {
         let key = {
             let kid = decomposed.kid();
             let alg = decomposed.alg();
-    
+
             self.jwks.get_key_by_opt(kid, alg).next().ok_or_else(|| {
                 if let Some(kid) = kid {
                     anyhow::anyhow!("unable to find key with kid {} for alg {}", kid, alg)
@@ -249,9 +248,7 @@ mod tests {
 
         let directives = vec![Directive::default(), both, t];
 
-        let c: jwt::EmptyClaims = auth
-            .verify(&encoded, &directives)
-            .await?;
+        let c: jwt::EmptyClaims = auth.verify(&encoded, &directives).await?;
 
         dbg!(c);
 

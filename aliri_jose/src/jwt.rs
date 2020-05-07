@@ -66,13 +66,17 @@ impl JwtRef {
         })
     }
 
-    pub fn verify<C, H>(&self, key: &'_ Jwk, validator: &Validation) -> anyhow::Result<TokenData<C, H>>
+    pub fn verify<C, H>(
+        &self,
+        key: &'_ Jwk,
+        validator: &Validation,
+    ) -> anyhow::Result<TokenData<C, H>>
     where
         C: for<'de> serde::Deserialize<'de>,
         H: for<'de> serde::Deserialize<'de>,
     {
         let decomposed = self.decompose()?;
-        
+
         let data = key.verify_decomposed(decomposed, validator)?;
 
         Ok(data)
@@ -399,7 +403,11 @@ impl<H> CoreHeaders for Headers<H> {
 
 impl Headers {
     pub const fn new(alg: jws::Algorithm) -> Self {
-        Self { alg, kid: None, headers: EmptyClaims{} }
+        Self {
+            alg,
+            kid: None,
+            headers: EmptyClaims {},
+        }
     }
 }
 

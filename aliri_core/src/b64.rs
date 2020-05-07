@@ -25,7 +25,7 @@ macro_rules! b64_builder {
                     .map_err(|err| anyhow::anyhow!("{}", err))?;
                 Ok(Self(data))
             }
-        
+
             /// Unwraps the underlying value.
             #[inline]
             pub fn into_inner(self) -> Vec<u8> {
@@ -97,7 +97,7 @@ macro_rules! b64_builder {
                 $ty_ref::from_mut_slice(self.0.as_mut_slice())
             }
         }
-        
+
         impl AsRef<$ty_ref> for $ty {
             #[inline]
             fn as_ref(&self) -> &$ty_ref {
@@ -111,20 +111,20 @@ macro_rules! b64_builder {
                 ::std::fmt::Display::fmt(&**self, f)
             }
         }
-        
+
         impl ::std::fmt::Debug for $ty {
             #[inline]
             fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
                 ::std::fmt::Debug::fmt(&**self, f)
             }
         }
-        
+
         impl ::serde::Serialize for $ty {
             fn serialize<S: ::serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
                 self.as_ref().serialize(serializer)
             }
         }
-        
+
         impl<'de> ::serde::Deserialize<'de> for $ty {
             fn deserialize<D: ::serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
                 let raw: &[u8] = ::serde::Deserialize::deserialize(deserializer)?;
