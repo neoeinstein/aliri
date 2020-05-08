@@ -22,7 +22,13 @@ impl JwksAuthority {
     /// By default, the authority uses an empty JWKS, which will reject
     /// all tokens.
     pub fn new(validator: jwt::Validation) -> Self {
-        let jwks_url = format!("{}.well-known/jwks.json", validator.issuer().unwrap());
+        let jwks_url = format!(
+            "{}.well-known/jwks.json",
+            validator
+                .issuer()
+                .map(|i| i.to_string())
+                .unwrap_or_default()
+        );
 
         Self {
             jwks: Jwks::default(),
@@ -68,7 +74,7 @@ impl JwksAuthority {
         Ok(())
     }
 
-    async fn verify_token<T: for<'de> serde::Deserialize<'de> + jwt::CoreClaims + HasScopes>(
+    async fn verify_token<T: for<'de> serde::Deserialize<'de> + HasScopes>(
         &self,
         token: &JwtRef,
         directives: &[Directive],
@@ -88,18 +94,16 @@ impl JwksAuthority {
             })?
         };
 
-        let data: jwt::Validated<T> = decomposed.verify(&key, &self.validator)?;
+        let data: jwt::Validated<jwt::Claims<T>> = decomposed.verify(&key, &self.validator)?;
 
         let (_, claims) = data.take();
 
         if directives.is_empty() {
-            return Ok(claims);
+            return Ok(claims.take_payload());
         }
 
-        let scopes = claims.scopes().iter().map(|r| r.as_ref()).collect();
-
-        if directives.iter().any(|d| d.validate(&scopes)) {
-            Ok(claims)
+        if directives.iter().any(|d| d.check_scopes(claims.payload())) {
+            Ok(claims.take_payload())
         } else {
             Err(anyhow::anyhow!("missing required scopes"))
         }
@@ -108,11 +112,12 @@ impl JwksAuthority {
 
 impl<'a, T> Authority<'a, T> for JwksAuthority
 where
-    T: for<'de> serde::Deserialize<'de> + jwt::CoreClaims + HasScopes + 'a,
+    T: for<'de> serde::Deserialize<'de> + HasScopes + 'a,
 {
     type Directive = &'a [Directive];
     type Token = &'a JwtRef;
-    type VerifyFuture = std::pin::Pin<Box<dyn Future<Output = Result<T, Self::VerifyError>> + 'a>>;
+    type VerifyFuture =
+        std::pin::Pin<Box<dyn Future<Output = Result<T, Self::VerifyError>> + Send + Sync + 'a>>;
     type VerifyError = anyhow::Error;
 
     fn verify(&'a self, token: Self::Token, dir: Self::Directive) -> Self::VerifyFuture {

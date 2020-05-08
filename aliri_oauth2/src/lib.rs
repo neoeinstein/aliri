@@ -23,4 +23,4 @@ mod scope;
 
 pub use authority::JwksAuthority;
 pub use directive::Directive;
-pub use scope::{HasScopes, Scope, ScopeRef};
+pub use scope::{HasScopes, Scope, ScopeRef, Scopes};

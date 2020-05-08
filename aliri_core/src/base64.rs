@@ -81,33 +81,40 @@ macro_rules! b64_builder {
             }
         }
 
-        // impl From<Vec<u8>> for $ty {
-        //     #[inline]
-        //     fn from(buf: Vec<u8>) -> Self {
-        //         Self(buf)
-        //     }
-        // }
+        impl From<Vec<u8>> for $ty {
+            #[inline]
+            fn from(buf: Vec<u8>) -> Self {
+                Self(buf)
+            }
+        }
 
-        // impl From<&'_ [u8]> for $ty {
-        //     #[inline]
-        //     fn from(slice: &[u8]) -> Self {
-        //         Self::new(slice)
-        //     }
-        // }
+        impl From<&'_ [u8]> for $ty {
+            #[inline]
+            fn from(slice: &[u8]) -> Self {
+                Self::from_raw(slice)
+            }
+        }
 
-        // impl From<&'_ $ty_ref> for $ty {
-        //     #[inline]
-        //     fn from(val: &$ty_ref) -> Self {
-        //         Self::from(val.as_slice())
-        //     }
-        // }
+        impl<'a> From<&'a [u8]> for &'a $ty_ref {
+            #[inline]
+            fn from(slice: &'a [u8]) -> Self {
+                $ty_ref::from_slice(slice)
+            }
+        }
 
-        // impl From<$ty> for Vec<u8> {
-        //     #[inline]
-        //     fn from(val: $ty) -> Self {
-        //         val.0
-        //     }
-        // }
+        impl From<&'_ $ty_ref> for $ty {
+            #[inline]
+            fn from(val: &$ty_ref) -> Self {
+                Self::from(val.as_slice())
+            }
+        }
+
+        impl From<$ty> for Vec<u8> {
+            #[inline]
+            fn from(val: $ty) -> Self {
+                val.0
+            }
+        }
 
         impl ::std::borrow::Borrow<$ty_ref> for $ty {
             #[inline]

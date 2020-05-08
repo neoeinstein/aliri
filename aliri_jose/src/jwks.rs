@@ -54,9 +54,8 @@ impl Jwks {
     }
 
     fn find_any_alg_matches(&self, alg: jws::Algorithm) -> impl Iterator<Item = &Jwk> {
-        self.keys_with_good_algorithms().filter(move |k| {
-            alg != jws::Algorithm::Unknown && k.id == None && k.algorithm == Some(alg)
-        })
+        self.keys_with_good_algorithms()
+            .filter(move |k| alg != jws::Algorithm::Unknown && k.algorithm == Some(alg))
     }
 
     fn find_any_no_alg_matches(&self) -> impl Iterator<Item = &Jwk> {

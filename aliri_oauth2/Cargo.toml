@@ -23,6 +23,7 @@ aliri = { version = "0.1.0", path = "../aliri" }
 aliri_core = { version = "0.1.0", path = "../aliri_core" }
 aliri_jose = { version = "0.1.0", path = "../aliri_jose", default-features = false }
 aliri_macros = { version = "0.1.0", path = "../aliri_macros" }
+lazy_static = "1"
 reqwest = { version = "0.10", optional = true, features = [ "json" ] }
 serde = { version = "1", features = [ "derive" ] }
 

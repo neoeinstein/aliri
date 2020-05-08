@@ -24,7 +24,8 @@ impl fmt::Debug for Hmac {
 
 impl Hmac {
     /// HMAC using the provided secret
-    pub fn new(secret: Base64Url) -> Self {
+    pub fn new(secret: impl Into<Base64Url>) -> Self {
+        let secret = secret.into();
         Self { secret }
     }
 
