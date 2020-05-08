@@ -14,6 +14,7 @@ default = [ "rsa" ]
 [dependencies]
 ahash = "0.3"
 anyhow = "1"
+aliri = { path = "../aliri" }
 aliri_core = { path = "../aliri_core" }
 aliri_jose = { path = "../aliri_jose", default-features = false }
 aliri_macros = { path = "../aliri_macros" }

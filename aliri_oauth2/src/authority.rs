@@ -1,6 +1,6 @@
 use std::future::Future;
 
-use aliri_core::Authority;
+use aliri::Authority;
 use aliri_jose::{
     jwt::{self, CoreHeaders, HasSigningAlgorithm},
     Jwks, JwtRef,
@@ -124,7 +124,6 @@ where
 mod tests {
     use std::time::Duration;
 
-    use aliri_core::Authority;
     use aliri_jose::{jwk, jws, jwt, Jwk, Jwks};
 
     use super::*;

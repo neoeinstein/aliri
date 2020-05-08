@@ -1,6 +1,6 @@
-//! # aliri_oauth2
+//! # aliri
 //!
-//! JWT authorization based on validating OAuth2 scopes.
+//! Token-based authorization with authorities that verify access grants.
 
 #![warn(
     missing_docs,
@@ -16,11 +16,8 @@
     unsafe_code,
     unused_must_use
 )]
+#![forbid(unsafe_code)]
 
 mod authority;
-mod directive;
-mod scope;
 
-pub use authority::JwksAuthority;
-pub use directive::Directive;
-pub use scope::{HasScopes, Scope, ScopeRef};
+pub use authority::Authority;
