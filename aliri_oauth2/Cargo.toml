@@ -14,15 +14,15 @@ default = [ "rsa" ]
 [dependencies]
 ahash = "0.3"
 anyhow = "1"
-aliri = { path = "../aliri" }
-aliri_core = { path = "../aliri_core" }
-aliri_jose = { path = "../aliri_jose", default-features = false }
-aliri_macros = { path = "../aliri_macros" }
-reqwest = { optional = true, version = "0.10", features = [ "json" ] }
+aliri = { version = "0.1.0", path = "../aliri" }
+aliri_core = { version = "0.1.0", path = "../aliri_core" }
+aliri_jose = { version = "0.1.0", path = "../aliri_jose", default-features = false }
+aliri_macros = { version = "0.1.0", path = "../aliri_macros" }
+reqwest = { version = "0.10", optional = true, features = [ "json" ] }
 serde = { version = "1", features = [ "derive" ] }
 
 [dev-dependencies]
-aliri_jose = { path = "../aliri_jose", features = [ "private-keys" ] }
+aliri_jose = { version = "0.1.0", path = "../aliri_jose", features = [ "private-keys" ] }
 openssl = "0.10"
 rusty-hook = "0.11"
 serde_json = "1"
