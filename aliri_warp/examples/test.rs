@@ -26,11 +26,11 @@ impl HasScopes for Claims {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let hi = warp::path("hello")
-        .and(warp::path::param())
+    let hi = warp::path!("hello" / String)
+        .and(warp::get())
         .and(warp::header("user-agent"))
         .and(aliri::jwt::optional())
-        .map(|param: String, agent: String, auth: Option<Jwt>| {
+        .map(|param, agent: String, auth: Option<Jwt>| {
             if let Some(auth) = auth {
                 format!("Hello {}, whose agent is {}, auth: {}", param, agent, auth)
             } else {
@@ -41,11 +41,11 @@ async fn main() -> anyhow::Result<()> {
             }
         });
 
-    let hi2 = warp::path("hello2")
-        .and(warp::path::param())
+    let hi2 = warp::path!("hello2" / String)
+        .and(warp::get())
         .and(warp::header("user-agent"))
         .and(aliri::jwt())
-        .map(|param: String, agent: String, auth: Jwt| {
+        .map(|param, agent: String, auth: Jwt| {
             format!("Hello {}, whose agent is {}, auth: {}", param, agent, auth)
         });
 
@@ -70,15 +70,15 @@ async fn main() -> anyhow::Result<()> {
         .add_approved_algorithm(jws::Algorithm::HS256)
         .require_issuer(jwt::Issuer::new("authority"));
 
-    let hi3 = warp::path("hello3")
-        .and(warp::path::param())
+    let hi3 = warp::path!("hello3" / String)
+        .and(warp::get())
         .and(warp::header("user-agent"))
         .and(aliri::jwks(
             aliri::jwt(),
             Arc::clone(&jwks),
             Arc::new(validator.clone()),
         ))
-        .map(|param: String, agent: String, claims: Claims| {
+        .map(|param, agent: String, claims: Claims| {
             format!(
                 "Hello {}, whose agent is {}, authorized as {}!",
                 param, agent, claims.subject
@@ -97,15 +97,15 @@ async fn main() -> anyhow::Result<()> {
         ]),
     ];
 
-    let hi4 = warp::path("hello4")
-        .and(warp::path::param())
+    let hi4 = warp::path!("hello4" / String)
+        .and(warp::get())
         .and(warp::header("user-agent"))
         .and(aliri::oauth2::require_scopes(
             aliri::jwt(),
             Arc::new(authority),
             Arc::new(directives),
         ))
-        .map(|param: String, agent: String, claims: Claims| {
+        .map(|param, agent: String, claims: Claims| {
             format!(
                 "Hello {}, whose agent is {}, authorized as {} with scopes {:?}!",
                 param, agent, claims.subject, claims.scopes
@@ -123,9 +123,8 @@ async fn main() -> anyhow::Result<()> {
 fn jwks_server(
     jwks: impl AsRef<Jwks> + Clone + Send + Sync + 'static,
 ) -> (SocketAddr, impl Future<Output = ()>) {
-    let jwks = warp::get()
-        .and(warp::path(".well-known"))
-        .and(warp::path("jwks.json"))
+    let jwks = warp::path!(".well-known" / "jwks.json")
+        .and(warp::get())
         .map(move || warp::reply::json(jwks.as_ref()));
 
     warp::serve(jwks).bind_ephemeral((Ipv4Addr::LOCALHOST, 0))
