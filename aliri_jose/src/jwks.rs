@@ -7,7 +7,7 @@ use crate::{
 
 use serde::{Deserialize, Serialize};
 
-/// A JSON Web Key set
+/// A JSON Web Key Set (JWKS)
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Jwks {
     keys: Vec<Jwk>,

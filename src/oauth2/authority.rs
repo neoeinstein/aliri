@@ -5,8 +5,9 @@ use aliri_jose::{
     Jwks, JwtRef,
 };
 
-use super::Directive;
+use super::{Directive, HasScopes};
 
+/// An authority backed by a JSON Web Key Set (JWKS)
 #[derive(Debug, Clone)]
 pub struct JwksAuthority {
     jwks: Jwks,
@@ -15,6 +16,10 @@ pub struct JwksAuthority {
 }
 
 impl JwksAuthority {
+    /// Constructs a new JWKS authority with the specified JWT validator
+    ///
+    /// By default, the authority uses an empty JWKS, which will reject
+    /// all tokens.
     pub fn new(validator: jwt::Validation) -> Self {
         let jwks_url = format!("{}.well-known/jwks.json", validator.issuer().unwrap());
 
@@ -25,14 +30,17 @@ impl JwksAuthority {
         }
     }
 
+    /// A reference to the issuer trusted by this authority
     pub fn issuer(&self) -> &jwt::IssuerRef {
         self.validator.issuer().expect("always an issuer")
     }
 
+    /// Explicitly sets the JWKS to be used for validation
     pub fn set_jwks(&mut self, jwks: Jwks) {
         self.jwks = jwks;
     }
 
+    /// Overrides JWKS URL calculated from the issuer
     pub fn set_jwks_url(&mut self, url: String) {
         self.jwks_url = url;
     }
@@ -44,6 +52,8 @@ impl JwksAuthority {
         Ok(jwks)
     }
 
+    /// Triggers a refresh of the JWKS, pulling the latest contents from
+    /// the remote URL
     #[cfg(any(feature = "reqwest"))]
     pub async fn refresh_jwks(&mut self) -> anyhow::Result<()> {
         let jwks = if cfg!(feature = "reqwest") {
@@ -57,10 +67,8 @@ impl JwksAuthority {
         Ok(())
     }
 
-    pub async fn verify_token<
-        T: for<'de> serde::Deserialize<'de> + jwt::CoreClaims + ScopeClaims,
-    >(
-        &mut self,
+    async fn verify_token<T: for<'de> serde::Deserialize<'de> + jwt::CoreClaims + HasScopes>(
+        &self,
         token: &JwtRef,
         directives: &[Directive],
     ) -> anyhow::Result<T> {
@@ -97,31 +105,16 @@ impl JwksAuthority {
     }
 }
 
-pub trait ScopeClaims {
-    fn scopes(&self) -> &[super::Scope] {
-        &[]
-    }
-}
-
-impl ScopeClaims for jwt::Empty {}
-
-#[derive(serde::Serialize, serde::Deserialize, Clone, Debug, PartialEq, Eq)]
-struct Claims {
-    aud: jwt::Audience,
-    iss: jwt::Issuer,
-    exp: u64,
-}
-
 impl<'a, T> crate::Authority<'a, T> for JwksAuthority
 where
-    T: for<'de> serde::Deserialize<'de> + jwt::CoreClaims + ScopeClaims + 'a,
+    T: for<'de> serde::Deserialize<'de> + jwt::CoreClaims + HasScopes + 'a,
 {
-    type Directive = &'a [super::Directive];
+    type Directive = &'a [Directive];
     type Token = &'a JwtRef;
-    type Verify = std::pin::Pin<Box<dyn Future<Output = Result<T, Self::VerifyError>> + 'a>>;
+    type VerifyFuture = std::pin::Pin<Box<dyn Future<Output = Result<T, Self::VerifyError>> + 'a>>;
     type VerifyError = anyhow::Error;
 
-    fn verify(&'a mut self, token: Self::Token, dir: Self::Directive) -> Self::Verify {
+    fn verify(&'a self, token: Self::Token, dir: Self::Directive) -> Self::VerifyFuture {
         Box::pin(self.verify_token(token, dir))
     }
 }

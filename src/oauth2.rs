@@ -1,15 +1,9 @@
+//! Authorization based on OAuth2 scopes
+
 mod authority;
 mod directive;
+mod scope;
 
 pub use authority::JwksAuthority;
 pub use directive::Directive;
-
-use aliri_macros::typed_string;
-
-typed_string! {
-    /// A scope
-    pub struct Scope(String);
-
-    /// A borrowed reference to a scope
-    pub struct ScopeRef(str);
-}
+pub use scope::{HasScopes, Scope, ScopeRef};
