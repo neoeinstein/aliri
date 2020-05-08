@@ -1,6 +1,6 @@
-//! # aliri
+//! # aliri_oauth2
 //!
-//! Token-based authorization library organized around authorities.
+//! Token-based authorization library based on validating OAuth2 scopes.
 
 #![warn(
     missing_docs,
@@ -18,6 +18,9 @@
 )]
 
 mod authority;
-pub mod oauth2;
+mod directive;
+mod scope;
 
-pub use authority::Authority;
+pub use authority::JwksAuthority;
+pub use directive::Directive;
+pub use scope::{HasScopes, Scope, ScopeRef};

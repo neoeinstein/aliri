@@ -1,5 +1,6 @@
 use std::future::Future;
 
+use aliri_core::Authority;
 use aliri_jose::{
     jwt::{self, CoreHeaders, HasSigningAlgorithm},
     Jwks, JwtRef,
@@ -105,7 +106,7 @@ impl JwksAuthority {
     }
 }
 
-impl<'a, T> crate::Authority<'a, T> for JwksAuthority
+impl<'a, T> Authority<'a, T> for JwksAuthority
 where
     T: for<'de> serde::Deserialize<'de> + jwt::CoreClaims + HasScopes + 'a,
 {
@@ -123,9 +124,8 @@ where
 mod tests {
     use std::time::Duration;
 
+    use aliri_core::Authority;
     use aliri_jose::{jwk, jws, jwt, Jwk, Jwks};
-
-    use crate::{oauth2::Directive, Authority};
 
     use super::*;
 

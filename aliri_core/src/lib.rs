@@ -17,8 +17,11 @@
     unused_must_use
 )]
 
+mod authority;
 pub mod base64;
 pub mod clock;
+
+pub use authority::Authority;
 
 /// A type representing one or more items, primarily for serialization
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]

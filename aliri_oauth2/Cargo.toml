@@ -1,0 +1,28 @@
+[package]
+name = "aliri_oauth2"
+version = "0.1.0"
+authors = ["Marcus Griep <marcus@griep.us>"]
+edition = "2018"
+
+[features]
+ec = [ "aliri_jose/ec" ]
+rsa = [ "aliri_jose/rsa" ]
+hmac = [ "aliri_jose/hmac" ]
+private-keys = [ "aliri_jose/private-keys" ]
+default = [ "rsa" ]
+
+[dependencies]
+ahash = "0.3"
+anyhow = "1"
+aliri_core = { path = "../aliri_core" }
+aliri_jose = { path = "../aliri_jose", default-features = false }
+aliri_macros = { path = "../aliri_macros" }
+reqwest = { optional = true, version = "0.10", features = [ "json" ] }
+serde = { version = "1", features = [ "derive" ] }
+
+[dev-dependencies]
+aliri_jose = { path = "../aliri_jose", features = [ "private-keys" ] }
+openssl = "0.10"
+rusty-hook = "0.11"
+serde_json = "1"
+tokio = { version = "0.2", features = [ "rt-threaded", "macros" ] }
