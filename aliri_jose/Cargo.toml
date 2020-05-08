@@ -12,22 +12,22 @@ repository = "https://github.com/neoeinstein/aliri"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
-ec = [ "openssl", "lazy_static" ]
+ec = [ "openssl" ]
 rsa = []
 hmac = []
-private-keys = [ "openssl", "lazy_static" ]
+private-keys = [ "openssl" ]
 default = [ "hmac", "rsa" ]
 
 [dependencies]
 aliri_core = { version = "0.1.0", path = "../aliri_core" }
 aliri_macros = { version = "0.1.0", path = "../aliri_macros" }
 anyhow = "1"
+lazy_static = { version = "1" }
 ring = "0.16"
 serde = { version = "1", features = [ "derive" ] }
 serde_json = "1"
 
 # EC and Private Key support
-lazy_static = { version = "1", optional = true }
 openssl = { version = "0.10", optional = true }
 
 [dev-dependencies]

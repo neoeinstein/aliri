@@ -2,6 +2,7 @@
 name = "aliri"
 description = "Token-based authorization with authorities that verify access grants"
 keywords = [ "auth", "authn" ]
+categories = [ "authentication" ]
 version = "0.1.0"
 authors = ["Marcus Griep <marcus@griep.us>"]
 edition = "2018"

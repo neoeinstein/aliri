@@ -12,6 +12,17 @@ mod public;
 
 #[cfg(feature = "private-keys")]
 pub use private::PrivateKeyParameters;
+
+#[cfg(not(feature = "private-keys"))]
+struct PrivateKeyParameters;
+
+#[cfg(not(feature = "private-keys"))]
+impl PrivateKeyParameters {
+    fn der(&self) -> &[u8] {
+        unreachable!()
+    }
+}
+
 pub use public::PublicKeyParameters;
 
 /// RSA key
@@ -45,9 +56,9 @@ impl Rsa {
         PublicKeyParameters::from_pem(pem).map(Self::PublicOnly)
     }
 
-    #[cfg(feature = "private-keys")]
     fn private_params(&self) -> Option<&PrivateKeyParameters> {
         match self {
+            #[cfg(feature = "private-keys")]
             Self::PublicAndPrivate(p) => Some(p),
             Self::PublicOnly(_) => None,
         }

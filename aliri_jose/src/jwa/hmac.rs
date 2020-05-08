@@ -3,6 +3,7 @@
 use std::fmt;
 
 use aliri_core::base64::Base64Url;
+#[cfg(feature = "private-keys")]
 use ring::rand::SecureRandom;
 use serde::{Deserialize, Serialize};
 
@@ -66,6 +67,7 @@ pub enum SigningAlgorithm {
 
 impl SigningAlgorithm {
     /// Recommended key size in bytes for an HMAC secret
+    #[cfg(feature = "private-keys")]
     fn recommended_key_size(self) -> usize {
         match self {
             Self::HS256 => 256 / 8,

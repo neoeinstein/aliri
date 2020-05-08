@@ -18,7 +18,6 @@ pub use hmac::Hmac;
 #[cfg(feature = "rsa")]
 pub use rsa::Rsa;
 
-#[cfg(feature = "private-keys")]
 lazy_static::lazy_static! {
     static ref CRATE_RNG: ring::rand::SystemRandom = ring::rand::SystemRandom::new();
 }

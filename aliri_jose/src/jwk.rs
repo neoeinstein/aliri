@@ -10,10 +10,12 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     jwa,
-    jws::{self, Signer, Verifier},
+    jws::{self, Verifier},
     jwt::{self, HasSigningAlgorithm},
-    Jwt,
 };
+
+#[cfg(feature = "private-keys")]
+use crate::{jws::Signer, Jwt};
 
 typed_string! {
     /// An identifier for a JWK
