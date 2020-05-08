@@ -1,8 +1,12 @@
 [package]
 name = "aliri"
+description = "Token-based authorization with authorities that verify access grants"
+keywords = [ "auth", "authn" ]
 version = "0.1.0"
 authors = ["Marcus Griep <marcus@griep.us>"]
 edition = "2018"
+license = "MIT/Apache-2.0"
+repository = "https://github.com/neoeinstein/aliri"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
