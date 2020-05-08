@@ -1,0 +1,21 @@
+[package]
+name = "aliri_warp"
+description = "Warp filters for interacting with `aliri` authorities"
+keywords = [ "warp", "web", "api", "jose", "jwk", "jwks", "jws", "jwt", "oauth2", "auth", "authz" ]
+categories = [ "authentication", "web-programming", "web-programming::http-server" ]
+version = "0.1.0"
+authors = ["Marcus Griep <marcus@griep.us>"]
+edition = "2018"
+license = "MIT/Apache-2.0"
+repository = "https://github.com/neoeinstein/aliri"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+aliri_jose = { version = "0.1.0", path = "../aliri_jose" }
+warp = "0.2"
+
+[dev-dependencies]
+anyhow = "1"
+tokio = { version = "0.2", features = [ "rt-threaded", "macros" ] }
+
