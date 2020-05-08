@@ -1,20 +1,19 @@
 //! Warp filters for extracting JSON Web Tokens (JWTs)
 
-use std::fmt;
-
 use aliri_jose::Jwt;
+use thiserror::Error;
 use warp::Filter;
 
-#[derive(Copy, Clone, Debug, Default, Hash, Eq, PartialEq)]
-struct InvalidAuthorizationHeader;
+#[derive(Copy, Clone, Debug, Hash, Eq, PartialEq, Error)]
+pub enum JwtError {
+    #[error("authorization header missing")]
+    MissingAuthorizationHeader,
 
-impl warp::reject::Reject for InvalidAuthorizationHeader {}
-
-impl fmt::Display for InvalidAuthorizationHeader {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("invalid authorization header")
-    }
+    #[error("invalid authorization header")]
+    IncorrectAuthorizationScheme,
 }
+
+impl warp::reject::Reject for JwtError {}
 
 async fn try_extract_jwt(auth: Option<String>) -> Result<Option<Jwt>, warp::reject::Rejection> {
     if let Some(auth) = auth {
@@ -26,7 +25,7 @@ async fn try_extract_jwt(auth: Option<String>) -> Result<Option<Jwt>, warp::reje
 
 async fn extract_jwt(auth: String) -> Result<Jwt, warp::reject::Rejection> {
     if auth.len() <= 7 || !auth[..7].eq_ignore_ascii_case("bearer ") {
-        return Err(warp::reject::custom(InvalidAuthorizationHeader));
+        return Err(warp::reject::custom(JwtError::IncorrectAuthorizationScheme));
     }
 
     Ok(Jwt::new(auth[7..].trim()))
@@ -34,7 +33,15 @@ async fn extract_jwt(auth: String) -> Result<Jwt, warp::reject::Rejection> {
 
 /// Extracts a JWT token from the `Authorization` header
 pub fn jwt() -> impl Filter<Extract = (Jwt,), Error = warp::reject::Rejection> + Copy {
-    warp::header("authorization").and_then(extract_jwt)
+    warp::header::optional("authorization")
+        .and_then(|hdr: Option<String>| async move {
+            if let Some(hdr) = hdr {
+                Ok(hdr)
+            } else {
+                Err(warp::reject::custom(JwtError::MissingAuthorizationHeader))
+            }
+        })
+        .and_then(extract_jwt)
 }
 
 /// Attempts to extract a JWT token from the `Authorization` header
