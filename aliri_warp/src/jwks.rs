@@ -1,3 +1,5 @@
+//! Filters for verifying JWTs using a JWK
+
 use aliri_jose::{
     jwt::{self, CoreHeaders, HasSigningAlgorithm},
     Jwks, Jwt,
@@ -5,6 +7,7 @@ use aliri_jose::{
 use thiserror::Error;
 use warp::Filter;
 
+/// An arbitrary error occurred while verifying the JWT
 #[derive(Debug, Error)]
 #[error("error verifying jwt")]
 pub struct Unspecified(#[from] anyhow::Error);
@@ -26,28 +29,35 @@ async fn check_jwt<C: for<'de> serde::Deserialize<'de>>(
     Ok(c)
 }
 
-pub fn jwks(
-    jwt_source: impl Filter<Extract = (Jwt,), Error = warp::reject::Rejection> + Clone,
-    jwks: impl AsRef<Jwks> + Clone + Send + Sync + 'static,
-    validator: impl AsRef<jwt::Validation> + Clone + Send + Sync + 'static,
-) -> impl Filter<Extract = (), Error = warp::reject::Rejection> + Clone {
-    jwks_claims(jwt_source, jwks, validator)
+/// Validates a JWT against an approved JWKS
+pub fn no_claims<F, K, V>(
+    jwt: F,
+    jwks: K,
+    validator: V,
+) -> impl Filter<Extract = (), Error = warp::reject::Rejection> + Clone
+where
+    F: Filter<Extract = (Jwt,), Error = warp::reject::Rejection> + Clone,
+    K: AsRef<Jwks> + Clone + Send + Sync + 'static,
+    V: AsRef<jwt::Validation> + Clone + Send + Sync + 'static,
+{
+    self::jwks(jwt, jwks, validator)
         .map(|_: jwt::Empty| ())
         .untuple_one()
 }
 
-pub fn jwks_claims<C, F, JWKS, V>(
-    jwt_source: F,
-    jwks: JWKS,
+/// Validates a JWT against an approved JWKS, returning the payload claims if valid
+pub fn jwks<C, F, K, V>(
+    jwt: F,
+    jwks: K,
     validator: V,
 ) -> impl Filter<Extract = (C,), Error = warp::reject::Rejection> + Clone
 where
     C: for<'de> serde::Deserialize<'de>,
     F: Filter<Extract = (Jwt,), Error = warp::reject::Rejection> + Clone,
-    JWKS: AsRef<Jwks> + Clone + Send + Sync + 'static,
+    K: AsRef<Jwks> + Clone + Send + Sync + 'static,
     V: AsRef<jwt::Validation> + Clone + Send + Sync + 'static,
 {
-    jwt_source.and_then(move |jwt: Jwt| {
+    jwt.and_then(move |jwt: Jwt| {
         let jwks = jwks.clone();
         let validator = validator.clone();
         async move {

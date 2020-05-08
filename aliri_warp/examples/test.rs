@@ -73,7 +73,7 @@ async fn main() -> anyhow::Result<()> {
     let hi3 = warp::path("hello3")
         .and(warp::path::param())
         .and(warp::header("user-agent"))
-        .and(aliri::jwks::jwks_claims(
+        .and(aliri::jwks(
             aliri::jwt(),
             Arc::clone(&jwks),
             Arc::new(validator.clone()),
@@ -100,7 +100,7 @@ async fn main() -> anyhow::Result<()> {
     let hi4 = warp::path("hello4")
         .and(warp::path::param())
         .and(warp::header("user-agent"))
-        .and(aliri::oauth2::jwks_auth(
+        .and(aliri::oauth2::require_scopes(
             aliri::jwt(),
             Arc::new(authority),
             Arc::new(directives),

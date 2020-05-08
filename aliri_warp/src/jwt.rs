@@ -4,12 +4,15 @@ use aliri_jose::Jwt;
 use thiserror::Error;
 use warp::Filter;
 
+/// An error while attempting to extract a JWT from headers
 #[derive(Copy, Clone, Debug, Hash, Eq, PartialEq, Error)]
 pub enum JwtError {
+    /// The request does not have an authorization header
     #[error("authorization header missing")]
     MissingAuthorizationHeader,
 
-    #[error("invalid authorization header")]
+    /// The authorization scheme is incorrect
+    #[error("authorization scheme is not 'bearer'")]
     IncorrectAuthorizationScheme,
 }
 
