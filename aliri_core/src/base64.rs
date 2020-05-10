@@ -253,27 +253,26 @@ macro_rules! b64_builder {
             }
         }
 
-        impl<'a> ::std::fmt::Display for $ty_ref {
+        impl ::std::fmt::Display for $ty_ref {
             fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
                 let encoded = ::base64::encode_config(&self.0, $config);
                 f.write_str(&encoded)
             }
         }
 
-        impl<'a> ::std::fmt::Debug for $ty_ref {
+        impl ::std::fmt::Debug for $ty_ref {
             fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
                 let encoded = ::base64::encode_config(&self.0, $config);
                 write!(f, "`{}`", encoded)
             }
         }
 
-        impl<'a> ::serde::Serialize for $ty_ref {
+        impl ::serde::Serialize for $ty_ref {
             fn serialize<S: ::serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
                 let encoded = ::base64::encode_config(&self.0, $config);
                 serializer.serialize_str(encoded.as_str())
             }
         }
-
     }
 }
 

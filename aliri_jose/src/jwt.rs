@@ -737,8 +737,7 @@ mod tests {
             .with_audiences(audiences)
             .with_issuer(Issuer::new("face"));
 
-        let mut clock = TestClock::default();
-        clock.set(UnixTime(7));
+        let clock = TestClock::new(UnixTime(7));
 
         let header = Headers::new(jws::Algorithm::RS256);
 
