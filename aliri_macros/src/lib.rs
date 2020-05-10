@@ -30,7 +30,7 @@ macro_rules! typed_string {
         $(#[$meta_ref:meta])*
         $v_ref:vis struct $ty_ref:ident (str);
     } => {
-        #[derive(Debug, Clone, Eq, PartialEq, Hash, ::serde::Serialize, ::serde::Deserialize)]
+        #[derive(Debug, Clone, Eq, PartialEq, Hash)]
         #[repr(transparent)]
         $(#[$meta])*
         $v struct $ty(String);
@@ -113,7 +113,20 @@ macro_rules! typed_string {
             }
         }
 
-        #[derive(Debug, Hash, PartialEq, Eq, ::serde::Serialize)]
+        impl ::serde::Serialize for $ty {
+            fn serialize<S: ::serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+                <String as ::serde::Serialize>::serialize(&self.0, serializer)
+            }
+        }
+
+        impl<'de> ::serde::Deserialize<'de> for $ty {
+            fn deserialize<D: ::serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+                let raw = <String as ::serde::Deserialize<'de>>::deserialize(deserializer)?;
+                Ok(Self::new(raw))
+            }
+        }
+
+        #[derive(Debug, Hash, PartialEq, Eq)]
         #[repr(transparent)]
         $(#[$meta_ref])*
         $v_ref struct $ty_ref(str);
@@ -123,7 +136,7 @@ macro_rules! typed_string {
             #[inline]
             /// Transparently reinterprets the string slice as a strongly-typed
             /// value.
-            pub fn from_str<'a>(raw: &'a str) -> &'a Self {
+            pub fn from_str(raw: &str) -> &Self {
                 let ptr: *const str = raw;
                 // `$ty_ref` is a transparent wrapper around an `str`, so this
                 // transformation is safe to do.
@@ -176,5 +189,38 @@ macro_rules! typed_string {
             }
         }
 
+        impl<'a> ::serde::Serialize for &'a $ty_ref {
+            fn serialize<S: ::serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+                <&str as ::serde::Serialize>::serialize(&self.as_str(), serializer)
+            }
+        }
+    }
+}
+
+#[cfg(doctest)]
+#[doc(hidden)]
+mod doctest {
+    typed_string! {
+        #[doc(hidden)]
+        pub struct Example(String);
+
+        #[doc(hidden)]
+        pub struct ExampleRef(str);
+    }
+
+    /// Verifies that `from_str` does not extend lifetimes
+    ///
+    /// ```compile_fail
+    /// use aliri_macros::doctest::ExampleRef;
+    ///
+    /// let ex_ref = {
+    ///     let data = String::from("test string");
+    ///     ExampleRef::from_str(data.as_str())
+    /// };
+    ///
+    /// println!("{}", ex_ref);
+    /// ```
+    fn ref_from_str_does_not_extend_lifetimes() -> ! {
+        loop {}
     }
 }

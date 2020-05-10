@@ -304,3 +304,71 @@ b64_builder! {
     /// Encoding alphabet: `A`–`Z`, `a`–`z`, `0`–`9`, `-`, `_`
     pub struct Base64UrlRef;
 }
+
+#[cfg(doctest)]
+#[doc(hidden)]
+mod doctests {
+    /// Verifies that `from_slice` does not extend lifetimes
+    ///
+    /// ```compile_fail
+    /// use aliri_core::base64::Base64UrlRef;
+    ///
+    /// let b64 = {
+    ///     let data = vec![0; 16];
+    ///     Base64UrlRef::from_slice(data.as_slice())
+    /// };
+    ///
+    /// println!("{}", b64);
+    /// ```
+    fn base64url_from_slice_does_not_extend_lifetimes() -> ! {
+        loop {}
+    }
+
+    /// Verifies that `from_mut_slice` does not extend lifetimes
+    ///
+    /// ```compile_fail
+    /// use aliri_core::base64::Base64UrlRef;
+    ///
+    /// let b64 = {
+    ///     let mut data = vec![0; 16];
+    ///     Base64UrlRef::from_mut_slice(data.as_mut_slice())
+    /// };
+    ///
+    /// println!("{}", b64);
+    /// ```
+    fn base64url_from_mut_slice_does_not_extend_lifetimes() -> ! {
+        loop {}
+    }
+
+    /// Verifies that `from_slice` does not extend lifetimes
+    ///
+    /// ```compile_fail
+    /// use aliri_core::base64::Base64Ref;
+    ///
+    /// let b64 = {
+    ///     let data = vec![0; 16];
+    ///     Base64Ref::from_slice(data.as_slice())
+    /// };
+    ///
+    /// println!("{}", b64);
+    /// ```
+    fn base64_from_slice_does_not_extend_lifetimes() -> ! {
+        loop {}
+    }
+
+    /// Verifies that `from_mut_slice` does not extend lifetimes
+    ///
+    /// ```compile_fail
+    /// use aliri_core::base64::Base64Ref;
+    ///
+    /// let b64 = {
+    ///     let mut data = vec![0; 16];
+    ///     Base64Ref::from_mut_slice(data.as_mut_slice())
+    /// };
+    ///
+    /// println!("{}", b64);
+    /// ```
+    fn base64_from_mut_slice_does_not_extend_lifetimes() -> ! {
+        loop {}
+    }
+}
