@@ -20,6 +20,33 @@
 //! assert_eq!(enc, "8J+RiyBoZWxsbywgd29ybGQhIPCfkYs=");
 //! ```
 
+use std::{error::Error, fmt};
+
+/// An error while decoding a value which is not properly formatted
+/// base64 data
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct InvalidBase64Data {
+    source: ::base64::DecodeError,
+}
+
+impl From<::base64::DecodeError> for InvalidBase64Data {
+    fn from(err: ::base64::DecodeError) -> Self {
+        Self { source: err }
+    }
+}
+
+impl fmt::Display for InvalidBase64Data {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str("invalid base64 data")
+    }
+}
+
+impl Error for InvalidBase64Data {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        Some(&self.source)
+    }
+}
+
 macro_rules! b64_builder {
     {
         $(#[$meta:meta])*
@@ -52,9 +79,8 @@ macro_rules! b64_builder {
             }
 
             /// Constructs a new buffer from a base64-encoded slice
-            pub fn from_encoded<T: AsRef<[u8]>>(enc: T) -> Result<Self, ::anyhow::Error> {
-                let data = ::base64::decode_config(enc, $config)
-                    .map_err(|err| anyhow::anyhow!("{}", err))?;
+            pub fn from_encoded<T: AsRef<[u8]>>(enc: T) -> Result<Self, InvalidBase64Data> {
+                let data = ::base64::decode_config(enc, $config)?;
                 Ok(Self(data))
             }
 
