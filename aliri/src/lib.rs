@@ -18,5 +18,7 @@
 #![forbid(unsafe_code)]
 
 mod authority;
+mod policy;
 
 pub use authority::Authority;
+pub use policy::Policy;

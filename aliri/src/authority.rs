@@ -1,9 +1,11 @@
 use std::future::Future;
 
+use super::Policy;
+
 /// An authority that can verify the validity of a token
 pub trait Authority<'a, Payload> {
-    /// Directives for the authority
-    type Directive;
+    /// Policy for the authority
+    type Policy: Policy;
 
     /// The token type expected by the authority
     type Token;
@@ -15,5 +17,5 @@ pub trait Authority<'a, Payload> {
     type VerifyError;
 
     /// Asynchronously verifies a token using the provided directive
-    fn verify(&'a self, token: Self::Token, dir: Self::Directive) -> Self::VerifyFuture;
+    fn verify(&'a self, token: Self::Token, dir: Self::Policy) -> Self::VerifyFuture;
 }

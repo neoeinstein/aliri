@@ -1,45 +1,25 @@
-use std::future::Future;
+use std::{future::Future, pin::Pin};
 
-use aliri::Authority;
+use aliri::{Authority, Policy};
 use aliri_jose::{
     jwt::{self, CoreHeaders, HasSigningAlgorithm},
     Jwks, JwtRef,
 };
+use serde::Deserialize;
 
-use super::{Directive, HasScopes};
+use crate::{HasScopes, ScopesPolicy};
 
-/// An authority backed by a JSON Web Key Set (JWKS)
+/// An authority backed by a local JSON Web Key Set (JWKS)
 #[derive(Debug, Clone)]
-pub struct JwksAuthority {
+pub struct LocalAuthority {
     jwks: Jwks,
-    jwks_url: String,
     validator: jwt::Validation,
 }
 
-impl JwksAuthority {
-    /// Constructs a new JWKS authority with the specified JWT validator
-    ///
-    /// By default, the authority uses an empty JWKS, which will reject
-    /// all tokens.
-    pub fn new(validator: jwt::Validation) -> Self {
-        let jwks_url = format!(
-            "{}.well-known/jwks.json",
-            validator
-                .issuer()
-                .map(|i| i.to_string())
-                .unwrap_or_default()
-        );
-
-        Self {
-            jwks: Jwks::default(),
-            jwks_url,
-            validator,
-        }
-    }
-
-    /// A reference to the issuer trusted by this authority
-    pub fn issuer(&self) -> &jwt::IssuerRef {
-        self.validator.issuer().expect("always an issuer")
+impl LocalAuthority {
+    /// Constructs a new JWKS Authority
+    pub fn new(jwks: Jwks, validator: jwt::Validation) -> Self {
+        Self { jwks, validator }
     }
 
     /// Explicitly sets the JWKS to be used for validation
@@ -47,38 +27,20 @@ impl JwksAuthority {
         self.jwks = jwks;
     }
 
-    /// Overrides JWKS URL calculated from the issuer
-    pub fn set_jwks_url(&mut self, url: String) {
-        self.jwks_url = url;
+    /// Authenticates the token and checks access according to the policy
+    pub fn verify_token<'a, T, J, P>(&self, token: J, policy: P) -> anyhow::Result<T>
+    where
+        T: for<'de> Deserialize<'de> + HasScopes,
+        J: AsRef<JwtRef>,
+        P: AsRef<ScopesPolicy>,
+    {
+        self.verify_impl(token.as_ref(), policy.as_ref())
     }
 
-    #[cfg(feature = "reqwest")]
-    async fn refresh_jwks_reqwest(&self) -> anyhow::Result<Jwks> {
-        let jwks = reqwest::get(&self.jwks_url).await?.json::<Jwks>().await?;
-
-        Ok(jwks)
-    }
-
-    /// Triggers a refresh of the JWKS, pulling the latest contents from
-    /// the remote URL
-    #[cfg(any(feature = "reqwest"))]
-    pub async fn refresh_jwks(&mut self) -> anyhow::Result<()> {
-        let jwks = if cfg!(feature = "reqwest") {
-            self.refresh_jwks_reqwest().await?
-        } else {
-            unreachable!()
-        };
-
-        self.jwks = jwks;
-
-        Ok(())
-    }
-
-    async fn verify_token<T: for<'de> serde::Deserialize<'de> + HasScopes>(
-        &self,
-        token: &JwtRef,
-        directives: &[Directive],
-    ) -> anyhow::Result<T> {
+    fn verify_impl<T>(&self, token: &JwtRef, policy: &ScopesPolicy) -> anyhow::Result<T>
+    where
+        T: for<'de> Deserialize<'de> + HasScopes,
+    {
         let decomposed = token.decompose()?;
 
         let key = {
@@ -96,32 +58,26 @@ impl JwksAuthority {
 
         let data: jwt::Validated<jwt::Claims<T>> = decomposed.verify(&key, &self.validator)?;
 
+        policy.evaluate(data.claims().payload().scopes())?;
+
         let (_, claims) = data.take();
 
-        if directives.is_empty() {
-            return Ok(claims.take_payload());
-        }
-
-        if directives.iter().any(|d| d.check_scopes(claims.payload())) {
-            Ok(claims.take_payload())
-        } else {
-            Err(anyhow::anyhow!("missing required scopes"))
-        }
+        Ok(claims.take_payload())
     }
 }
 
-impl<'a, T> Authority<'a, T> for JwksAuthority
+impl<'a, T> Authority<'a, T> for LocalAuthority
 where
-    T: for<'de> serde::Deserialize<'de> + HasScopes + 'a,
+    T: for<'de> Deserialize<'de> + HasScopes + 'a,
 {
-    type Directive = &'a [Directive];
+    type Policy = &'a ScopesPolicy;
     type Token = &'a JwtRef;
     type VerifyFuture =
-        std::pin::Pin<Box<dyn Future<Output = Result<T, Self::VerifyError>> + Send + Sync + 'a>>;
+        Pin<Box<dyn Future<Output = Result<T, Self::VerifyError>> + Send + Sync + 'a>>;
     type VerifyError = anyhow::Error;
 
-    fn verify(&'a self, token: Self::Token, dir: Self::Directive) -> Self::VerifyFuture {
-        Box::pin(self.verify_token(token, dir))
+    fn verify(&'a self, token: Self::Token, dir: Self::Policy) -> Self::VerifyFuture {
+        Box::pin(async move { self.verify_impl(token, dir) })
     }
 }
 
@@ -132,6 +88,7 @@ mod tests {
     use aliri_jose::{jwk, jws, jwt, Jwk, Jwks};
 
     use super::*;
+    use crate::Scopes;
 
     #[tokio::test]
     #[cfg(feature = "rsa")]
@@ -233,38 +190,20 @@ mod tests {
             .add_allowed_audience(test_audience)
             .with_leeway(Duration::from_secs(60));
 
-        let mut auth = JwksAuthority::new(validator);
-        auth.set_jwks(jwks);
+        let auth = LocalAuthority::new(jwks, validator);
 
-        let both = Directive::new(vec![
-            super::super::Scope::new("testing"),
-            super::super::Scope::new("other"),
-        ]);
+        let both = Scopes::from_scopes(vec!["testing", "other"]);
 
-        let t = Directive::new(vec![super::super::Scope::new("testing")]);
+        let t = Scopes::single("testing");
 
-        let directives = vec![Directive::default(), both, t];
+        let mut policy = ScopesPolicy::deny_all();
+        policy.allow(both);
+        policy.allow(t);
+        policy.allow(Scopes::empty());
 
-        let c: jwt::Empty = auth.verify(&encoded, &directives).await?;
+        let c: jwt::Empty = auth.verify(&encoded, &policy).await?;
 
         dbg!(c);
-
-        Ok(())
-    }
-
-    #[tokio::test]
-    #[cfg(all(any(feature = "reqwest"), feature = "rsa"))]
-    async fn request() -> anyhow::Result<()> {
-        let validator = jwt::Validation::default()
-            .add_approved_algorithm(jws::Algorithm::RS256)
-            .require_issuer(jwt::Issuer::new("https://demo.auth0.com/"))
-            .add_allowed_audience(jwt::Audience::new("test"))
-            .with_leeway(Duration::from_secs(0));
-
-        let mut authority = JwksAuthority::new(validator);
-        authority.refresh_jwks().await?;
-
-        dbg!(authority);
 
         Ok(())
     }

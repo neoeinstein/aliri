@@ -1,4 +1,4 @@
-use std::collections::hash_set;
+use std::{collections::hash_set, iter::FromIterator, str::FromStr};
 
 use ahash::AHashSet;
 use aliri_jose::jwt;
@@ -35,20 +35,14 @@ enum ScopesDto {
 
 impl From<Option<ScopesDto>> for Scopes {
     fn from(dto: Option<ScopesDto>) -> Self {
-        let scopes = if let Some(dto) = dto {
+        if let Some(dto) = dto {
             match dto {
-                ScopesDto::String(s) => s.split_whitespace().map(|s| Scope::new(s)).collect(),
-                ScopesDto::Array(arr) => {
-                    let mut set = AHashSet::new();
-                    set.extend(arr);
-                    set
-                }
+                ScopesDto::String(s) => Self::from(s),
+                ScopesDto::Array(arr) => arr.into_iter().collect(),
             }
         } else {
-            AHashSet::new()
-        };
-
-        Self(scopes)
+            Self::empty()
+        }
     }
 }
 
@@ -61,20 +55,41 @@ impl From<Scopes> for ScopesDto {
 }
 
 /// A set of scopes for defining access permissions
-#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(from = "Option<ScopesDto>", into = "ScopesDto")]
 pub struct Scopes(AHashSet<Scope>);
 
 lazy_static::lazy_static! {
     /// An empty, static set of scopes
-    static ref EMPTY_SCOPES: Scopes = Scopes::new();
+    static ref EMPTY_SCOPES: Scopes = Scopes::empty();
 }
 
 impl Scopes {
     /// Produces an empty scope set
     #[inline]
-    pub fn new() -> Self {
+    pub fn empty() -> Self {
         Self(AHashSet::new())
+    }
+
+    /// Constructs a new scope set from a single scope
+    #[inline]
+    pub fn single<S>(scope: S) -> Self
+    where
+        S: Into<Scope>,
+    {
+        let mut s = Self::empty();
+        s.insert(scope.into());
+        s
+    }
+
+    /// Constructs a new scope set from a set of scopes
+    #[inline]
+    pub fn from_scopes<I, S>(scopes: I) -> Self
+    where
+        I: IntoIterator<Item = S>,
+        S: Into<Scope>,
+    {
+        Self::from_iter(scopes)
     }
 
     /// Adds a scope to the scope set
@@ -92,14 +107,8 @@ impl Scopes {
     /// Checks to see whether this set of scopes contains all of
     /// the scopes required.
     #[inline]
-    pub fn contains_all<I, T>(&self, required_scopes: I) -> bool
-    where
-        I: IntoIterator<Item = T>,
-        T: AsRef<ScopeRef>,
-    {
-        required_scopes
-            .into_iter()
-            .all(|v| self.0.contains(v.as_ref()))
+    pub fn contains_all(&self, subset: &Scopes) -> bool {
+        self.0.is_superset(&subset.0)
     }
 }
 
@@ -140,13 +149,31 @@ impl<'a> IntoIterator for &'a Scopes {
     }
 }
 
-impl Extend<Scope> for Scopes {
+impl<S> Extend<S> for Scopes
+where
+    S: Into<Scope>,
+{
     #[inline]
     fn extend<I>(&mut self, iter: I)
     where
-        I: IntoIterator<Item = Scope>,
+        I: IntoIterator<Item = S>,
     {
-        self.0.extend(iter)
+        self.0.extend(iter.into_iter().map(Into::into))
+    }
+}
+
+impl<S> FromIterator<S> for Scopes
+where
+    S: Into<Scope>,
+{
+    #[inline]
+    fn from_iter<I>(iter: I) -> Self
+    where
+        I: IntoIterator<Item = S>,
+    {
+        let mut set = Self::empty();
+        set.extend(iter);
+        set
     }
 }
 
@@ -154,5 +181,28 @@ impl HasScopes for Scopes {
     #[inline]
     fn scopes(&self) -> &Scopes {
         self
+    }
+}
+
+impl From<&'_ str> for Scopes {
+    #[inline]
+    fn from(s: &str) -> Self {
+        s.split_whitespace().map(Scope::new).collect()
+    }
+}
+
+impl From<String> for Scopes {
+    #[inline]
+    fn from(s: String) -> Self {
+        Self::from(s.as_str())
+    }
+}
+
+impl FromStr for Scopes {
+    type Err = std::convert::Infallible;
+
+    #[inline]
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(Self::from(s))
     }
 }

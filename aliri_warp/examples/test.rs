@@ -5,10 +5,10 @@ use std::{
 };
 
 use aliri_jose::{jwa, jwk, jws, jwt, Jwk, Jwks, Jwt};
-use aliri_oauth2::{Directive, HasScopes, JwksAuthority, Scope, Scopes};
+use aliri_oauth2::{jwks::RemoteAuthority, HasScopes, Scopes, ScopesPolicy};
 use aliri_warp as aliri;
 use serde::{Deserialize, Serialize};
-use warp::Filter;
+use warp::{Filter, Reply};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 struct Claims {
@@ -21,6 +21,19 @@ struct Claims {
 impl HasScopes for Claims {
     fn scopes(&self) -> &Scopes {
         &self.scopes
+    }
+}
+
+async fn refresh_jwks(mut interval: tokio::time::Interval, jwks: Arc<RemoteAuthority>) -> ! {
+    interval.tick().await;
+    loop {
+        interval.tick().await;
+
+        if let Err(err) = jwks.refresh().await {
+            println!("yuck, error: {}", err);
+        } else {
+            println!("refreshed JWKS");
+        }
     }
 }
 
@@ -85,25 +98,28 @@ async fn main() -> anyhow::Result<()> {
             )
         });
 
-    let mut authority = JwksAuthority::new(validator);
-    authority.set_jwks_url(format!("http://{}/.well-known/jwks.json", addr));
-    authority.refresh_jwks().await?;
+    let jwks_url = format!("http://{}/.well-known/jwks.json", addr);
+    let authority = Arc::new(RemoteAuthority::new(jwks_url, validator).await?);
 
-    let directives = vec![
-        Directive::new(vec![Scope::new("say:hello")]),
-        Directive::new(vec![
-            Scope::new("say:anything"),
-            Scope::new("no-really:anything"),
-        ]),
-    ];
+    tokio::spawn(refresh_jwks(
+        tokio::time::interval(std::time::Duration::from_secs(30)),
+        Arc::clone(&authority),
+    ));
+
+    let mut policy = ScopesPolicy::deny_all();
+    policy.allow(Scopes::single("say:hello"));
+    policy.allow(Scopes::from_scopes(vec![
+        "say:anything",
+        "no-really:anything",
+    ]));
 
     let hi4 = warp::path!("hello4" / String)
         .and(warp::get())
         .and(warp::header("user-agent"))
         .and(aliri::oauth2::require_scopes(
             aliri::jwt(),
-            Arc::new(authority),
-            Arc::new(directives),
+            authority,
+            Arc::new(policy),
         ))
         .map(|param, agent: String, claims: Claims| {
             format!(
@@ -123,9 +139,25 @@ async fn main() -> anyhow::Result<()> {
 fn jwks_server(
     jwks: impl AsRef<Jwks> + Clone + Send + Sync + 'static,
 ) -> (SocketAddr, impl Future<Output = ()>) {
-    let jwks = warp::path!(".well-known" / "jwks.json")
+    let skip = warp::path!(".well-known" / "jwks.json")
         .and(warp::get())
-        .map(move || warp::reply::json(jwks.as_ref()));
+        .and(warp::header::optional("if-none-match"))
+        .map(move |inm: Option<String>| {
+            if inm.as_deref() == Some(r#"W/"1""#) {
+                warp::http::Response::builder()
+                    .status(warp::http::StatusCode::NOT_MODIFIED)
+                    .body(warp::hyper::Body::empty())
+                    .unwrap()
+            } else {
+                warp::reply::json(jwks.as_ref()).into_response()
+            }
+        })
+        .with(warp::reply::with::header("etag", r#"W/"1""#));
 
-    warp::serve(jwks).bind_ephemeral((Ipv4Addr::LOCALHOST, 0))
+    // let jwks = warp::path!(".well-known" / "jwks.json")
+    //     .and(warp::get())
+    //     .map(move || warp::reply::json(jwks.as_ref()))
+    //     .map(|r| warp::reply::with::header("etag", r#"W/"1""#));
+
+    warp::serve(skip).bind_ephemeral((Ipv4Addr::LOCALHOST, 0))
 }

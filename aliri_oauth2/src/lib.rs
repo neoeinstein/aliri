@@ -17,10 +17,9 @@
     unused_must_use
 )]
 
-mod authority;
-mod directive;
+pub mod jwks;
+mod policy;
 mod scope;
 
-pub use authority::JwksAuthority;
-pub use directive::Directive;
+pub use policy::ScopesPolicy;
 pub use scope::{HasScopes, Scope, ScopeRef, Scopes};
