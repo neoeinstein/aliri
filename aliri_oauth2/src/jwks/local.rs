@@ -76,6 +76,7 @@ where
 {
     type Policy = &'a ScopesPolicy;
     type Token = &'a JwtRef;
+    #[allow(clippy::type_complexity)]
     type VerifyFuture =
         Pin<Box<dyn Future<Output = Result<jwt::Claims<T>, Self::VerifyError>> + Send + Sync + 'a>>;
     type VerifyError = anyhow::Error;
