@@ -6,6 +6,7 @@
 
 use std::convert::{TryFrom, TryInto};
 
+use aliri_macros::typed_string;
 use serde::{Deserialize, Serialize, Serializer};
 
 #[cfg(feature = "private-keys")]
@@ -15,8 +16,13 @@ use crate::{
     jws::{self, Verifier},
 };
 
-mod key_id;
-pub use key_id::{KeyId, KeyIdRef};
+typed_string! {
+    /// An identifier for a JWK
+    pub struct KeyId(String);
+
+    /// Reference to `KeyId`
+    pub struct KeyIdRef(str);
+}
 
 /// An identified JSON Web Key
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
