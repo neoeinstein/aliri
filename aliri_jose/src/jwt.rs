@@ -29,7 +29,8 @@
 //!
 //! ```
 //! use aliri_core::base64::Base64UrlRef;
-//! use aliri_jose::{jwa, jwk, jws, jwt, Jwk, JwtRef};
+//! use aliri_jose::{jwa, jws, jwt, Jwk, JwtRef};
+//! use regex::Regex;
 //!
 //! let token = JwtRef::from_str(concat!(
 //!     "eyJhbGciOiJIUzI1NiJ9.",
@@ -38,22 +39,17 @@
 //! ));
 //!
 //! let secret = Base64UrlRef::from_slice(b"test").to_owned();
-//! let params = jwk::Parameters::Hmac(jwa::Hmac::new(secret));
+//! let key = Jwk::from(jwa::Hmac::new(secret))
+//!     .with_algorithm(jwa::Algorithm::HS256);
 //!
-//! let key = Jwk {
-//!     id: None,
-//!     usage: Some(jwk::Usage::Signing),
-//!     algorithm: Some(jws::Algorithm::HS256),
-//!     params,
-//! };
-//!
-//! let validator = jwt::Validation::default()
+//! let validator = jwt::CoreValidator::default()
 //!     .ignore_expiration()
-//!     .add_approved_algorithm(jws::Algorithm::HS256)
+//!     .add_approved_algorithm(jwa::Algorithm::HS256)
 //!     .add_allowed_audience(jwt::Audience::new("my_api"))
-//!     .require_issuer(jwt::Issuer::new("authority"));
+//!     .require_issuer(jwt::Issuer::new("authority"))
+//!     .check_subject(Regex::new("^Al.ri$").unwrap());
 //!
-//! let data: jwt::Validated<jwt::Claims> = token.verify(&key, &validator).unwrap();
+//! let data: jwt::Validated = token.verify(&key, &validator).unwrap();
 //! # let _ = data;
 //! ```
 
@@ -65,35 +61,31 @@ use aliri_core::{
     OneOrMany,
 };
 use aliri_macros::typed_string;
-use anyhow::anyhow;
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 
-use crate::{jwk, jws, Jwk};
+use crate::{error, jwa, jwk, jws};
 
 /// The validated headers and claims of a JWT
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Validated<C = Empty, H = Empty> {
-    headers: H,
-    claims: C,
+    headers: Headers<H>,
+    claims: Claims<C>,
 }
 
 impl<C, H> Validated<C, H> {
-    pub(crate) const fn new(headers: H, claims: C) -> Self {
-        Self { headers, claims }
-    }
-
     /// Extracts the header and claims from the token
-    pub fn take(self) -> (H, C) {
+    pub fn take(self) -> (Headers<H>, Claims<C>) {
         (self.headers, self.claims)
     }
 
     /// The validated token headers
-    pub fn headers(&self) -> &H {
+    pub fn headers(&self) -> &Headers<H> {
         &self.headers
     }
 
     /// The validated token claims
-    pub fn claims(&self) -> &C {
+    pub fn claims(&self) -> &Claims<C> {
         &self.claims
     }
 }
@@ -114,8 +106,8 @@ macro_rules! expect_two {
     ($iter:expr) => {{
         let mut i = $iter;
         match (i.next(), i.next(), i.next()) {
-            (Some(first), Some(second), None) => (first, second),
-            _ => return Err(anyhow::anyhow!("malformed JWT")),
+            (Some(first), Some(second), None) => Some((first, second)),
+            _ => None,
         }
     }};
 }
@@ -125,27 +117,68 @@ where
     H: for<'de> Deserialize<'de>,
 {
     /// Verifies the decomposed JWT against the given JWK and validation plan
-    pub fn verify<C>(self, key: &'_ Jwk, validator: &Validation) -> anyhow::Result<Validated<C, H>>
+    pub fn verify<C, V>(
+        self,
+        key: &'_ V,
+        validator: &CoreValidator,
+    ) -> Result<Validated<C, H>, error::JwtVerifyError>
     where
         C: for<'de> Deserialize<'de>,
+        V: jws::Verifier<Algorithm = jwa::Algorithm>,
+        error::JwtVerifyError: From<V::Error>,
     {
-        let data = key.verify_decomposed(self, validator)?;
+        self.verify_with_custom(key, validator, NoopValidator)
+    }
 
-        Ok(data)
+    /// Verifies the decomposed JWT against the given JWK and validation plan
+    pub fn verify_with_custom<C, V, X>(
+        self,
+        key: &'_ V,
+        validator: &CoreValidator,
+        custom: X,
+    ) -> Result<Validated<C, H>, error::JwtVerifyError>
+    where
+        C: for<'de> Deserialize<'de>,
+        V: jws::Verifier<Algorithm = jwa::Algorithm>,
+        error::JwtVerifyError: From<V::Error>,
+        X: ClaimsValidator<C, H>,
+    {
+        key.verify(
+            self.header.alg(),
+            self.message.as_bytes(),
+            self.signature.as_slice(),
+        )?;
+
+        let p_raw = Base64Url::from_encoded(self.payload).map_err(error::malformed_jwt_payload)?;
+
+        let payload: Claims<C> =
+            serde_json::from_slice(p_raw.as_slice()).map_err(error::malformed_jwt_payload)?;
+
+        validator.validate(&self.header, &payload)?;
+
+        custom.validate(self.header.headers(), payload.payload())?;
+
+        Ok(Validated {
+            headers: self.header,
+            claims: payload,
+        })
     }
 }
 
 impl JwtRef {
     /// Decomposes the JWT into its parts, preparing it for later processing.
-    pub fn decompose<H>(&self) -> anyhow::Result<Decomposed<H>>
+    pub fn decompose<H>(&self) -> Result<Decomposed<H>, error::JwtVerifyError>
     where
         H: for<'de> Deserialize<'de>,
     {
-        let (s_str, message) = expect_two!(self.as_str().rsplitn(2, '.'));
-        let (payload, h_str) = expect_two!(message.rsplitn(2, '.'));
-        let h_raw = Base64Url::from_encoded(h_str)?;
-        let signature = Base64Url::from_encoded(s_str)?;
-        let header: Headers<H> = serde_json::from_slice(h_raw.as_slice())?;
+        let (s_str, message) =
+            expect_two!(self.as_str().rsplitn(2, '.')).ok_or_else(error::malformed_jwt)?;
+        let (payload, h_str) =
+            expect_two!(message.rsplitn(2, '.')).ok_or_else(error::malformed_jwt)?;
+        let h_raw = Base64Url::from_encoded(h_str).map_err(error::malformed_jwt_header)?;
+        let signature = Base64Url::from_encoded(s_str).map_err(error::malformed_jwt_signature)?;
+        let header: Headers<H> =
+            serde_json::from_slice(h_raw.as_slice()).map_err(error::malformed_jwt_header)?;
         Ok(Decomposed {
             header,
             message,
@@ -158,25 +191,45 @@ impl JwtRef {
     ///
     /// If you need to inspect the token first to determine how to verify
     /// the token, use `decompose()` to peek into the JWT.
-    pub fn verify<C, H>(
+    pub fn verify<C, H, V>(
         &self,
-        key: &'_ Jwk,
-        validator: &Validation,
-    ) -> anyhow::Result<Validated<C, H>>
+        key: &'_ V,
+        validator: &CoreValidator,
+    ) -> Result<Validated<C, H>, error::JwtVerifyError>
     where
         C: for<'de> Deserialize<'de>,
         H: for<'de> Deserialize<'de>,
+        V: jws::Verifier<Algorithm = jwa::Algorithm>,
+        error::JwtVerifyError: From<V::Error>,
+    {
+        self.verify_with_custom(key, validator, NoopValidator)
+    }
+
+    /// Verifies a token against a particular JWK and validation plan
+    ///
+    /// If you need to inspect the token first to determine how to verify
+    /// the token, use `decompose()` to peek into the JWT.
+    pub fn verify_with_custom<C, H, V, X>(
+        &self,
+        key: &'_ V,
+        validator: &CoreValidator,
+        custom: X,
+    ) -> Result<Validated<C, H>, error::JwtVerifyError>
+    where
+        C: for<'de> Deserialize<'de>,
+        H: for<'de> Deserialize<'de>,
+        V: jws::Verifier<Algorithm = jwa::Algorithm>,
+        error::JwtVerifyError: From<V::Error>,
+        X: ClaimsValidator<C, H>,
     {
         let decomposed = self.decompose()?;
 
-        let data = key.verify_decomposed(decomposed, validator)?;
-
-        Ok(data)
+        decomposed.verify_with_custom(key, validator, custom)
     }
 }
 
-impl<'a, H> HasSigningAlgorithm for Decomposed<'a, H> {
-    fn alg(&self) -> jws::Algorithm {
+impl<'a, H> HasAlgorithm for Decomposed<'a, H> {
+    fn alg(&self) -> jwa::Algorithm {
         self.header.alg()
     }
 }
@@ -217,21 +270,28 @@ pub trait CoreClaims {
     fn iss(&self) -> Option<&IssuerRef> {
         None
     }
+
+    /// Subject
+    ///
+    /// A verifier SHOULD verify that the subject is acceptable.
+    fn sub(&self) -> Option<&SubjectRef> {
+        None
+    }
 }
 
-/// Indicates that the type specifies the signing algorithm
-pub trait HasSigningAlgorithm {
-    /// Signing algorithm
+/// Indicates that the type specifies the algorithm
+pub trait HasAlgorithm {
+    /// Algorithm
     ///
-    /// The signing algorithm that was used to sign the token.
-    /// A verifier MUST reject a token that specifies a signing
+    /// The algorithm that was used to sign or encrypt the token.
+    /// A verifier MUST reject a token that specifies the
     /// algorithm that has not been approved or if the JWK to be used
-    /// does not allow for the specified signing algorithm.
-    fn alg(&self) -> jws::Algorithm;
+    /// does not allow for the specified algorithm.
+    fn alg(&self) -> jwa::Algorithm;
 }
 
 /// Indicates that the type has values common to a JWT header
-pub trait CoreHeaders: HasSigningAlgorithm {
+pub trait CoreHeaders: HasAlgorithm {
     /// Key ID
     ///
     /// The ID of the JWK used to sign this token.
@@ -255,7 +315,7 @@ typed_string! {
     /// An audience
     pub struct Audience(String);
 
-    /// Reference to `Audience`
+    /// Reference to an `Audience`
     pub struct AudienceRef(str);
 }
 
@@ -263,15 +323,23 @@ typed_string! {
     /// An issuer of JWTs
     pub struct Issuer(String);
 
-    /// Reference to `Issuer`
+    /// Reference to an `Issuer`
     pub struct IssuerRef(str);
+}
+
+typed_string! {
+    /// The subject of a JWT
+    pub struct Subject(String);
+
+    /// Reference to a `Subject`
+    pub struct SubjectRef(str);
 }
 
 typed_string! {
     /// A JSON Web Token
     pub struct Jwt(String);
 
-    /// Reference to `Jwt`
+    /// Reference to a JSON Web Token
     pub struct JwtRef(str);
 }
 
@@ -347,20 +415,58 @@ impl From<Audience> for Audiences {
     }
 }
 
-/// A standard validator for JWTs
+/// A claims validator
+pub trait ClaimsValidator<C, H> {
+    /// Validates the header and payload claims decoded from a JWT
+    fn validate(&self, header: &H, claims: &C) -> Result<(), error::ClaimsRejected>;
+}
+
+impl<C, H, T> ClaimsValidator<C, H> for &'_ T
+where
+    T: ClaimsValidator<C, H>,
+{
+    #[inline]
+    fn validate(&self, header: &H, claims: &C) -> Result<(), error::ClaimsRejected> {
+        T::validate(&**self, header, claims)
+    }
+}
+
+impl<C, H, T> ClaimsValidator<C, H> for Box<T>
+where
+    T: ClaimsValidator<C, H>,
+{
+    #[inline]
+    fn validate(&self, header: &H, claims: &C) -> Result<(), error::ClaimsRejected> {
+        T::validate(&**self, header, claims)
+    }
+}
+
+/// A validator that makes no checks
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub struct NoopValidator;
+
+impl<C, H> ClaimsValidator<C, H> for NoopValidator {
+    #[inline]
+    fn validate(&self, _header: &H, _claims: &C) -> Result<(), error::ClaimsRejected> {
+        Ok(())
+    }
+}
+
+/// A core validator for JWTs
 ///
-/// The default validator will
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Validation {
-    approved_algorithms: Vec<jws::Algorithm>,
+/// A default validator configured with common expected validations.
+#[derive(Clone, Debug)]
+pub struct CoreValidator {
+    approved_algorithms: Vec<jwa::Algorithm>,
     leeway: Duration,
     validate_nbf: bool,
     validate_exp: bool,
     allowed_audiences: Vec<Audience>,
+    valid_subjects: Option<Regex>,
     issuer: Option<Issuer>,
 }
 
-impl Default for Validation {
+impl Default for CoreValidator {
     /// The default validator does not accept any algorithms and
     /// that the token is not expired (no grace period)
     #[inline]
@@ -371,98 +477,127 @@ impl Default for Validation {
             validate_exp: true,
             validate_nbf: false,
             allowed_audiences: Vec::new(),
+            valid_subjects: None,
             issuer: None,
         }
     }
 }
 
-impl Validation {
+impl CoreValidator {
     /// Allows a grace period for token validation
     ///
     /// Applies on either side of the "not before" and "expires" claims.
     #[inline]
-    pub fn with_leeway(mut self, leeway: Duration) -> Self {
-        self.leeway = leeway;
-        self
+    pub fn with_leeway(self, leeway: Duration) -> Self {
+        Self { leeway, ..self }
+    }
+
+    /// Allows a grace period (in seconds) for token validation
+    ///
+    /// Applies on either side of the "not before" and "expires" claims.
+    #[inline]
+    pub fn with_leeway_secs(self, leeway: u64) -> Self {
+        Self {
+            leeway: Duration::from_secs(leeway),
+            ..self
+        }
     }
 
     /// Enforces expiration checks
     #[inline]
-    pub fn check_expiration(mut self) -> Self {
-        self.validate_exp = true;
-        self
+    pub fn check_expiration(self) -> Self {
+        Self {
+            validate_exp: true,
+            ..self
+        }
     }
 
     /// Enforces "not valid before" checks
     #[inline]
-    pub fn check_not_before(mut self) -> Self {
-        self.validate_nbf = true;
-        self
+    pub fn check_not_before(self) -> Self {
+        Self {
+            validate_nbf: true,
+            ..self
+        }
     }
 
     /// Skips expiration checks
     #[inline]
-    pub fn ignore_expiration(mut self) -> Self {
-        self.validate_exp = false;
-        self
+    pub fn ignore_expiration(self) -> Self {
+        Self {
+            validate_exp: false,
+            ..self
+        }
     }
 
     /// Skips "not valid before" checks
     #[inline]
-    pub fn ignore_not_before(mut self) -> Self {
-        self.validate_nbf = false;
-        self
+    pub fn ignore_not_before(self) -> Self {
+        Self {
+            validate_nbf: false,
+            ..self
+        }
     }
 
     /// Adds a single audience to the set of allowed audiences
     #[inline]
-    pub fn add_allowed_audience(mut self, audience: Audience) -> Self {
-        self.allowed_audiences.push(audience);
-        self
+    pub fn add_allowed_audience(self, audience: Audience) -> Self {
+        let mut slf = self;
+        slf.allowed_audiences.push(audience);
+        slf
     }
 
     /// Adds mutliple audiences to the set of allowed audiences
     #[inline]
-    pub fn extend_allowed_audiences<I: IntoIterator<Item = Audience>>(mut self, alg: I) -> Self {
-        self.allowed_audiences.extend(alg);
-        self
+    pub fn extend_allowed_audiences<I: IntoIterator<Item = Audience>>(self, alg: I) -> Self {
+        let mut slf = self;
+        slf.allowed_audiences.extend(alg);
+        slf
     }
 
     /// Approves a single algorithm
     #[inline]
-    pub fn add_approved_algorithm(mut self, alg: jws::Algorithm) -> Self {
-        self.approved_algorithms.push(alg);
-        self
+    pub fn add_approved_algorithm(self, alg: jwa::Algorithm) -> Self {
+        let mut slf = self;
+        slf.approved_algorithms.push(alg);
+        slf
     }
 
     /// Approves multiple algorithms
     #[inline]
-    pub fn extend_approved_algorithms<I: IntoIterator<Item = jws::Algorithm>>(
-        mut self,
+    pub fn extend_approved_algorithms<I: IntoIterator<Item = jwa::Algorithm>>(
+        self,
         alg: I,
     ) -> Self {
-        self.approved_algorithms.extend(alg);
-        self
+        let mut slf = self;
+        slf.approved_algorithms.extend(alg);
+        slf
     }
 
     /// Require that tokens specify a particular issuer
     #[inline]
-    pub fn require_issuer(mut self, issuer: Issuer) -> Self {
-        self.issuer = Some(issuer);
-        self
+    pub fn require_issuer(self, issuer: Issuer) -> Self {
+        Self {
+            issuer: Some(issuer),
+            ..self
+        }
     }
 
-    /// The issuer required by this validator
+    /// Require that the `sub` claim exists and matches a particular
+    /// regular expression
     #[inline]
-    pub fn issuer(&self) -> Option<&IssuerRef> {
-        self.issuer.as_deref()
+    pub fn check_subject(self, sub_regex: Regex) -> Self {
+        Self {
+            valid_subjects: Some(sub_regex),
+            ..self
+        }
     }
 
     pub(crate) fn validate<H: CoreHeaders, T: CoreClaims>(
         &self,
         header: &H,
         claims: &T,
-    ) -> anyhow::Result<()> {
+    ) -> Result<(), error::ClaimsRejected> {
         self.validate_with_clock(header, claims, &System)
     }
 
@@ -471,41 +606,40 @@ impl Validation {
         header: &H,
         claims: &T,
         clock: &C,
-    ) -> anyhow::Result<()> {
+    ) -> Result<(), error::ClaimsRejected> {
         let now = clock.now();
 
-        let algorithm_matches =
-            |&a: &jws::Algorithm| header.alg() != jws::Algorithm::Unknown && header.alg() == a;
+        let algorithm_matches = |&a: &jwa::Algorithm| header.alg() == a;
 
         if !self.approved_algorithms.is_empty()
             && !self.approved_algorithms.iter().any(algorithm_matches)
         {
-            return Err(anyhow!("token does not use an approved algorithm"));
+            return Err(error::ClaimsRejected::InvalidAlgorithm);
         }
 
         if self.validate_exp {
             if let Some(exp) = claims.exp() {
                 if exp.0 < now.0.saturating_sub(self.leeway.as_secs()) {
-                    return Err(anyhow!("token has expired"));
+                    return Err(error::ClaimsRejected::TokenExpired);
                 }
             } else {
-                return Err(anyhow!("token is missing expected exp claim"));
+                return Err(error::ClaimsRejected::MissingRequiredClaim("exp"));
             }
         }
 
         if self.validate_nbf {
             if let Some(nbf) = claims.nbf() {
                 if nbf.0 > now.0.saturating_add(self.leeway.as_secs()) {
-                    return Err(anyhow!("token is not yet good"));
+                    return Err(error::ClaimsRejected::TokenNotYetValid);
                 }
             } else {
-                return Err(anyhow!("token is missing expected nbf claim"));
+                return Err(error::ClaimsRejected::MissingRequiredClaim("nbf"));
             }
         }
 
         if !self.allowed_audiences.is_empty() {
             if claims.aud().is_empty() {
-                return Err(anyhow!("token is missing expected aud claim"));
+                return Err(error::ClaimsRejected::MissingRequiredClaim("aud"));
             }
 
             let found = claims
@@ -513,17 +647,27 @@ impl Validation {
                 .iter()
                 .any(|a| self.allowed_audiences.iter().any(|e| a == e));
             if !found {
-                return Err(anyhow!("token does not match any allowed audience"));
+                return Err(error::ClaimsRejected::InvalidAudience);
             }
         }
 
         if let Some(allowed_iss) = &self.issuer {
             if let Some(iss) = claims.iss() {
                 if iss != allowed_iss {
-                    return Err(anyhow!("token issuer is not trusted"));
+                    return Err(error::ClaimsRejected::InvalidIssuer);
                 }
             } else {
-                return Err(anyhow!("token is missing expected iss claim"));
+                return Err(error::ClaimsRejected::MissingRequiredClaim("iss"));
+            }
+        }
+
+        if let Some(valid_subs) = &self.valid_subjects {
+            if let Some(sub) = claims.sub() {
+                if !valid_subs.is_match(sub.as_str()) {
+                    return Err(error::ClaimsRejected::InvalidSubject);
+                }
+            } else {
+                return Err(error::ClaimsRejected::MissingRequiredClaim("sub"));
             }
         }
 
@@ -534,15 +678,15 @@ impl Validation {
 /// Common headers used on JWTs
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct Headers<H = Empty> {
-    alg: jws::Algorithm,
+    alg: jwa::Algorithm,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     kid: Option<jwk::KeyId>,
     #[serde(flatten)]
     headers: H,
 }
 
-impl<H> HasSigningAlgorithm for Headers<H> {
-    fn alg(&self) -> jws::Algorithm {
+impl<H> HasAlgorithm for Headers<H> {
+    fn alg(&self) -> jwa::Algorithm {
         self.alg
     }
 }
@@ -555,7 +699,7 @@ impl<H> CoreHeaders for Headers<H> {
 
 impl Headers {
     /// Constructs JWT headers, to be signed by the specified algorithm
-    pub const fn new(alg: jws::Algorithm) -> Self {
+    pub const fn new(alg: jwa::Algorithm) -> Self {
         Self {
             alg,
             kid: None,
@@ -599,6 +743,8 @@ pub struct Claims<P = Empty> {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     iss: Option<Issuer>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    sub: Option<Subject>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     exp: Option<UnixTime>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     nbf: Option<UnixTime>,
@@ -612,6 +758,7 @@ impl Claims {
         Self {
             aud: Audiences::empty(),
             iss: None,
+            sub: None,
             exp: None,
             nbf: None,
             payload: Empty {},
@@ -628,12 +775,16 @@ impl<P> CoreClaims for Claims<P> {
         self.iss.as_deref()
     }
 
+    fn sub(&self) -> Option<&SubjectRef> {
+        self.sub.as_deref()
+    }
+
     fn exp(&self) -> Option<UnixTime> {
         self.exp
     }
 
     fn nbf(&self) -> Option<UnixTime> {
-        self.exp
+        self.nbf
     }
 }
 
@@ -653,6 +804,12 @@ impl<P> Claims<P> {
     /// Sets the `iss` claim for the JWT
     pub fn with_issuer(mut self, iss: impl Into<Issuer>) -> Self {
         self.iss = Some(iss.into());
+        self
+    }
+
+    /// Sets the `sub` claim for the JWT
+    pub fn with_subject(mut self, sub: impl Into<Subject>) -> Self {
+        self.sub = Some(sub.into());
         self
     }
 
@@ -685,6 +842,7 @@ impl<P> Claims<P> {
         Claims {
             aud: self.aud,
             iss: self.iss,
+            sub: self.sub,
             exp: self.exp,
             nbf: self.nbf,
             payload,
@@ -722,8 +880,9 @@ mod tests {
     }
 
     #[test]
-    fn vdater() -> anyhow::Result<()> {
-        let validation = Validation::default()
+    #[cfg(feature = "rsa")]
+    fn vdater() -> Result<(), error::ClaimsRejected> {
+        let validation = CoreValidator::default()
             .with_leeway(Duration::from_secs(2))
             .check_not_before()
             .extend_allowed_audiences(vec![Audience::new("marcus"), Audience::new("other")])
@@ -739,7 +898,7 @@ mod tests {
 
         let clock = TestClock::new(UnixTime(7));
 
-        let header = Headers::new(jws::Algorithm::RS256);
+        let header = Headers::new(jwa::Algorithm::RS256);
 
         validation.validate_with_clock(&header, &claims, &clock)
     }

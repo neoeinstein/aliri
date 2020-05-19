@@ -1,15 +1,15 @@
 //! ECC JSON Web Algorithm implementations
 
-use std::fmt;
+use std::{convert::TryFrom, fmt};
 
 use lazy_static::lazy_static;
 use openssl::{
     ec::{EcGroup, EcGroupRef},
     nid::Nid,
 };
-use ring::signature::VerificationAlgorithm;
 use serde::{Deserialize, Serialize};
 
+use crate::error;
 use crate::jws;
 
 #[cfg(feature = "private-keys")]
@@ -17,8 +17,8 @@ mod private;
 mod public;
 
 #[cfg(feature = "private-keys")]
-pub use private::PrivateKeyParameters;
-pub use public::PublicKeyParameters;
+pub use private::PrivateKey;
+pub use public::PublicKey;
 
 lazy_static! {
     static ref P256: EcGroup = EcGroup::from_curve_name(Nid::X9_62_PRIME256V1).unwrap();
@@ -51,6 +51,7 @@ impl Curve {
         }
     }
 
+    #[cfg(feature = "private-keys")]
     fn from_group(group: &EcGroupRef) -> Option<Self> {
         let nid = group.curve_name()?;
         if nid == P256.curve_name().unwrap() {
@@ -67,53 +68,73 @@ impl Curve {
 
 /// Elliptic curve cryptography key
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(untagged)]
-pub enum EllipticCurve {
-    /// Public and private keys
+#[serde(transparent)]
+pub struct EllipticCurve {
     #[cfg(feature = "private-keys")]
-    PublicAndPrivate(PrivateKeyParameters),
+    key: MaybePrivate,
 
-    /// Only the public key
-    PublicOnly(PublicKeyParameters),
+    #[cfg(not(feature = "private-keys"))]
+    key: PublicKey,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(untagged)]
+#[cfg(feature = "private-keys")]
+enum MaybePrivate {
+    PublicAndPrivate(PrivateKey),
+    PublicOnly(PublicKey),
 }
 
 impl EllipticCurve {
     /// Generates a newly minted key pair using the specified curve
     #[cfg(feature = "private-keys")]
-    pub fn generate(curve: Curve) -> anyhow::Result<Self> {
-        PrivateKeyParameters::generate(curve).map(Self::PublicAndPrivate)
+    pub fn generate(curve: Curve) -> Result<Self, error::Unexpected> {
+        let private_key = PrivateKey::generate(curve)?;
+
+        Ok(Self::from(private_key))
     }
 
     #[cfg(feature = "private-keys")]
-    fn private_params(&self) -> Option<&PrivateKeyParameters> {
-        match self {
-            Self::PublicAndPrivate(p) => Some(p),
-            Self::PublicOnly(_) => None,
+    pub(crate) fn private_key(&self) -> Option<&PrivateKey> {
+        match &self.key {
+            MaybePrivate::PublicAndPrivate(p) => Some(p),
+            MaybePrivate::PublicOnly(_) => None,
         }
     }
 
-    fn public_params(&self) -> &PublicKeyParameters {
-        match self {
-            #[cfg(feature = "private-keys")]
-            Self::PublicAndPrivate(p) => p.public_key(),
-            Self::PublicOnly(p) => p,
+    #[cfg(feature = "private-keys")]
+    pub(crate) fn public_key(&self) -> &PublicKey {
+        match &self.key {
+            MaybePrivate::PublicAndPrivate(p) => p.public_key(),
+            MaybePrivate::PublicOnly(p) => p,
         }
     }
 
+    #[cfg(not(feature = "private-keys"))]
+    pub(crate) fn public_key(&self) -> &PublicKey {
+        &self.key
+    }
+
+    #[cfg(feature = "private-keys")]
     /// Removes the private key components
-    pub fn remove_private_key(self) -> Self {
-        match self {
-            #[cfg(feature = "private-keys")]
-            Self::PublicAndPrivate(p) => Self::PublicOnly(p.into_public_key()),
-            Self::PublicOnly(p) => Self::PublicOnly(p),
+    pub fn public_only(self) -> Self {
+        match self.key {
+            MaybePrivate::PublicAndPrivate(p) => Self::from(p.into_public_key()),
+            _ => self,
         }
+    }
+
+    #[cfg(not(feature = "private-keys"))]
+    /// Removes the private key components
+    pub fn public_only(self) -> Self {
+        self
     }
 }
 
 /// Elliptic curve cryptography signing algorithms
 ///
 /// This list may be expanded in the future.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "UPPERCASE")]
 #[non_exhaustive]
 pub enum SigningAlgorithm {
@@ -121,20 +142,44 @@ pub enum SigningAlgorithm {
     ES256,
     /// Elliptic curve cryptography using the P-384 curve and SHA-384
     ES384,
+    /// Elliptic curve cryptography using the P-521 curve and SHA-512
+    ES512,
+}
+
+impl From<SigningAlgorithm> for jws::Algorithm {
+    fn from(alg: SigningAlgorithm) -> Self {
+        Self::EllipticCurve(alg)
+    }
+}
+
+impl TryFrom<jws::Algorithm> for SigningAlgorithm {
+    type Error = error::IncompatibleAlgorithm;
+
+    fn try_from(alg: jws::Algorithm) -> Result<Self, Self::Error> {
+        match alg {
+            jws::Algorithm::EllipticCurve(alg) => Ok(alg),
+
+            #[allow(unreachable_patterns)]
+            _ => Err(error::incompatible_algorithm(alg)),
+        }
+    }
 }
 
 impl SigningAlgorithm {
     fn verification_algorithm(self) -> &'static ring::signature::EcdsaVerificationAlgorithm {
         match self {
-            SigningAlgorithm::ES256 => &ring::signature::ECDSA_P256_SHA256_FIXED,
-            SigningAlgorithm::ES384 => &ring::signature::ECDSA_P384_SHA384_FIXED,
+            Self::ES256 => &ring::signature::ECDSA_P256_SHA256_FIXED,
+            Self::ES384 => &ring::signature::ECDSA_P384_SHA384_FIXED,
+            Self::ES512 => unimplemented!(),
         }
     }
 
+    #[cfg(feature = "private-keys")]
     fn signing_algorithm(self) -> &'static ring::signature::EcdsaSigningAlgorithm {
         match self {
-            SigningAlgorithm::ES256 => &ring::signature::ECDSA_P256_SHA256_FIXED_SIGNING,
-            SigningAlgorithm::ES384 => &ring::signature::ECDSA_P384_SHA384_FIXED_SIGNING,
+            Self::ES256 => &ring::signature::ECDSA_P256_SHA256_FIXED_SIGNING,
+            Self::ES384 => &ring::signature::ECDSA_P384_SHA384_FIXED_SIGNING,
+            Self::ES512 => unimplemented!(),
         }
     }
 
@@ -143,36 +188,38 @@ impl SigningAlgorithm {
         match self {
             Self::ES256 => 64,
             Self::ES384 => 96,
+            Self::ES512 => 131,
         }
     }
 }
 
-impl jws::Signer for EllipticCurve {
-    type Algorithm = SigningAlgorithm;
-    type Error = anyhow::Error;
+impl From<SigningAlgorithm> for Curve {
+    fn from(alg: SigningAlgorithm) -> Self {
+        match alg {
+            SigningAlgorithm::ES256 => Self::P256,
+            SigningAlgorithm::ES384 => Self::P384,
+            SigningAlgorithm::ES512 => Self::P521,
+        }
+    }
+}
 
-    fn sign(&self, alg: Self::Algorithm, data: &[u8]) -> Result<Vec<u8>, Self::Error> {
-        if let Some(p) = self.private_params() {
-            let pk = ring::signature::EcdsaKeyPair::from_pkcs8(
-                alg.signing_algorithm(),
-                p.pkcs8().as_slice(),
-            )
-            .map_err(|e| anyhow::anyhow!("key rejected: {}", e))?;
-
-            let signature = pk
-                .sign(&*super::CRATE_RNG, data)
-                .map_err(|_| anyhow::anyhow!("error while signing message"))?;
-
-            Ok(signature.as_ref().to_owned())
-        } else {
-            Err(anyhow::anyhow!("no private components, unable to sign"))
+impl From<Curve> for SigningAlgorithm {
+    fn from(crv: Curve) -> Self {
+        match crv {
+            Curve::P256 => Self::ES256,
+            Curve::P384 => Self::ES384,
+            Curve::P521 => Self::ES512,
         }
     }
 }
 
 impl jws::Verifier for EllipticCurve {
     type Algorithm = SigningAlgorithm;
-    type Error = anyhow::Error;
+    type Error = error::SignatureMismatch;
+
+    fn can_verify(&self, alg: Self::Algorithm) -> bool {
+        self.public_key().can_verify(alg)
+    }
 
     fn verify(
         &self,
@@ -180,11 +227,29 @@ impl jws::Verifier for EllipticCurve {
         data: &[u8],
         signature: &[u8],
     ) -> Result<(), Self::Error> {
-        let pk = self.public_params().public_key.as_slice();
+        self.public_key().verify(alg, data, signature)
+    }
+}
 
-        alg.verification_algorithm()
-            .verify(pk.into(), data.into(), signature.into())
-            .map_err(|_| anyhow::anyhow!("invalid signature"))
+#[cfg(feature = "private-keys")]
+impl jws::Signer for EllipticCurve {
+    type Algorithm = SigningAlgorithm;
+    type Error = error::SigningError;
+
+    fn can_sign(&self, alg: Self::Algorithm) -> bool {
+        if let Some(p) = self.private_key() {
+            p.can_sign(alg)
+        } else {
+            false
+        }
+    }
+
+    fn sign(&self, alg: Self::Algorithm, data: &[u8]) -> Result<Vec<u8>, Self::Error> {
+        if let Some(p) = self.private_key() {
+            Ok(p.sign(alg, data)?)
+        } else {
+            Err(error::missing_private_key().into())
+        }
     }
 }
 
@@ -193,8 +258,34 @@ impl fmt::Display for SigningAlgorithm {
         let s = match self {
             Self::ES256 => "ES256",
             Self::ES384 => "ES384",
+            Self::ES512 => "ES512",
         };
 
         f.write_str(s)
+    }
+}
+
+#[cfg(feature = "private-keys")]
+impl From<PublicKey> for EllipticCurve {
+    fn from(key: PublicKey) -> Self {
+        Self {
+            key: MaybePrivate::PublicOnly(key),
+        }
+    }
+}
+
+#[cfg(not(feature = "private-keys"))]
+impl From<PublicKey> for EllipticCurve {
+    fn from(key: PublicKey) -> Self {
+        Self { key }
+    }
+}
+
+#[cfg(feature = "private-keys")]
+impl From<PrivateKey> for EllipticCurve {
+    fn from(key: PrivateKey) -> Self {
+        Self {
+            key: MaybePrivate::PublicAndPrivate(key),
+        }
     }
 }

@@ -12,11 +12,20 @@ pub mod hmac;
 pub mod rsa;
 
 #[cfg(feature = "ec")]
+#[doc(inline)]
 pub use ec::EllipticCurve;
 #[cfg(feature = "hmac")]
+#[doc(inline)]
 pub use hmac::Hmac;
 #[cfg(feature = "rsa")]
+#[doc(inline)]
 pub use rsa::Rsa;
+
+mod algorithm;
+mod usage;
+
+pub use algorithm::Algorithm;
+pub use usage::Usage;
 
 lazy_static::lazy_static! {
     static ref CRATE_RNG: ring::rand::SystemRandom = ring::rand::SystemRandom::new();

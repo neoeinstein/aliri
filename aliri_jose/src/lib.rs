@@ -31,6 +31,7 @@
     unused_must_use
 )]
 
+pub mod error;
 pub mod jwa;
 pub mod jwk;
 mod jwks;
@@ -39,8 +40,13 @@ pub mod jwt;
 
 pub(crate) mod test;
 
+#[doc(inline)]
 pub use jwk::Jwk;
+
+#[doc(inline)]
 pub use jwks::Jwks;
+
+#[doc(inline)]
 pub use jwt::{Jwt, JwtRef};
 
 #[cfg(not(any(feature = "rsa", feature = "hmac", feature = "ec")))]

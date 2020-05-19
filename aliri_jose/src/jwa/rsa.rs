@@ -1,9 +1,11 @@
 //! RSA JSON Web Algorithm implementations
 
-use std::fmt;
+use std::{convert::TryFrom, fmt};
 
+use aliri_core::base64::Base64Url;
 use serde::{Deserialize, Serialize};
 
+use crate::error;
 use crate::jws;
 
 #[cfg(feature = "private-keys")]
@@ -11,81 +13,106 @@ mod private;
 mod public;
 
 #[cfg(feature = "private-keys")]
-pub use private::PrivateKeyParameters;
-
-#[cfg(not(feature = "private-keys"))]
-struct PrivateKeyParameters;
-
-#[cfg(not(feature = "private-keys"))]
-impl PrivateKeyParameters {
-    fn der(&self) -> &[u8] {
-        unreachable!()
-    }
-}
-
-pub use public::PublicKeyParameters;
+pub use private::PrivateKey;
+pub use public::PublicKey;
 
 /// RSA key
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(untagged)]
-pub enum Rsa {
-    /// Public and private keys
+#[serde(transparent)]
+pub struct Rsa {
     #[cfg(feature = "private-keys")]
-    PublicAndPrivate(PrivateKeyParameters),
+    key: MaybePrivate,
 
-    /// Only the public key
-    PublicOnly(PublicKeyParameters),
+    #[cfg(not(feature = "private-keys"))]
+    key: PublicKey,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(untagged)]
+enum MaybePrivate {
+    #[cfg(feature = "private-keys")]
+    PublicAndPrivate(PrivateKey),
+    PublicOnly(PublicKey),
 }
 
 impl Rsa {
     /// Generates a newly minted RSA public/private key pair
     #[cfg(feature = "private-keys")]
-    pub fn generate() -> anyhow::Result<Self> {
-        PrivateKeyParameters::generate().map(Rsa::PublicAndPrivate)
+    pub fn generate() -> Result<Self, error::Unexpected> {
+        let private_key = PrivateKey::generate()?;
+
+        Ok(Self {
+            key: MaybePrivate::PublicAndPrivate(private_key),
+        })
     }
 
     /// Constructs a private key from a PEM file
     #[cfg(feature = "private-keys")]
-    pub fn private_key_from_pem(pem: &str) -> anyhow::Result<Self> {
-        PrivateKeyParameters::from_pem(pem).map(Self::PublicAndPrivate)
+    pub fn private_key_from_pem(pem: &str) -> Result<Self, error::KeyRejected> {
+        let private_key = PrivateKey::from_pem(pem)?;
+
+        Ok(Self::from(private_key))
     }
 
     /// Constructs a public key from a PEM file
     #[cfg(feature = "openssl")]
-    pub fn public_key_from_pem(pem: &str) -> anyhow::Result<Self> {
-        PublicKeyParameters::from_pem(pem).map(Self::PublicOnly)
+    pub fn public_key_from_pem(pem: &str) -> Result<Self, error::KeyRejected> {
+        let public_key = PublicKey::from_pem(pem)?;
+
+        Ok(Self::from(public_key))
     }
 
-    fn private_params(&self) -> Option<&PrivateKeyParameters> {
-        match self {
-            #[cfg(feature = "private-keys")]
-            Self::PublicAndPrivate(p) => Some(p),
-            Self::PublicOnly(_) => None,
+    /// Constructs a public key from the modulus and exponent
+    pub fn from_public_components(
+        modulus: impl Into<Base64Url>,
+        exponent: impl Into<Base64Url>,
+    ) -> Result<Self, error::KeyRejected> {
+        let public_key = PublicKey::from_components(modulus, exponent)?;
+
+        Ok(Self::from(public_key))
+    }
+
+    #[cfg(feature = "private-keys")]
+    fn private_key(&self) -> Option<&PrivateKey> {
+        match &self.key {
+            MaybePrivate::PublicAndPrivate(p) => Some(p),
+            MaybePrivate::PublicOnly(_) => None,
         }
     }
 
-    fn public_params(&self) -> &PublicKeyParameters {
-        match self {
-            #[cfg(feature = "private-keys")]
-            Self::PublicAndPrivate(p) => p.public_key(),
-            Self::PublicOnly(p) => p,
+    #[cfg(feature = "private-keys")]
+    fn public_key(&self) -> &PublicKey {
+        match &self.key {
+            MaybePrivate::PublicAndPrivate(p) => p.public_key(),
+            MaybePrivate::PublicOnly(p) => p,
         }
     }
 
+    #[cfg(not(feature = "private-keys"))]
+    fn public_key(&self) -> &PublicKey {
+        &self.key
+    }
+
+    #[cfg(feature = "private-keys")]
     /// Removes the private key components, if any
-    pub fn remove_private_key(self) -> Self {
-        match self {
-            #[cfg(feature = "private-keys")]
-            Self::PublicAndPrivate(p) => Self::PublicOnly(p.into_public_key()),
-            Self::PublicOnly(p) => Self::PublicOnly(p),
+    pub fn public_only(self) -> Self {
+        match self.key {
+            MaybePrivate::PublicAndPrivate(p) => Self::from(p.into_public_key()),
+            _ => self,
         }
+    }
+
+    #[cfg(not(feature = "private-keys"))]
+    /// Removes the private key components, if any
+    pub fn public_only(self) -> Self {
+        self
     }
 }
 
 /// RSA public/private key signing algorithms
 ///
 /// This list may be expanded in the future.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "UPPERCASE")]
 #[non_exhaustive]
 pub enum SigningAlgorithm {
@@ -120,6 +147,7 @@ impl SigningAlgorithm {
         }
     }
 
+    #[cfg(feature = "private-keys")]
     fn into_signing_params(self) -> &'static dyn ring::signature::RsaEncoding {
         match self {
             SigningAlgorithm::RS256 => &ring::signature::RSA_PKCS1_SHA256,
@@ -132,33 +160,32 @@ impl SigningAlgorithm {
     }
 }
 
-impl jws::Signer for Rsa {
-    type Algorithm = SigningAlgorithm;
-    type Error = anyhow::Error;
+impl From<SigningAlgorithm> for jws::Algorithm {
+    fn from(alg: SigningAlgorithm) -> Self {
+        Self::Rsa(alg)
+    }
+}
 
-    fn sign(&self, alg: Self::Algorithm, data: &[u8]) -> Result<Vec<u8>, Self::Error> {
-        if let Some(p) = self.private_params() {
-            let pk = ring::signature::RsaKeyPair::from_der(p.der())
-                .map_err(|e| anyhow::anyhow!("key rejected: {}", e))?;
+impl TryFrom<jws::Algorithm> for SigningAlgorithm {
+    type Error = error::IncompatibleAlgorithm;
 
-            let mut buf = vec![0; pk.public_modulus_len()];
-            pk.sign(
-                alg.into_signing_params(),
-                &*super::CRATE_RNG,
-                data,
-                &mut buf,
-            )
-            .map_err(|_| anyhow::anyhow!("error while signing message"))?;
-            Ok(buf)
-        } else {
-            Err(anyhow::anyhow!("no private components, unable to sign"))
+    fn try_from(alg: jws::Algorithm) -> Result<Self, Self::Error> {
+        match alg {
+            jws::Algorithm::Rsa(alg) => Ok(alg),
+
+            #[allow(unreachable_patterns)]
+            _ => Err(error::incompatible_algorithm(alg)),
         }
     }
 }
 
 impl jws::Verifier for Rsa {
     type Algorithm = SigningAlgorithm;
-    type Error = anyhow::Error;
+    type Error = error::SignatureMismatch;
+
+    fn can_verify(&self, _alg: Self::Algorithm) -> bool {
+        true
+    }
 
     fn verify(
         &self,
@@ -166,14 +193,29 @@ impl jws::Verifier for Rsa {
         data: &[u8],
         signature: &[u8],
     ) -> Result<(), Self::Error> {
-        let p = self.public_params();
-        let pk = ring::signature::RsaPublicKeyComponents {
-            n: p.modulus.as_slice(),
-            e: p.exponent.as_slice(),
-        };
+        self.public_key().verify(alg, data, signature)
+    }
+}
 
-        pk.verify(alg.into_verification_params(), data, signature)
-            .map_err(|_| anyhow::anyhow!("invalid signature"))
+#[cfg(feature = "private-keys")]
+impl jws::Signer for Rsa {
+    type Algorithm = SigningAlgorithm;
+    type Error = error::SigningError;
+
+    fn can_sign(&self, alg: Self::Algorithm) -> bool {
+        if let Some(p) = self.private_key() {
+            p.can_sign(alg)
+        } else {
+            false
+        }
+    }
+
+    fn sign(&self, alg: Self::Algorithm, data: &[u8]) -> Result<Vec<u8>, Self::Error> {
+        if let Some(p) = self.private_key() {
+            Ok(p.sign(alg, data)?)
+        } else {
+            Err(error::missing_private_key().into())
+        }
     }
 }
 
@@ -189,5 +231,30 @@ impl fmt::Display for SigningAlgorithm {
         };
 
         f.write_str(s)
+    }
+}
+
+#[cfg(feature = "private-keys")]
+impl From<PublicKey> for Rsa {
+    fn from(key: PublicKey) -> Self {
+        Self {
+            key: MaybePrivate::PublicOnly(key),
+        }
+    }
+}
+
+#[cfg(not(feature = "private-keys"))]
+impl From<PublicKey> for Rsa {
+    fn from(key: PublicKey) -> Self {
+        Self { key }
+    }
+}
+
+#[cfg(feature = "private-keys")]
+impl From<PrivateKey> for Rsa {
+    fn from(key: PrivateKey) -> Self {
+        Self {
+            key: MaybePrivate::PublicAndPrivate(key),
+        }
     }
 }

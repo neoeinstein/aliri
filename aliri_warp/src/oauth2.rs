@@ -1,7 +1,7 @@
 //! Warp filters for validating JWTs against OAuth2 authorities and scopes
 
 use aliri::Authority;
-use aliri_jose::Jwt;
+use aliri_jose::{jwt, Jwt};
 use aliri_oauth2::{jwks::RemoteAuthority, HasScopes, ScopesPolicy};
 use serde::Deserialize;
 use thiserror::Error;
@@ -18,8 +18,8 @@ async fn check_jwt<C: for<'de> Deserialize<'de> + HasScopes>(
     jwt: Jwt,
     authority: &RemoteAuthority,
     policy: &ScopesPolicy,
-) -> Result<C, Unspecified> {
-    let c: C = authority.verify(&jwt, &policy).await?;
+) -> Result<jwt::Claims<C>, Unspecified> {
+    let c: jwt::Claims<C> = authority.verify(&jwt, &policy).await?;
     Ok(c)
 }
 
@@ -29,7 +29,7 @@ pub fn require_scopes<C, F, A, P>(
     jwt: F,
     authority: A,
     policy: P,
-) -> impl Filter<Extract = (C,), Error = warp::reject::Rejection> + Clone
+) -> impl Filter<Extract = (jwt::Claims<C>,), Error = warp::reject::Rejection> + Clone
 where
     C: for<'de> Deserialize<'de> + HasScopes,
     F: Filter<Extract = (Jwt,), Error = warp::reject::Rejection> + Clone,

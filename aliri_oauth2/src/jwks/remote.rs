@@ -2,7 +2,7 @@ use std::{future::Future, pin::Pin, sync::Arc};
 
 use aliri::{Authority, Policy};
 use aliri_jose::{
-    jwt::{self, CoreHeaders, HasSigningAlgorithm},
+    jwt::{self, CoreHeaders, HasAlgorithm},
     Jwks, JwtRef,
 };
 use arc_swap::ArcSwap;
@@ -27,12 +27,12 @@ pub struct RemoteAuthority {
     data: ArcSwap<VolatileData>,
     jwks_url: String,
     client: Client,
-    validator: jwt::Validation,
+    validator: jwt::CoreValidator,
 }
 
 impl RemoteAuthority {
     /// Constructs a new JWKS authority
-    pub async fn new(jwks_url: String, validator: jwt::Validation) -> anyhow::Result<Self> {
+    pub async fn new(jwks_url: String, validator: jwt::CoreValidator) -> anyhow::Result<Self> {
         let client = Client::builder()
             .user_agent(concat!("aliri_oauth2/", env!("CARGO_PKG_VERSION")))
             .build()?;
@@ -85,7 +85,7 @@ impl RemoteAuthority {
     }
 
     /// Authenticates the token and checks access according to the policy
-    pub fn verify_token<'a, T, J, P>(&self, token: J, policy: P) -> anyhow::Result<T>
+    pub fn verify_token<'a, T, J, P>(&self, token: J, policy: P) -> anyhow::Result<jwt::Claims<T>>
     where
         T: for<'de> Deserialize<'de> + HasScopes,
         J: AsRef<JwtRef>,
@@ -94,13 +94,17 @@ impl RemoteAuthority {
         self.verify_impl(token.as_ref(), policy.as_ref())
     }
 
-    fn verify_impl<T>(&self, token: &JwtRef, policy: &ScopesPolicy) -> anyhow::Result<T>
+    fn verify_impl<T>(
+        &self,
+        token: &JwtRef,
+        policy: &ScopesPolicy,
+    ) -> anyhow::Result<jwt::Claims<T>>
     where
         T: for<'de> Deserialize<'de> + HasScopes,
     {
         let decomposed = token.decompose()?;
 
-        let validated: jwt::Validated<jwt::Claims<T>>;
+        let validated: jwt::Validated<T>;
         {
             let guard = self.data.load();
 
@@ -108,7 +112,7 @@ impl RemoteAuthority {
                 let kid = decomposed.kid();
                 let alg = decomposed.alg();
 
-                guard.jwks.get_key_by_opt(kid, alg).next().ok_or_else(|| {
+                guard.jwks.get_key_by_opt(kid, alg).ok_or_else(|| {
                     if let Some(kid) = kid {
                         anyhow::anyhow!("unable to find key with kid {} for alg {}", kid, alg)
                     } else {
@@ -117,25 +121,25 @@ impl RemoteAuthority {
                 })?
             };
 
-            validated = decomposed.verify(&key, &self.validator)?;
+            validated = decomposed.verify(key, &self.validator)?;
         }
 
         policy.evaluate(validated.claims().payload().scopes())?;
 
         let (_, validated_claims) = validated.take();
 
-        Ok(validated_claims.take_payload())
+        Ok(validated_claims)
     }
 }
 
-impl<'a, T> Authority<'a, T> for RemoteAuthority
+impl<'a, T> Authority<'a, jwt::Claims<T>> for RemoteAuthority
 where
     T: for<'de> Deserialize<'de> + HasScopes + 'a,
 {
     type Policy = &'a ScopesPolicy;
     type Token = &'a JwtRef;
     type VerifyFuture =
-        Pin<Box<dyn Future<Output = Result<T, Self::VerifyError>> + Send + Sync + 'a>>;
+        Pin<Box<dyn Future<Output = Result<jwt::Claims<T>, Self::VerifyError>> + Send + Sync + 'a>>;
     type VerifyError = anyhow::Error;
 
     fn verify(&'a self, token: Self::Token, dir: Self::Policy) -> Self::VerifyFuture {

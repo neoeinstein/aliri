@@ -4,7 +4,7 @@
 //!
 //! [RFC7515]: https://tools.ietf.org/html/rfc7515
 
-use std::fmt;
+use std::{error::Error as StdError, fmt};
 
 use serde::{Deserialize, Serialize};
 
@@ -13,7 +13,7 @@ use crate::jwa;
 /// JSON Web Signature signing algorithms
 ///
 /// This list may be expanded in the future.
-#[derive(Debug, Clone, Copy, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Eq, Hash, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 #[non_exhaustive]
 pub enum Algorithm {
@@ -28,9 +28,6 @@ pub enum Algorithm {
     /// Elliptic curve cryptography
     #[cfg(feature = "ec")]
     EllipticCurve(jwa::ec::SigningAlgorithm),
-
-    #[doc(hidden)]
-    Unknown,
 }
 
 #[cfg(feature = "hmac")]
@@ -65,6 +62,8 @@ impl Algorithm {
     pub const ES256: Algorithm = Self::EllipticCurve(jwa::ec::SigningAlgorithm::ES256);
     /// The ES384 signing algorithm
     pub const ES384: Algorithm = Self::EllipticCurve(jwa::ec::SigningAlgorithm::ES384);
+    /// The ES512 signing algorithm
+    pub const ES512: Algorithm = Self::EllipticCurve(jwa::ec::SigningAlgorithm::ES512);
 }
 
 impl Algorithm {
@@ -79,19 +78,22 @@ impl Algorithm {
 
             #[cfg(feature = "ec")]
             Self::EllipticCurve(alg) => alg.signature_size(),
-
-            Self::Unknown => 0,
         }
     }
 }
 
+#[cfg(feature = "private-keys")]
 /// A JWS signer
 pub trait Signer {
     /// The useable signature algorithms
     type Algorithm;
 
     /// The error returned on failure to sign
-    type Error: fmt::Debug + fmt::Display + 'static;
+    type Error: fmt::Debug + fmt::Display + Sync + Send + 'static;
+
+    /// Whether the specific algorithm provided is compatible
+    /// with this signer
+    fn can_sign(&self, alg: Self::Algorithm) -> bool;
 
     /// Attempts to sign the data provided using the specified algorithm
     fn sign(&self, alg: Self::Algorithm, data: &[u8]) -> Result<Vec<u8>, Self::Error>;
@@ -103,7 +105,11 @@ pub trait Verifier {
     type Algorithm;
 
     /// The error returned on a failure to verify
-    type Error: fmt::Debug + fmt::Display + 'static;
+    type Error: StdError + Send + Sync + 'static;
+
+    /// Whether the specific algorithm provided is compatible
+    /// with this verifier
+    fn can_verify(&self, alg: Self::Algorithm) -> bool;
 
     /// Attempts to verify the data against the signature using the
     /// specified algorithm
@@ -126,8 +132,6 @@ impl fmt::Display for Algorithm {
 
             #[cfg(feature = "ec")]
             Self::EllipticCurve(a) => fmt::Display::fmt(a, f),
-
-            Self::Unknown => f.write_str("<unknown>"),
         }
     }
 }

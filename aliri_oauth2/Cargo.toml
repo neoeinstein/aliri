@@ -3,7 +3,7 @@ name = "aliri_oauth2"
 description = "JWT authorization based on validating OAuth2 scopes"
 keywords = [ "jose", "jwk", "jwks", "jws", "jwt", "oauth2", "auth", "authz" ]
 categories = [ "authentication" ]
-version = "0.1.0"
+version = "0.0.0"
 authors = ["Marcus Griep <marcus@griep.us>"]
 edition = "2018"
 license = "MIT/Apache-2.0"
@@ -19,10 +19,10 @@ default = [ "rsa" ]
 [dependencies]
 ahash = "0.3"
 anyhow = "1"
-aliri = { version = "0.1.0", path = "../aliri" }
-aliri_core = { version = "0.1.0", path = "../aliri_core" }
-aliri_jose = { version = "0.1.0", path = "../aliri_jose", default-features = false }
-aliri_macros = { version = "0.1.0", path = "../aliri_macros" }
+aliri = { version = "0.0.0", path = "../aliri" }
+aliri_core = { version = "0.0.0", path = "../aliri_core" }
+aliri_jose = { version = "0.0.0", path = "../aliri_jose", default-features = false }
+aliri_macros = { version = "0.0.0", path = "../aliri_macros" }
 arc-swap = "0.4"
 lazy_static = "1"
 reqwest = { version = "0.10", optional = true, features = [ "json" ] }
@@ -30,7 +30,7 @@ serde = { version = "1", features = [ "derive" ] }
 thiserror = "1"
 
 [dev-dependencies]
-aliri_jose = { version = "0.1.0", path = "../aliri_jose", features = [ "private-keys" ] }
+aliri_jose = { version = "0.0.0", path = "../aliri_jose", features = [ "private-keys" ] }
 openssl = "0.10"
 rusty-hook = "0.11"
 serde_json = "1"

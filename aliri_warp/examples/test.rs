@@ -4,7 +4,11 @@ use std::{
     sync::Arc,
 };
 
-use aliri_jose::{jwa, jwk, jws, jwt, Jwk, Jwks, Jwt};
+use aliri_jose::{
+    jwa, jwk,
+    jwt::{self, CoreClaims},
+    Jwk, Jwks, Jwt,
+};
 use aliri_oauth2::{jwks::RemoteAuthority, HasScopes, Scopes, ScopesPolicy};
 use aliri_warp as aliri;
 use serde::{Deserialize, Serialize};
@@ -12,8 +16,6 @@ use warp::{Filter, Reply};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 struct Claims {
-    #[serde(rename = "sub")]
-    subject: String,
     #[serde(rename = "scope")]
     scopes: Scopes,
 }
@@ -64,12 +66,10 @@ async fn main() -> anyhow::Result<()> {
 
     let mut jwks = Jwks::default();
 
-    let jwk = Jwk {
-        id: Some(jwk::KeyId::new("key-id")),
-        usage: Some(jwk::Usage::Signing),
-        algorithm: Some(jws::Algorithm::HS256),
-        params: jwk::Parameters::Hmac(jwa::Hmac::new("test".as_bytes())),
-    };
+    let alg = jwa::hmac::SigningAlgorithm::HS256;
+    let jwk = Jwk::from(jwa::Hmac::generate(alg).unwrap())
+        .with_key_id(jwk::KeyId::new("key-id"))
+        .with_algorithm(alg);
 
     jwks.add_key(jwk);
 
@@ -79,8 +79,11 @@ async fn main() -> anyhow::Result<()> {
     println!("jwks listening at: {}", addr);
     tokio::spawn(fut);
 
-    let validator = jwt::Validation::default()
-        .add_approved_algorithm(jws::Algorithm::HS256)
+    let validator = jwt::CoreValidator::default()
+        .add_approved_algorithm(jwa::Algorithm::HS256)
+        .check_not_before()
+        .add_allowed_audience(jwt::Audience::new("aliri_warp"))
+        .check_subject(regex::Regex::new(r"^aliri\|.{3,}").unwrap())
         .require_issuer(jwt::Issuer::new("authority"));
 
     let hi3 = warp::path!("hello3" / String)
@@ -91,10 +94,12 @@ async fn main() -> anyhow::Result<()> {
             Arc::clone(&jwks),
             Arc::new(validator.clone()),
         ))
-        .map(|param, agent: String, claims: Claims| {
+        .map(|param, agent: String, claims: jwt::Claims<Claims>| {
             format!(
                 "Hello {}, whose agent is {}, authorized as {}!",
-                param, agent, claims.subject
+                param,
+                agent,
+                claims.sub().unwrap()
             )
         });
 
@@ -121,10 +126,13 @@ async fn main() -> anyhow::Result<()> {
             authority,
             Arc::new(policy),
         ))
-        .map(|param, agent: String, claims: Claims| {
+        .map(|param, agent: String, claims: jwt::Claims<Claims>| {
             format!(
                 "Hello {}, whose agent is {}, authorized as {} with scopes {:?}!",
-                param, agent, claims.subject, claims.scopes
+                param,
+                agent,
+                claims.sub().unwrap(),
+                claims.payload().scopes
             )
         });
 
