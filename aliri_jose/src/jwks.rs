@@ -52,8 +52,6 @@ fn get_key_impl(keys: &[Jwk], alg: jwa::Algorithm) -> Option<&Jwk> {
     let best = keys.iter().fold(None, move |best, k| {
         let mut score = 0;
 
-        dbg!(k);
-
         if !k.is_compatible(alg) {
             return best;
         }
@@ -94,13 +92,9 @@ fn get_key_by_id_impl<'a>(
     let best = keys.iter().fold(None, move |best, k| {
         let mut score = 0;
 
-        dbg!(k);
-
         if !k.is_compatible(alg) {
             return best;
         }
-
-        dbg!(score);
 
         if let Some(key_id) = k.key_id() {
             if key_id == kid {
@@ -110,8 +104,6 @@ fn get_key_by_id_impl<'a>(
             }
         }
 
-        dbg!(score);
-
         if let Some(algorithm) = k.algorithm() {
             if algorithm == alg {
                 score += 2;
@@ -120,8 +112,6 @@ fn get_key_by_id_impl<'a>(
             }
         }
 
-        dbg!(score);
-
         if let Some(key_usage) = k.usage() {
             if key_usage == alg_usage {
                 score += 1;
@@ -129,8 +119,6 @@ fn get_key_by_id_impl<'a>(
                 return best;
             }
         }
-
-        dbg!(score);
 
         match best {
             Some((_, best_score)) if best_score < score => Some((k, score)),
