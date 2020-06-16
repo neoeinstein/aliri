@@ -11,7 +11,7 @@ repository = "https://github.com/neoeinstein/aliri"
 
 [dependencies]
 base64 = "0.12"
-serde = "1"
+serde = { version = "1", features = [ "derive" ] }
 
 [dev-dependencies]
 serde_json = "1"
