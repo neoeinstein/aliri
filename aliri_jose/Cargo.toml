@@ -3,7 +3,7 @@ name = "aliri_jose"
 description = "Implementations of the Javascript/JSON Object Signing and Encryption (JOSE) standards"
 keywords = [ "jwk", "jwks", "jwa", "jose", "jws", "jwt", "auth", "authn" ]
 categories = [ "authentication" ]
-version = "0.0.0"
+version = "0.1.0"
 authors = ["Marcus Griep <marcus@griep.us>"]
 edition = "2018"
 license = "MIT/Apache-2.0"
@@ -19,8 +19,8 @@ private-keys = [ "openssl" ]
 default = [ "hmac", "rsa" ]
 
 [dependencies]
-aliri_core = { version = "0.0.0", path = "../aliri_core" }
-aliri_macros = { version = "0.0.0", path = "../aliri_macros" }
+aliri_core = { version = "0.1.0", path = "../aliri_core" }
+aliri_macros = { version = "0.1.0", path = "../aliri_macros" }
 lazy_static = { version = "1" }
 regex = "1"
 ring = "0.16"
