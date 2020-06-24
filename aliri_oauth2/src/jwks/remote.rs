@@ -6,12 +6,14 @@ use aliri_jose::{
     Jwks, JwtRef,
 };
 use arc_swap::ArcSwap;
+use color_eyre::{eyre::bail, Result};
 use reqwest::{
     header::{self, HeaderValue},
     Client, StatusCode,
 };
 use serde::Deserialize;
 
+use super::AuthorityError;
 use crate::{HasScopes, ScopesPolicy};
 
 #[derive(Debug, Clone)]
@@ -32,14 +34,14 @@ pub struct RemoteAuthority {
 
 impl RemoteAuthority {
     /// Constructs a new JWKS authority
-    pub async fn new(jwks_url: String, validator: jwt::CoreValidator) -> anyhow::Result<Self> {
+    pub async fn new(jwks_url: String, validator: jwt::CoreValidator) -> Result<Self> {
         let client = Client::builder()
             .user_agent(concat!("aliri_oauth2/", env!("CARGO_PKG_VERSION")))
             .build()?;
 
         let response = client.get(&jwks_url).send().await?;
         if !response.status().is_success() {
-            return Err(anyhow::anyhow!("remote JWKS authority returned an error"));
+            bail!("remote JWKS authority returned an error");
         }
 
         let etag = response.headers().get(header::ETAG).map(ToOwned::to_owned);
@@ -59,7 +61,7 @@ impl RemoteAuthority {
     ///
     /// No retries are attempted. If the attempt to refresh the JWKS from
     /// the remote URL fails, no change is made to the internal JWKS.
-    pub async fn refresh(&self) -> anyhow::Result<()> {
+    pub async fn refresh(&self) -> Result<()> {
         let mut request = self.client.get(&self.jwks_url);
 
         if let Some(etag) = &self.data.load().etag {
@@ -71,7 +73,7 @@ impl RemoteAuthority {
         if response.status() == StatusCode::NOT_MODIFIED {
             return Ok(());
         } else if !response.status().is_success() {
-            return Err(anyhow::anyhow!("remote JWKS authority returned an error"));
+            bail!("remote JWKS authority returned an error");
         }
 
         let etag = response.headers().get("etag").map(ToOwned::to_owned);
@@ -85,7 +87,11 @@ impl RemoteAuthority {
     }
 
     /// Authenticates the token and checks access according to the policy
-    pub fn verify_token<'a, T, J, P>(&self, token: J, policy: P) -> anyhow::Result<jwt::Claims<T>>
+    pub fn verify_token<'a, T, J, P>(
+        &self,
+        token: J,
+        policy: P,
+    ) -> Result<jwt::Claims<T>, AuthorityError>
     where
         T: for<'de> Deserialize<'de> + HasScopes,
         J: AsRef<JwtRef>,
@@ -98,7 +104,7 @@ impl RemoteAuthority {
         &self,
         token: &JwtRef,
         policy: &ScopesPolicy,
-    ) -> anyhow::Result<jwt::Claims<T>>
+    ) -> Result<jwt::Claims<T>, AuthorityError>
     where
         T: for<'de> Deserialize<'de> + HasScopes,
     {
@@ -114,10 +120,11 @@ impl RemoteAuthority {
 
                 guard.jwks.get_key_by_opt(kid, alg).ok_or_else(|| {
                     if let Some(kid) = kid {
-                        anyhow::anyhow!("unable to find key with kid {} for alg {}", kid, alg)
+                        tracing::debug!(%kid, %alg, "unable to find matching key")
                     } else {
-                        anyhow::anyhow!("unable to find key for alg {}", alg)
+                        tracing::debug!(%alg, "unable to find matching key")
                     }
+                    AuthorityError::UnknownKeyId
                 })?
             };
 
@@ -141,7 +148,7 @@ where
     #[allow(clippy::type_complexity)]
     type VerifyFuture =
         Pin<Box<dyn Future<Output = Result<jwt::Claims<T>, Self::VerifyError>> + Send + Sync + 'a>>;
-    type VerifyError = anyhow::Error;
+    type VerifyError = AuthorityError;
 
     fn verify(&'a self, token: Self::Token, dir: Self::Policy) -> Self::VerifyFuture {
         Box::pin(async move { self.verify_impl(token, dir) })

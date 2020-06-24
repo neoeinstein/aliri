@@ -133,12 +133,14 @@ fn get_key_by_id_impl<'a>(
 #[cfg(test)]
 #[cfg(feature = "rsa")]
 mod tests {
+    use color_eyre::Result;
+
     use crate::test::rsa::*;
 
     use super::*;
 
     #[test]
-    fn decodes_jwks() -> anyhow::Result<()> {
+    fn decodes_jwks() -> Result<()> {
         let jwks: Jwks = serde_json::from_str(JWKS)?;
         dbg!(&jwks);
         Ok(())
@@ -161,7 +163,7 @@ mod tests {
 
 //     #[test]
 //     #[cfg(feature = "rsa")]
-//     fn decodes_jwks() -> anyhow::Result<()> {
+//     fn decodes_jwks() -> Result<()> {
 //         let jwks: Jwks = serde_json::from_str(test::rsa::JWKS)?;
 //         dbg!(&jwks);
 //         Ok(())
@@ -169,7 +171,7 @@ mod tests {
 
 //     #[test]
 //     #[cfg(all(feature = "rsa", feature = "private-keys"))]
-//     fn serializable_roundtrip() -> anyhow::Result<()> {
+//     fn serializable_roundtrip() -> Result<()> {
 //         let rsa = Jwk {
 //             id: Some(KeyId::new("rsa")),
 //             usage: Some(Usage::Signing),

@@ -32,4 +32,4 @@ thiserror = "1"
 openssl = { version = "0.10", optional = true }
 
 [dev-dependencies]
-anyhow = "1"
+color-eyre = "0.4"

@@ -10,7 +10,6 @@
 )]
 #![deny(
     missing_debug_implementations,
-    missing_copy_implementations,
     trivial_casts,
     trivial_numeric_casts,
     unsafe_code,
@@ -21,5 +20,5 @@ pub mod jwks;
 mod policy;
 mod scope;
 
-pub use policy::ScopesPolicy;
+pub use policy::{InsufficientScopes, ScopesPolicy};
 pub use scope::{HasScopes, Scope, ScopeRef, Scopes};

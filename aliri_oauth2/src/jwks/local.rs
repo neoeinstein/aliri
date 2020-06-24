@@ -7,6 +7,7 @@ use aliri_jose::{
 };
 use serde::Deserialize;
 
+use super::AuthorityError;
 use crate::{HasScopes, ScopesPolicy};
 
 /// An authority backed by a local JSON Web Key Set (JWKS)
@@ -28,7 +29,11 @@ impl LocalAuthority {
     }
 
     /// Authenticates the token and checks access according to the policy
-    pub fn verify_token<'a, T, J, P>(&self, token: J, policy: P) -> anyhow::Result<jwt::Claims<T>>
+    pub fn verify_token<'a, T, J, P>(
+        &self,
+        token: J,
+        policy: P,
+    ) -> Result<jwt::Claims<T>, AuthorityError>
     where
         T: for<'de> Deserialize<'de> + HasScopes,
         J: AsRef<JwtRef>,
@@ -41,7 +46,7 @@ impl LocalAuthority {
         &self,
         token: &JwtRef,
         policy: &ScopesPolicy,
-    ) -> anyhow::Result<jwt::Claims<T>>
+    ) -> Result<jwt::Claims<T>, AuthorityError>
     where
         T: for<'de> Deserialize<'de> + HasScopes,
     {
@@ -53,10 +58,11 @@ impl LocalAuthority {
 
             self.jwks.get_key_by_opt(kid, alg).ok_or_else(|| {
                 if let Some(kid) = kid {
-                    anyhow::anyhow!("unable to find key with kid {} for alg {}", kid, alg)
+                    tracing::debug!(%kid, %alg, "unable to find matching key")
                 } else {
-                    anyhow::anyhow!("unable to find key for alg {}", alg)
+                    tracing::debug!(%alg, "unable to find matching key")
                 }
+                AuthorityError::UnknownKeyId
             })?
         };
 
@@ -79,7 +85,7 @@ where
     #[allow(clippy::type_complexity)]
     type VerifyFuture =
         Pin<Box<dyn Future<Output = Result<jwt::Claims<T>, Self::VerifyError>> + Send + Sync + 'a>>;
-    type VerifyError = anyhow::Error;
+    type VerifyError = AuthorityError;
 
     fn verify(&'a self, token: Self::Token, dir: Self::Policy) -> Self::VerifyFuture {
         Box::pin(async move { self.verify_impl(token, dir) })
@@ -92,6 +98,7 @@ mod tests {
     use std::time::Duration;
 
     use aliri_jose::{jwk, jws, jwt, Jwk};
+    use color_eyre::Result;
 
     use super::*;
     use crate::Scopes;
@@ -99,81 +106,81 @@ mod tests {
     #[tokio::test]
     #[ignore = "disabled private key management"]
     #[cfg(feature = "rsa")]
-    async fn async_validate_rs256() -> anyhow::Result<()> {
+    async fn async_validate_rs256() -> Result<()> {
         async_validate(jws::Algorithm::RS256).await
     }
 
     #[tokio::test]
     #[ignore = "disabled private key management"]
     #[cfg(feature = "rsa")]
-    async fn async_validate_rs384() -> anyhow::Result<()> {
+    async fn async_validate_rs384() -> Result<()> {
         async_validate(jws::Algorithm::RS384).await
     }
 
     #[tokio::test]
     #[ignore = "disabled private key management"]
     #[cfg(feature = "rsa")]
-    async fn async_validate_rs512() -> anyhow::Result<()> {
+    async fn async_validate_rs512() -> Result<()> {
         async_validate(jws::Algorithm::RS512).await
     }
 
     #[tokio::test]
     #[ignore = "disabled private key management"]
     #[cfg(feature = "rsa")]
-    async fn async_validate_ps256() -> anyhow::Result<()> {
+    async fn async_validate_ps256() -> Result<()> {
         async_validate(jws::Algorithm::PS256).await
     }
 
     #[tokio::test]
     #[ignore = "disabled private key management"]
     #[cfg(feature = "rsa")]
-    async fn async_validate_ps384() -> anyhow::Result<()> {
+    async fn async_validate_ps384() -> Result<()> {
         async_validate(jws::Algorithm::PS384).await
     }
 
     #[tokio::test]
     #[ignore = "disabled private key management"]
     #[cfg(feature = "rsa")]
-    async fn async_validate_ps512() -> anyhow::Result<()> {
+    async fn async_validate_ps512() -> Result<()> {
         async_validate(jws::Algorithm::PS512).await
     }
 
     #[tokio::test]
     #[ignore = "disabled private key management"]
     #[cfg(feature = "hmac")]
-    async fn async_validate_hs256() -> anyhow::Result<()> {
+    async fn async_validate_hs256() -> Result<()> {
         async_validate(jws::Algorithm::HS256).await
     }
 
     #[tokio::test]
     #[ignore = "disabled private key management"]
     #[cfg(feature = "hmac")]
-    async fn async_validate_hs384() -> anyhow::Result<()> {
+    async fn async_validate_hs384() -> Result<()> {
         async_validate(jws::Algorithm::HS384).await
     }
 
     #[tokio::test]
     #[ignore = "disabled private key management"]
     #[cfg(feature = "hmac")]
-    async fn async_validate_hs512() -> anyhow::Result<()> {
+    async fn async_validate_hs512() -> Result<()> {
         async_validate(jws::Algorithm::HS512).await
     }
 
     #[tokio::test]
     #[ignore = "disabled private key management"]
     #[cfg(feature = "ec")]
-    async fn async_validate_es256() -> anyhow::Result<()> {
+    async fn async_validate_es256() -> Result<()> {
         async_validate(jws::Algorithm::ES256).await
     }
 
     #[tokio::test]
     #[ignore = "disabled private key management"]
     #[cfg(feature = "ec")]
-    async fn async_validate_es384() -> anyhow::Result<()> {
+    async fn async_validate_es384() -> Result<()> {
         async_validate(jws::Algorithm::ES384).await
     }
 
-    async fn async_validate(alg: jws::Algorithm) -> anyhow::Result<()> {
+    async fn async_validate(alg: jws::Algorithm) -> Result<()> {
         let jwk_params = jwk::Parameters::generate(alg)?;
         dbg!(&jwk_params);
 

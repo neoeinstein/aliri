@@ -862,12 +862,14 @@ impl<P> Claims<P> {
 
 #[cfg(test)]
 mod tests {
+    use color_eyre::Result;
+
     use aliri_core::clock::TestClock;
 
     use super::*;
 
     #[test]
-    fn deserialize_basic_claims() -> anyhow::Result<()> {
+    fn deserialize_basic_claims() -> Result<()> {
         const DATA: &str = r#"{
                 "nbf": 345,
                 "iss": "me"

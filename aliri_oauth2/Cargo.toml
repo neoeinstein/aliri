@@ -18,16 +18,17 @@ default = [ "rsa" ]
 
 [dependencies]
 ahash = "0.3"
-anyhow = "1"
 aliri = { version = "0.0.0", path = "../aliri" }
 aliri_core = { version = "0.0.0", path = "../aliri_core" }
 aliri_jose = { version = "0.0.0", path = "../aliri_jose", default-features = false }
 aliri_macros = { version = "0.0.0", path = "../aliri_macros" }
 arc-swap = "0.4"
+color-eyre = "0.4"
 lazy_static = "1"
 reqwest = { version = "0.10", optional = true, features = [ "json" ] }
 serde = { version = "1", features = [ "derive" ] }
 thiserror = "1"
+tracing = "0.1.15"
 
 [dev-dependencies]
 aliri_jose = { version = "0.0.0", path = "../aliri_jose", features = [ "private-keys" ] }

@@ -11,6 +11,7 @@ use aliri_jose::{
 };
 use aliri_oauth2::{jwks::RemoteAuthority, HasScopes, Scopes, ScopesPolicy};
 use aliri_warp as aliri;
+use color_eyre::Result;
 use serde::{Deserialize, Serialize};
 use warp::{Filter, Reply};
 
@@ -40,7 +41,7 @@ async fn refresh_jwks(mut interval: tokio::time::Interval, jwks: Arc<RemoteAutho
 }
 
 #[tokio::main]
-async fn main() -> anyhow::Result<()> {
+async fn main() -> Result<()> {
     let hi = warp::path!("hello" / String)
         .and(warp::get())
         .and(warp::header("user-agent"))

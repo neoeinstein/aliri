@@ -479,20 +479,18 @@ impl Signer for Key {
 //         &self,
 //         header: &H,
 //         claims: &C,
-//     ) -> Result<Jwt, anyhow::Error> {
+//     ) -> Result<Jwt> {
 //         use std::fmt::Write;
 
 //         if let Some(u) = self.usage {
 //             if u != jwa::Usage::Signing {
-//                 return Err(anyhow::anyhow!("JWK cannot be used for signing"));
+//                 bail!("JWK cannot be used for signing");
 //             }
 //         }
 
 //         if let Some(a) = self.algorithm {
 //             if a != header.alg() {
-//                 return Err(anyhow::anyhow!(
-//                     "token algorithm does not match JWK algorithm"
-//                 ));
+//                 bail!("token algorithm does not match JWK algorithm");
 //             }
 //         }
 
@@ -535,9 +533,7 @@ impl Signer for Key {
 
 //             Ok(Jwt::new(message))
 //         } else {
-//             Err(anyhow::anyhow!(
-//                 "JWK is not compatible with token algorithm"
-//             ))
+//             eyre!("JWK is not compatible with token algorithm")
 //         }
 //     }
 // }
@@ -546,6 +542,7 @@ impl Signer for Key {
 #[cfg(any(feature = "ec", feature = "rsa", feature = "hmac"))]
 mod tests {
     use aliri_core::base64::Base64Url;
+    use color_eyre::Result;
 
     use super::*;
 
@@ -559,41 +556,41 @@ mod tests {
             use super::*;
 
             #[test]
-            fn deserialize_p256() -> anyhow::Result<()> {
+            fn deserialize_p256() -> Result<()> {
                 let key: Jwk = serde_json::from_str(JWK_P256)?;
                 assert_eq!(key.algorithm, Some(jwa::Algorithm::ES256));
                 Ok(())
             }
 
             #[test]
-            fn deserialize_p256_minimal() -> anyhow::Result<()> {
+            fn deserialize_p256_minimal() -> Result<()> {
                 let key: Jwk = serde_json::from_str(JWK_P256_MINIMAL)?;
                 assert_eq!(key.algorithm, None);
                 Ok(())
             }
 
             #[test]
-            fn deserialize_p384() -> anyhow::Result<()> {
+            fn deserialize_p384() -> Result<()> {
                 let key: Jwk = serde_json::from_str(JWK_P384)?;
                 assert_eq!(key.algorithm, Some(jwa::Algorithm::ES384));
                 Ok(())
             }
 
             #[test]
-            fn deserialize_p384_minimal() -> anyhow::Result<()> {
+            fn deserialize_p384_minimal() -> Result<()> {
                 let key: Jwk = serde_json::from_str(JWK_P384_MINIMAL)?;
                 assert_eq!(key.algorithm, None);
                 Ok(())
             }
             #[test]
-            fn deserialize_p521() -> anyhow::Result<()> {
+            fn deserialize_p521() -> Result<()> {
                 let key: Jwk = serde_json::from_str(JWK_P521)?;
                 assert_eq!(key.algorithm, Some(jwa::Algorithm::ES512));
                 Ok(())
             }
 
             #[test]
-            fn deserialize_p521_minimal() -> anyhow::Result<()> {
+            fn deserialize_p521_minimal() -> Result<()> {
                 let key: Jwk = serde_json::from_str(JWK_P521_MINIMAL)?;
                 assert_eq!(key.algorithm, None);
                 Ok(())
@@ -607,14 +604,14 @@ mod tests {
             use super::*;
 
             #[test]
-            fn deserialize() -> anyhow::Result<()> {
+            fn deserialize() -> Result<()> {
                 let key: Jwk = serde_json::from_str(JWK)?;
                 assert_eq!(key.algorithm, Some(jwa::Algorithm::HS256));
                 Ok(())
             }
 
             #[test]
-            fn deserialize_minimal() -> anyhow::Result<()> {
+            fn deserialize_minimal() -> Result<()> {
                 let key: Jwk = serde_json::from_str(JWK_MINIMAL)?;
                 assert_eq!(key.algorithm, None);
                 Ok(())
@@ -628,14 +625,14 @@ mod tests {
             use super::*;
 
             #[test]
-            fn deserialize() -> anyhow::Result<()> {
+            fn deserialize() -> Result<()> {
                 let key: Jwk = serde_json::from_str(JWK)?;
                 assert_eq!(key.algorithm, Some(jwa::Algorithm::RS256));
                 Ok(())
             }
 
             #[test]
-            fn deserialize_minimal() -> anyhow::Result<()> {
+            fn deserialize_minimal() -> Result<()> {
                 let key: Jwk = serde_json::from_str(JWK_MINIMAL)?;
                 assert_eq!(key.algorithm, None);
                 Ok(())
@@ -922,42 +919,42 @@ mod tests {
 //                 use super::*;
 
 //                 #[test]
-//                 fn deserialize_p256() -> anyhow::Result<()> {
+//                 fn deserialize_p256() -> Result<()> {
 //                     let key: Jwk = serde_json::from_str(test::ec::JWK_P256)?;
 //                     assert_eq!(key.algorithm, Some(jws::Algorithm::ES256));
 //                     Ok(())
 //                 }
 
 //                 #[test]
-//                 fn deserialize_p256_minimal() -> anyhow::Result<()> {
+//                 fn deserialize_p256_minimal() -> Result<()> {
 //                     let key: Jwk = serde_json::from_str(test::ec::JWK_P256_MINIMAL)?;
 //                     assert_eq!(key.algorithm, None);
 //                     Ok(())
 //                 }
 
 //                 #[test]
-//                 fn deserialize_p384() -> anyhow::Result<()> {
+//                 fn deserialize_p384() -> Result<()> {
 //                     let key: Jwk = serde_json::from_str(test::ec::JWK_P384)?;
 //                     assert_eq!(key.algorithm, Some(jws::Algorithm::ES384));
 //                     Ok(())
 //                 }
 
 //                 #[test]
-//                 fn deserialize_p384_minimal() -> anyhow::Result<()> {
+//                 fn deserialize_p384_minimal() -> Result<()> {
 //                     let key: Jwk = serde_json::from_str(test::ec::JWK_P384_MINIMAL)?;
 //                     assert_eq!(key.algorithm, None);
 //                     Ok(())
 //                 }
 
 //                 #[test]
-//                 fn deserialize_p521() -> anyhow::Result<()> {
+//                 fn deserialize_p521() -> Result<()> {
 //                     let key: Jwk = serde_json::from_str(test::ec::JWK_P521)?;
 //                     assert_eq!(key.algorithm, Some(jws::Algorithm::ES512));
 //                     Ok(())
 //                 }
 
 //                 #[test]
-//                 fn deserialize_p521_minimal() -> anyhow::Result<()> {
+//                 fn deserialize_p521_minimal() -> Result<()> {
 //                     let key: Jwk = serde_json::from_str(test::ec::JWK_P521_MINIMAL)?;
 //                     assert_eq!(key.algorithm, None);
 //                     Ok(())
@@ -969,42 +966,42 @@ mod tests {
 //                 use super::*;
 
 //                 #[test]
-//                 fn deserialize_p256_with_private_key() -> anyhow::Result<()> {
+//                 fn deserialize_p256_with_private_key() -> Result<()> {
 //                     let key: Jwk = serde_json::from_str(test::ec::JWK_P256_WITH_PRIVATE_KEY)?;
 //                     assert_eq!(key.algorithm, Some(jws::Algorithm::ES256));
 //                     Ok(())
 //                 }
 
 //                 #[test]
-//                 fn deserialize_p256_minimal_with_private_key() -> anyhow::Result<()> {
+//                 fn deserialize_p256_minimal_with_private_key() -> Result<()> {
 //                     let key: Jwk = serde_json::from_str(test::ec::JWK_P256_WITH_MINIMAL_PRIVATE_KEY)?;
 //                     assert_eq!(key.algorithm, None);
 //                     Ok(())
 //                 }
 
 //                 #[test]
-//                 fn deserialize_p384_with_private_key() -> anyhow::Result<()> {
+//                 fn deserialize_p384_with_private_key() -> Result<()> {
 //                     let key: Jwk = serde_json::from_str(test::ec::JWK_P384_WITH_PRIVATE_KEY)?;
 //                     assert_eq!(key.algorithm, Some(jws::Algorithm::ES384));
 //                     Ok(())
 //                 }
 
 //                 #[test]
-//                 fn deserialize_p384_minimal_with_private_key() -> anyhow::Result<()> {
+//                 fn deserialize_p384_minimal_with_private_key() -> Result<()> {
 //                     let key: Jwk = serde_json::from_str(test::ec::JWK_P384_WITH_MINIMAL_PRIVATE_KEY)?;
 //                     assert_eq!(key.algorithm, None);
 //                     Ok(())
 //                 }
 
 //                 #[test]
-//                 fn deserialize_p521_with_private_key() -> anyhow::Result<()> {
+//                 fn deserialize_p521_with_private_key() -> Result<()> {
 //                     let key: Jwk = serde_json::from_str(test::ec::JWK_P521_WITH_PRIVATE_KEY)?;
 //                     assert_eq!(key.algorithm, Some(jws::Algorithm::ES512));
 //                     Ok(())
 //                 }
 
 //                 #[test]
-//                 fn deserialize_p521_minimal_with_private_key() -> anyhow::Result<()> {
+//                 fn deserialize_p521_minimal_with_private_key() -> Result<()> {
 //                     let key: Jwk = serde_json::from_str(test::ec::JWK_P521_WITH_MINIMAL_PRIVATE_KEY)?;
 //                     assert_eq!(key.algorithm, None);
 //                     Ok(())
@@ -1017,14 +1014,14 @@ mod tests {
 //             use super::*;
 
 //             #[test]
-//             fn deserialize() -> anyhow::Result<()> {
+//             fn deserialize() -> Result<()> {
 //                 let key: Jwk = serde_json::from_str(test::hmac::JWK)?;
 //                 assert_eq!(key.algorithm, Some(jws::Algorithm::HS256));
 //                 Ok(())
 //             }
 
 //             #[test]
-//             fn deserialize_minimal() -> anyhow::Result<()> {
+//             fn deserialize_minimal() -> Result<()> {
 //                 let key: Jwk = serde_json::from_str(test::hmac::JWK_MINIMAL)?;
 //                 assert_eq!(key.algorithm, None);
 //                 Ok(())
@@ -1039,14 +1036,14 @@ mod tests {
 //                 use super::*;
 
 //                 #[test]
-//                 fn deserialize_with_private_key() -> anyhow::Result<()> {
+//                 fn deserialize_with_private_key() -> Result<()> {
 //                     let key: Jwk = serde_json::from_str(test::rsa::JWK)?;
 //                     assert_eq!(key.algorithm, Some(jws::Algorithm::RS256));
 //                     Ok(())
 //                 }
 
 //                 #[test]
-//                 fn deserialize_minimal_with_private_key() -> anyhow::Result<()> {
+//                 fn deserialize_minimal_with_private_key() -> Result<()> {
 //                     let key: Jwk = serde_json::from_str(test::rsa::JWK_MINIMAL)?;
 //                     assert_eq!(key.algorithm, None);
 //                     Ok(())
@@ -1058,14 +1055,14 @@ mod tests {
 //                 use super::*;
 
 //                 #[test]
-//                 fn deserialize_with_private_key() -> anyhow::Result<()> {
+//                 fn deserialize_with_private_key() -> Result<()> {
 //                     let key: Jwk = serde_json::from_str(test::rsa::JWK_WITH_PRIVATE_KEY)?;
 //                     assert_eq!(key.algorithm, Some(jws::Algorithm::RS256));
 //                     Ok(())
 //                 }
 
 //                 #[test]
-//                 fn deserialize_minimal_with_private_key() -> anyhow::Result<()> {
+//                 fn deserialize_minimal_with_private_key() -> Result<()> {
 //                     let key: Jwk = serde_json::from_str(test::rsa::JWK_WITH_MINIMAL_PRIVATE_KEY)?;
 //                     assert_eq!(key.algorithm, None);
 //                     Ok(())
@@ -1086,13 +1083,13 @@ mod tests {
 
 //             #[test]
 //             #[allow(non_snake_case)]
-//             fn get_and_rt_ES256() -> anyhow::Result<()> {
+//             fn get_and_rt_ES256() -> Result<()> {
 //                 gen_and_rt(jws::Algorithm::ES256)
 //             }
 
 //             #[test]
 //             #[allow(non_snake_case)]
-//             fn get_and_rt_ES384() -> anyhow::Result<()> {
+//             fn get_and_rt_ES384() -> Result<()> {
 //                 gen_and_rt(jws::Algorithm::ES384)
 //             }
 //         }
@@ -1103,19 +1100,19 @@ mod tests {
 
 //             #[test]
 //             #[allow(non_snake_case)]
-//             fn get_and_rt_HS256() -> anyhow::Result<()> {
+//             fn get_and_rt_HS256() -> Result<()> {
 //                 gen_and_rt(jws::Algorithm::HS256)
 //             }
 
 //             #[test]
 //             #[allow(non_snake_case)]
-//             fn get_and_rt_HS384() -> anyhow::Result<()> {
+//             fn get_and_rt_HS384() -> Result<()> {
 //                 gen_and_rt(jws::Algorithm::HS384)
 //             }
 
 //             #[test]
 //             #[allow(non_snake_case)]
-//             fn get_and_rt_HS512() -> anyhow::Result<()> {
+//             fn get_and_rt_HS512() -> Result<()> {
 //                 gen_and_rt(jws::Algorithm::HS512)
 //             }
 //         }
@@ -1126,42 +1123,42 @@ mod tests {
 
 //             #[test]
 //             #[allow(non_snake_case)]
-//             fn get_and_rt_RS256() -> anyhow::Result<()> {
+//             fn get_and_rt_RS256() -> Result<()> {
 //                 gen_and_rt(jws::Algorithm::RS256)
 //             }
 
 //             #[test]
 //             #[allow(non_snake_case)]
-//             fn get_and_rt_RS384() -> anyhow::Result<()> {
+//             fn get_and_rt_RS384() -> Result<()> {
 //                 gen_and_rt(jws::Algorithm::RS384)
 //             }
 
 //             #[test]
 //             #[allow(non_snake_case)]
-//             fn get_and_rt_RS512() -> anyhow::Result<()> {
+//             fn get_and_rt_RS512() -> Result<()> {
 //                 gen_and_rt(jws::Algorithm::RS512)
 //             }
 
 //             #[test]
 //             #[allow(non_snake_case)]
-//             fn get_and_rt_PS256() -> anyhow::Result<()> {
+//             fn get_and_rt_PS256() -> Result<()> {
 //                 gen_and_rt(jws::Algorithm::PS256)
 //             }
 
 //             #[test]
 //             #[allow(non_snake_case)]
-//             fn get_and_rt_PS384() -> anyhow::Result<()> {
+//             fn get_and_rt_PS384() -> Result<()> {
 //                 gen_and_rt(jws::Algorithm::PS384)
 //             }
 
 //             #[test]
 //             #[allow(non_snake_case)]
-//             fn get_and_rt_PS512() -> anyhow::Result<()> {
+//             fn get_and_rt_PS512() -> Result<()> {
 //                 gen_and_rt(jws::Algorithm::PS512)
 //             }
 //         }
 
-//         fn gen_and_rt(alg: jws::Algorithm) -> anyhow::Result<()> {
+//         fn gen_and_rt(alg: jws::Algorithm) -> Result<()> {
 //             let jwk_params = Parameters::generate(alg)?;
 //             dbg!(&jwk_params);
 

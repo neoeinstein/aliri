@@ -12,15 +12,16 @@ repository = "https://github.com/neoeinstein/aliri"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-anyhow = "1"
 aliri = { version = "0.0.0", path = "../aliri" }
 aliri_jose = { version = "0.0.0", path = "../aliri_jose" }
 aliri_oauth2 = { version = "0.0.0", path = "../aliri_oauth2", features = [ "reqwest" ] }
 serde = { version = "1", features = [ "derive" ] }
 thiserror = "1"
+tracing = "0.1"
 warp = "0.2"
 
 [dev-dependencies]
+color-eyre = "0.4"
 tokio = { version = "0.2", features = [ "rt-threaded", "macros", "time" ] }
 regex = "1"
 serde_json = "1"
