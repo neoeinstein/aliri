@@ -13,7 +13,7 @@ use warp::Filter;
 /// An error during JWT verification
 #[derive(Debug, Error)]
 #[error("error verifying jwt")]
-pub struct AuthFailed(#[from] AuthorityError);
+pub struct AuthFailed(#[from] pub AuthorityError);
 
 impl warp::reject::Reject for AuthFailed {}
 

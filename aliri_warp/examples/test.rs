@@ -142,7 +142,9 @@ async fn main() -> Result<()> {
 
     println!("listening at: {}", addr);
 
-    Ok(fut.await)
+    fut.await;
+
+    Ok(())
 }
 
 fn jwks_server(
