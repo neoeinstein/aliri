@@ -1,7 +1,7 @@
 [package]
 name = "aliri_jose"
 description = "Implementations of the Javascript/JSON Object Signing and Encryption (JOSE) standards"
-keywords = [ "jwk", "jwks", "jwa", "jose", "jws", "jwt", "auth", "authn" ]
+keywords = [ "jwk", "jwa", "jose", "jwt", "auth" ]
 categories = [ "authentication" ]
 version = "0.1.0"
 authors = ["Marcus Griep <marcus@griep.us>"]

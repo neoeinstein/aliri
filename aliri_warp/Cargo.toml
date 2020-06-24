@@ -1,7 +1,7 @@
 [package]
 name = "aliri_warp"
 description = "Warp filters for interacting with `aliri` authorities"
-keywords = [ "warp", "web", "api", "jose", "jwk", "jwks", "jws", "jwt", "oauth2", "auth", "authz" ]
+keywords = [ "warp", "jose", "jwt", "oauth2", "auth" ]
 categories = [ "authentication", "web-programming", "web-programming::http-server" ]
 version = "0.1.0"
 authors = ["Marcus Griep <marcus@griep.us>"]
