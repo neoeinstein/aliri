@@ -7,6 +7,7 @@ use aliri_jose::{
 };
 use arc_swap::ArcSwap;
 use color_eyre::{eyre::bail, Result};
+#[cfg(feature = "reqwest")]
 use reqwest::{
     header::{self, HeaderValue},
     Client, StatusCode,
@@ -36,10 +37,22 @@ pub enum AuthorityError {
 #[derive(Debug)]
 struct VolatileData {
     jwks: Jwks,
+    #[cfg(feature = "reqwest")]
     etag: Option<HeaderValue>,
 }
 
+impl VolatileData {
+    fn new(jwks: Jwks) -> Self {
+        Self {
+            jwks,
+            #[cfg(feature = "reqwest")]
+            etag: None,
+        }
+    }
+}
+
 #[derive(Debug)]
+#[cfg(feature = "reqwest")]
 struct RemoteOptions {
     jwks_url: String,
     client: Client,
@@ -63,7 +76,7 @@ pub struct Authority {
 impl Authority {
     /// Constructs a new JWKS authority from an existing JWKS
     pub fn new(jwks: Jwks, validator: jwt::CoreValidator) -> Self {
-        let data = VolatileData { etag: None, jwks };
+        let data = VolatileData::new(jwks);
 
         Self {
             inner: Arc::new(Inner {
@@ -138,7 +151,7 @@ impl Authority {
 
     /// Updates the JWKS associated with the internal state
     pub fn set_jwks(&self, jwks: Jwks) {
-        let data = Arc::new(VolatileData { etag: None, jwks });
+        let data = Arc::new(VolatileData::new(jwks));
         self.inner.data.store(data);
     }
 
