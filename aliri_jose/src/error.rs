@@ -150,6 +150,10 @@ pub enum SigningError {
     #[error(transparent)]
     MissingPrivateKey(#[from] MissingPrivateKey),
 
+    /// JWK cannot be used for signature creation
+    #[error(transparent)]
+    JwkUsageMismatch(#[from] JwkUsageMismatch),
+
     /// Algorithm be used with this algorithm
     #[error(transparent)]
     IncompatibleAlgorithm(#[from] IncompatibleAlgorithm),
@@ -237,6 +241,26 @@ pub enum JwtVerifyError {
     /// The JWT was rejected by the claims validator
     #[error("token rejected by claims validator")]
     ClaimsRejected(#[from] ClaimsRejected),
+
+    /// An unexpected error
+    #[error(transparent)]
+    Unexpected(#[from] Unexpected),
+}
+
+/// An error occurring while verifying a JWT
+#[derive(Debug, Error)]
+pub enum JwtSigningError {
+    /// The JWT was rejected by the JWK
+    #[error(transparent)]
+    SigningError(#[from] SigningError),
+
+    /// The JWT header was malformed and could not be serialized
+    #[error(transparent)]
+    MalformedJwtHeader(#[from] MalformedJwtHeader),
+
+    /// The JWT payload was malformed and could not be serialized
+    #[error(transparent)]
+    MalformedJwtPayload(#[from] MalformedJwtPayload),
 
     /// An unexpected error
     #[error(transparent)]

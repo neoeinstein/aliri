@@ -73,7 +73,7 @@ impl Rsa {
     }
 
     #[cfg(feature = "private-keys")]
-    fn private_key(&self) -> Option<&PrivateKey> {
+    pub(crate) fn private_key(&self) -> Option<&PrivateKey> {
         match &self.key {
             MaybePrivate::PublicAndPrivate(p) => Some(p),
             MaybePrivate::PublicOnly(_) => None,
@@ -81,7 +81,7 @@ impl Rsa {
     }
 
     #[cfg(feature = "private-keys")]
-    fn public_key(&self) -> &PublicKey {
+    pub(crate) fn public_key(&self) -> &PublicKey {
         match &self.key {
             MaybePrivate::PublicAndPrivate(p) => p.public_key(),
             MaybePrivate::PublicOnly(p) => p,

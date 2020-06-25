@@ -80,6 +80,15 @@ impl PrivateKey {
         })
     }
 
+    #[cfg_attr(not(test), allow(dead_code))]
+    pub(crate) fn to_pem(&self) -> Result<String, error::Unexpected> {
+        let x = PKey::private_key_from_pkcs8(self.pkcs8.as_slice())
+            .map_err(error::unexpected)?
+            .private_key_to_pem_pkcs8()
+            .map_err(error::unexpected)?;
+        Ok(String::from_utf8(x).map_err(error::unexpected)?)
+    }
+
     /// Provides access to the public key parameters
     pub fn public_key(&self) -> &PublicKey {
         &self.public_key

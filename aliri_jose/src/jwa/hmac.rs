@@ -2,7 +2,7 @@
 
 use std::{convert::TryFrom, fmt};
 
-use aliri_core::base64::Base64Url;
+use aliri_core::base64::{Base64Url, Base64UrlRef};
 use ring::rand::SecureRandom;
 use serde::{Deserialize, Serialize};
 
@@ -45,6 +45,11 @@ impl Hmac {
             .map_err(|_| error::unexpected("random number generator failure"))?;
 
         Ok(Self { secret })
+    }
+
+    #[cfg_attr(not(test), allow(dead_code))]
+    pub(crate) fn secret(&self) -> &Base64UrlRef {
+        &self.secret
     }
 }
 

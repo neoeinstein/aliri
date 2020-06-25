@@ -216,6 +216,43 @@ impl Verifier for Jwk {
     }
 }
 
+impl Signer for Jwk {
+    type Algorithm = jwa::Algorithm;
+    type Error = error::SigningError;
+
+    fn can_sign(&self, alg: Self::Algorithm) -> bool {
+        if let Ok(alg) = jws::Algorithm::try_from(alg) {
+            self.key.can_sign(alg)
+        } else {
+            false
+        }
+    }
+
+    fn sign(&self, alg: Self::Algorithm, data: &[u8]) -> Result<Vec<u8>, Self::Error> {
+        if alg.to_usage() != jwa::Usage::Signing {
+            return Err(error::jwk_usage_mismatch().into());
+        }
+
+        if let Some(u) = self.usage {
+            if u != jwa::Usage::Signing {
+                return Err(error::jwk_usage_mismatch().into());
+            }
+        }
+
+        match self.algorithm {
+            Some(key_alg) if key_alg == alg => {}
+            Some(_) => {
+                return Err(error::incompatible_algorithm(alg).into());
+            }
+            None => {}
+        }
+
+        let alg = jws::Algorithm::try_from(alg)?;
+
+        Ok(self.key.sign(alg, data)?)
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 struct JwkDto {
     #[serde(rename = "kid")]
@@ -470,71 +507,6 @@ impl Signer for Key {
         Ok(signature)
     }
 }
-
-//     /// Produces a signed JWT with the given header and claims
-//     #[cfg(feature = "private-keys")]
-//     pub fn sign<H: Serialize + HasSigningAlgorithm, C: Serialize>(
-//         &self,
-//         header: &H,
-//         claims: &C,
-//     ) -> Result<Jwt> {
-//         use std::fmt::Write;
-
-//         if let Some(u) = self.usage {
-//             if u != jwa::Usage::Signing {
-//                 bail!("JWK cannot be used for signing");
-//             }
-//         }
-
-//         if let Some(a) = self.algorithm {
-//             if a != header.alg() {
-//                 bail!("token algorithm does not match JWK algorithm");
-//             }
-//         }
-
-//         let h_raw = Base64Url::from_raw(serde_json::to_vec(header)?);
-//         let p_raw = Base64Url::from_raw(serde_json::to_vec(claims)?);
-
-//         let expected_len = h_raw.encoded_len()
-//             + p_raw.encoded_len()
-//             + Base64Url::calc_encoded_len(header.alg().signature_size())
-//             + 2;
-
-//         let mut message = String::with_capacity(expected_len);
-//         write!(message, "{}.{}", h_raw, p_raw).expect("writes to strings never fail");
-
-//         if self
-//             .params
-//             .to_key_type()
-//             .is_compatible_with_alg(header.alg())
-//         {
-//             let s = Base64Url::from_raw(match (&self.params, header.alg()) {
-//                 #[cfg(feature = "hmac")]
-//                 (Parameters::Hmac(p), jws::Algorithm::Hmac(sa)) => {
-//                     p.sign(sa, message.as_bytes())?
-//                 }
-
-//                 #[cfg(feature = "rsa")]
-//                 (Parameters::Rsa(p), jws::Algorithm::Rsa(sa)) => p.sign(sa, message.as_bytes())?,
-
-//                 #[cfg(feature = "ec")]
-//                 (Parameters::EllipticCurve(p), jws::Algorithm::EllipticCurve(sa)) => {
-//                     p.sign(sa, message.as_bytes())?
-//                 }
-
-//                 _ => unreachable!(),
-//             });
-
-//             write!(message, ".{}", s).expect("writes to strings never fail");
-
-//             debug_assert_eq!(message.len(), expected_len);
-
-//             Ok(Jwt::new(message))
-//         } else {
-//             eyre!("JWK is not compatible with token algorithm")
-//         }
-//     }
-// }
 
 #[cfg(test)]
 #[cfg(any(feature = "ec", feature = "rsa", feature = "hmac"))]

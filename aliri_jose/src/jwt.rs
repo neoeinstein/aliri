@@ -53,7 +53,7 @@
 //! # let _ = data;
 //! ```
 
-use std::time::Duration;
+use std::{convert::TryFrom, time::Duration};
 
 use aliri_core::{
     base64::Base64Url,
@@ -64,7 +64,8 @@ use aliri_macros::typed_string;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 
-use crate::{error, jwa, jwk, jws};
+use crate::jws::Signer;
+use crate::{error, jwa, jwk, jws, Jwk};
 
 /// The validated headers and claims of a JWT
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -766,6 +767,40 @@ impl Claims {
     }
 }
 
+impl<C: Serialize> Claims<C> {
+    /// Produces a signed JWT with the given header and claims
+    pub fn sign<H: Serialize + HasAlgorithm>(
+        &self,
+        jwk: &Jwk,
+        headers: &H,
+    ) -> Result<Jwt, error::JwtSigningError> {
+        use std::fmt::Write;
+
+        let alg = jws::Algorithm::try_from(headers.alg()).map_err(error::SigningError::from)?;
+
+        let h_raw =
+            Base64Url::from_raw(serde_json::to_vec(headers).map_err(error::malformed_jwt_header)?);
+        let p_raw =
+            Base64Url::from_raw(serde_json::to_vec(self).map_err(error::malformed_jwt_payload)?);
+
+        let expected_len = h_raw.encoded_len()
+            + p_raw.encoded_len()
+            + Base64Url::calc_encoded_len(alg.signature_size())
+            + 2;
+
+        let mut message = String::with_capacity(expected_len);
+        write!(message, "{}.{}", h_raw, p_raw).expect("writes to strings never fail");
+
+        let s = Base64Url::from_raw(jwk.sign(headers.alg(), message.as_bytes())?);
+
+        write!(message, ".{}", s).expect("writes to strings never fail");
+
+        debug_assert_eq!(message.len(), expected_len);
+
+        Ok(Jwt::new(message))
+    }
+}
+
 impl<P> CoreClaims for Claims<P> {
     fn aud(&self) -> &Audiences {
         &self.aud
@@ -903,5 +938,129 @@ mod tests {
         let header = Headers::new(jwa::Algorithm::RS256);
 
         validation.validate_with_clock(&header, &claims, &clock)
+    }
+
+    #[test]
+    #[cfg(feature = "hmac")]
+    fn round_trip_hs256() -> Result<()> {
+        round_trip_hmac(jwa::hmac::SigningAlgorithm::HS256)
+    }
+
+    #[test]
+    #[cfg(feature = "hmac")]
+    fn round_trip_hs384() -> Result<()> {
+        round_trip_hmac(jwa::hmac::SigningAlgorithm::HS384)
+    }
+
+    #[test]
+    #[cfg(feature = "hmac")]
+    fn round_trip_hs512() -> Result<()> {
+        round_trip_hmac(jwa::hmac::SigningAlgorithm::HS512)
+    }
+
+    #[cfg(feature = "hmac")]
+    fn round_trip_hmac(alg: jwa::hmac::SigningAlgorithm) -> Result<()> {
+        let key = jwa::Hmac::generate(alg).unwrap();
+
+        println!("Secret (b64url): {}", key.secret());
+
+        round_trip(key.into(), alg.into())
+    }
+
+    #[test]
+    #[cfg(feature = "rsa")]
+    fn round_trip_rs256() -> Result<()> {
+        round_trip_rsa(jwa::rsa::SigningAlgorithm::RS256)
+    }
+
+    #[test]
+    #[cfg(feature = "rsa")]
+    fn round_trip_rs384() -> Result<()> {
+        round_trip_rsa(jwa::rsa::SigningAlgorithm::RS384)
+    }
+
+    #[test]
+    #[cfg(feature = "rsa")]
+    fn round_trip_rs512() -> Result<()> {
+        round_trip_rsa(jwa::rsa::SigningAlgorithm::RS512)
+    }
+
+    #[test]
+    #[cfg(feature = "rsa")]
+    fn round_trip_ps256() -> Result<()> {
+        round_trip_rsa(jwa::rsa::SigningAlgorithm::PS256)
+    }
+
+    #[test]
+    #[cfg(feature = "rsa")]
+    fn round_trip_ps384() -> Result<()> {
+        round_trip_rsa(jwa::rsa::SigningAlgorithm::PS384)
+    }
+
+    #[test]
+    #[cfg(feature = "rsa")]
+    fn round_trip_ps512() -> Result<()> {
+        round_trip_rsa(jwa::rsa::SigningAlgorithm::PS512)
+    }
+
+    #[cfg(feature = "rsa")]
+    fn round_trip_rsa(alg: jwa::rsa::SigningAlgorithm) -> Result<()> {
+        let key = jwa::Rsa::generate().unwrap();
+
+        println!("Private:\n{}", key.private_key().unwrap().to_pem());
+        println!("Public:\n{}", key.public_key().to_pem().unwrap());
+
+        round_trip(key.into(), alg.into())
+    }
+
+    #[test]
+    #[cfg(feature = "ec")]
+    fn round_trip_es256() -> Result<()> {
+        round_trip_ec(jwa::ec::SigningAlgorithm::ES256)
+    }
+
+    #[test]
+    #[cfg(feature = "ec")]
+    fn round_trip_es384() -> Result<()> {
+        round_trip_ec(jwa::ec::SigningAlgorithm::ES384)
+    }
+
+    #[test]
+    #[cfg(feature = "ec")]
+    #[ignore = "not implemented"]
+
+    fn round_trip_es512() -> Result<()> {
+        round_trip_ec(jwa::ec::SigningAlgorithm::ES512)
+    }
+
+    #[cfg(feature = "ec")]
+    fn round_trip_ec(alg: jwa::ec::SigningAlgorithm) -> Result<()> {
+        let key = jwa::EllipticCurve::generate(alg.into()).unwrap();
+
+        println!("Private:\n{}", key.private_key().unwrap().to_pem().unwrap());
+        println!("Public:\n{}", key.public_key().to_pem());
+
+        round_trip(key.into(), alg.into())
+    }
+
+    fn round_trip(jwk: Jwk, alg: jwa::Algorithm) -> Result<()> {
+        let claims = Claims::new()
+            .with_expiration(UnixTime(100))
+            .with_issuer("Marcus");
+
+        let headers = Headers::new(alg);
+
+        let token = claims.sign(&jwk, &headers)?;
+
+        println!("Token: {}", token);
+
+        let validator = CoreValidator::default().ignore_expiration();
+
+        let verified: Validated = token.verify(&jwk, &validator)?;
+
+        assert_eq!(verified.claims(), &claims);
+        assert_eq!(verified.headers(), &headers);
+
+        Ok(())
     }
 }
