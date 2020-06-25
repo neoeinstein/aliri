@@ -82,7 +82,6 @@ impl Algorithm {
     }
 }
 
-#[cfg(feature = "private-keys")]
 /// A JWS signer
 pub trait Signer {
     /// The useable signature algorithms

@@ -29,6 +29,7 @@ reqwest = { version = "0.10", optional = true, features = [ "json" ] }
 serde = { version = "1", features = [ "derive" ] }
 thiserror = "1"
 tracing = "0.1.15"
+tracing-futures = "0.2"
 
 [dev-dependencies]
 aliri_jose = { version = "0.1.0", path = "../aliri_jose", features = [ "private-keys" ] }

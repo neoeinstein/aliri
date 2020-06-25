@@ -1,0 +1,32 @@
+[package]
+name = "aliri_actix"
+description = "Actix for interacting with `aliri` authorities"
+keywords = [ "actix", "jose", "jwt", "oauth2", "auth" ]
+categories = [ "authentication", "web-programming", "web-programming::http-server" ]
+version = "0.1.1"
+authors = ["Marcus Griep <marcus@griep.us>"]
+edition = "2018"
+license = "MIT/Apache-2.0"
+repository = "https://github.com/neoeinstein/aliri"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+actix-web = "2"
+aliri = { version = "0.1.0", path = "../aliri" }
+aliri_jose = { version = "0.1.0", path = "../aliri_jose" }
+aliri_oauth2 = { version = "0.1.0", path = "../aliri_oauth2", features = [ "reqwest" ] }
+futures = "0.3"
+serde = { version = "1", features = [ "derive" ] }
+thiserror = "1"
+tracing = "0.1"
+
+[dev-dependencies]
+actix-rt = "1"
+aliri_core = { version = "0.1.0", path = "../aliri_core" }
+color-eyre = "0.4"
+regex = "1"
+serde_json = "1"
+
+[package.metadata.workspaces]
+independent = true

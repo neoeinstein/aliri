@@ -16,9 +16,10 @@
     unused_must_use
 )]
 
-pub mod jwks;
+mod authority;
 mod policy;
 mod scope;
 
+pub use authority::{Authority, AuthorityError};
 pub use policy::{InsufficientScopes, ScopesPolicy};
 pub use scope::{HasScopes, Scope, ScopeRef, Scopes};

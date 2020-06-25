@@ -253,6 +253,20 @@ impl jws::Signer for EllipticCurve {
     }
 }
 
+#[cfg(not(feature = "private-keys"))]
+impl jws::Signer for Rsa {
+    type Algorithm = SigningAlgorithm;
+    type Error = error::SigningError;
+
+    fn can_sign(&self, alg: Self::Algorithm) -> bool {
+        false
+    }
+
+    fn sign(&self, alg: Self::Algorithm, data: &[u8]) -> Result<Vec<u8>, Self::Error> {
+        Err(error::missing_private_key().into())
+    }
+}
+
 impl fmt::Display for SigningAlgorithm {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let s = match self {

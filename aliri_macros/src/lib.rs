@@ -161,6 +161,13 @@ macro_rules! typed_string {
             }
         }
 
+        impl AsRef<$ty_ref> for $ty_ref {
+            #[inline]
+            fn as_ref(&self) -> &$ty_ref {
+                self
+            }
+        }
+
         impl PartialEq<$ty_ref> for $ty {
             #[inline]
             fn eq(&self, other: &$ty_ref) -> bool {

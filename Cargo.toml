@@ -2,4 +2,5 @@
 members = [
     "aliri_oauth2",
     "aliri_warp",
+    "aliri_actix",
 ]

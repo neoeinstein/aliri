@@ -9,7 +9,7 @@ use aliri_jose::{
     jwt::{self, CoreClaims},
     Jwk, Jwks, Jwt,
 };
-use aliri_oauth2::{jwks::RemoteAuthority, HasScopes, Scopes, ScopesPolicy};
+use aliri_oauth2::{Authority, HasScopes, Scopes, ScopesPolicy};
 use aliri_warp as aliri;
 use color_eyre::Result;
 use serde::{Deserialize, Serialize};
@@ -27,12 +27,12 @@ impl HasScopes for Claims {
     }
 }
 
-async fn refresh_jwks(mut interval: tokio::time::Interval, jwks: Arc<RemoteAuthority>) -> ! {
+async fn refresh_jwks(mut interval: tokio::time::Interval, authority: Authority) -> ! {
     interval.tick().await;
     loop {
         interval.tick().await;
 
-        if let Err(err) = jwks.refresh().await {
+        if let Err(err) = authority.refresh().await {
             println!("yuck, error: {}", err);
         } else {
             println!("refreshed JWKS");
@@ -105,11 +105,11 @@ async fn main() -> Result<()> {
         });
 
     let jwks_url = format!("http://{}/.well-known/jwks.json", addr);
-    let authority = Arc::new(RemoteAuthority::new(jwks_url, validator).await?);
+    let authority = Authority::new_from_url(jwks_url, validator).await?;
 
     tokio::spawn(refresh_jwks(
         tokio::time::interval(std::time::Duration::from_secs(30)),
-        Arc::clone(&authority),
+        authority.clone(),
     ));
 
     let mut policy = ScopesPolicy::deny_all();

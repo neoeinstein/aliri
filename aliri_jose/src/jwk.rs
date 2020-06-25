@@ -9,7 +9,6 @@ use std::convert::{TryFrom, TryInto};
 use aliri_macros::typed_string;
 use serde::{Deserialize, Serialize, Serializer};
 
-#[cfg(feature = "private-keys")]
 use crate::jws::Signer;
 use crate::{
     error, jwa,
@@ -423,7 +422,6 @@ impl Verifier for Key {
     }
 }
 
-#[cfg(feature = "private-keys")]
 impl Signer for Key {
     type Algorithm = jws::Algorithm;
     type Error = error::SigningError;

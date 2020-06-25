@@ -119,12 +119,10 @@ pub(crate) fn key_rejected(
 /// Missing private key
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Error)]
 #[error("cannot sign without a private key")]
-#[cfg(feature = "private-keys")]
 pub struct MissingPrivateKey {
     _p: (),
 }
 
-#[cfg(feature = "private-keys")]
 pub(crate) const fn missing_private_key() -> MissingPrivateKey {
     MissingPrivateKey { _p: () }
 }
@@ -147,7 +145,6 @@ pub(crate) fn unexpected(
 
 /// An error occurring while creating a signature
 #[derive(Debug, Error)]
-#[cfg(feature = "private-keys")]
 pub enum SigningError {
     /// The key cannot be used for signing operations
     #[error(transparent)]
@@ -162,7 +159,6 @@ pub enum SigningError {
     Unexpected(#[from] Unexpected),
 }
 
-#[cfg(feature = "private-keys")]
 impl From<std::convert::Infallible> for SigningError {
     fn from(_: std::convert::Infallible) -> Self {
         unreachable!("infallible result")

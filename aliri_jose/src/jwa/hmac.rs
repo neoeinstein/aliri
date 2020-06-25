@@ -110,7 +110,6 @@ impl TryFrom<jws::Algorithm> for SigningAlgorithm {
     }
 }
 
-#[cfg(feature = "private-keys")]
 impl jws::Signer for Hmac {
     type Algorithm = SigningAlgorithm;
     type Error = std::convert::Infallible;
