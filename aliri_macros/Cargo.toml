@@ -11,3 +11,6 @@ repository = "https://github.com/neoeinstein/aliri"
 
 [dev-dependencies]
 serde = "1"
+
+[package.metadata.workspaces]
+independent = true

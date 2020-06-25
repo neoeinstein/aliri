@@ -37,3 +37,6 @@ openssl = "0.10"
 rusty-hook = "0.11"
 serde_json = "1"
 tokio = { version = "0.2", features = [ "rt-threaded", "macros" ] }
+
+[package.metadata.workspaces]
+independent = true
