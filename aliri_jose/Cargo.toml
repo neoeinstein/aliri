@@ -16,6 +16,7 @@ ec = [ "openssl" ]
 rsa = []
 hmac = []
 private-keys = [ "openssl" ]
+unstable = []
 default = [ "hmac", "rsa" ]
 
 [dependencies]

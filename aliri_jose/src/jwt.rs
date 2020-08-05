@@ -67,6 +67,48 @@ use serde::{Deserialize, Serialize};
 use crate::jws::Signer;
 use crate::{error, jwa, jwk, jws, Jwk};
 
+#[cfg(feature = "unstable")]
+mod validator;
+
+#[cfg(feature = "unstable")]
+use validator::{Validator, ValidatorExt};
+
+#[inline(never)]
+#[cfg(feature = "unstable")]
+fn do_validate(
+    b: impl Validator<(Headers, Claims), Error = error::ClaimsRejected>,
+    header: crate::jwt::Headers,
+    claims: crate::jwt::Claims,
+) -> Result<(), error::ClaimsRejected> {
+    b.validate(&(header, claims))
+}
+
+#[cfg(feature = "unstable")]
+fn validate_it() {
+    let issuer = IssuerRef::from_str("issuer");
+    let audience = AudienceRef::from_str("audience");
+
+    let validator = validator::All::<_, crate::error::ClaimsRejected>::new::<(Headers, Claims)>((
+        crate::jwa::Algorithm::HS512,
+        issuer,
+        audience,
+        validator::Timing {
+            validate_exp: true,
+            validate_nbf: true,
+            leeway: 3,
+            clock: System,
+        },
+    ));
+
+    let header = crate::jwt::Headers::new(crate::jwa::Algorithm::HS512);
+    let claims = crate::jwt::Claims::new()
+        .with_issuer(issuer.to_owned())
+        .with_audience(audience.to_owned())
+        .with_future_expiration(60);
+
+    let _ = do_validate(validator, header, claims);
+}
+
 /// The validated headers and claims of a JWT
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Validated<C = Empty, H = Empty> {
@@ -968,42 +1010,42 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "rsa")]
+    #[cfg(all(feature = "rsa", feature = "private-keys"))]
     fn round_trip_rs256() -> Result<()> {
         round_trip_rsa(jwa::rsa::SigningAlgorithm::RS256)
     }
 
     #[test]
-    #[cfg(feature = "rsa")]
+    #[cfg(all(feature = "rsa", feature = "private-keys"))]
     fn round_trip_rs384() -> Result<()> {
         round_trip_rsa(jwa::rsa::SigningAlgorithm::RS384)
     }
 
     #[test]
-    #[cfg(feature = "rsa")]
+    #[cfg(all(feature = "rsa", feature = "private-keys"))]
     fn round_trip_rs512() -> Result<()> {
         round_trip_rsa(jwa::rsa::SigningAlgorithm::RS512)
     }
 
     #[test]
-    #[cfg(feature = "rsa")]
+    #[cfg(all(feature = "rsa", feature = "private-keys"))]
     fn round_trip_ps256() -> Result<()> {
         round_trip_rsa(jwa::rsa::SigningAlgorithm::PS256)
     }
 
     #[test]
-    #[cfg(feature = "rsa")]
+    #[cfg(all(feature = "rsa", feature = "private-keys"))]
     fn round_trip_ps384() -> Result<()> {
         round_trip_rsa(jwa::rsa::SigningAlgorithm::PS384)
     }
 
     #[test]
-    #[cfg(feature = "rsa")]
+    #[cfg(all(feature = "rsa", feature = "private-keys"))]
     fn round_trip_ps512() -> Result<()> {
         round_trip_rsa(jwa::rsa::SigningAlgorithm::PS512)
     }
 
-    #[cfg(feature = "rsa")]
+    #[cfg(all(feature = "rsa", feature = "private-keys"))]
     fn round_trip_rsa(alg: jwa::rsa::SigningAlgorithm) -> Result<()> {
         let key = jwa::Rsa::generate().unwrap();
 
@@ -1014,26 +1056,25 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "ec")]
+    #[cfg(all(feature = "ec", feature = "private-keys"))]
     fn round_trip_es256() -> Result<()> {
         round_trip_ec(jwa::ec::SigningAlgorithm::ES256)
     }
 
     #[test]
-    #[cfg(feature = "ec")]
+    #[cfg(all(feature = "ec", feature = "private-keys"))]
     fn round_trip_es384() -> Result<()> {
         round_trip_ec(jwa::ec::SigningAlgorithm::ES384)
     }
 
     #[test]
-    #[cfg(feature = "ec")]
+    #[cfg(all(feature = "ec", feature = "private-keys"))]
     #[ignore = "not implemented"]
-
     fn round_trip_es512() -> Result<()> {
         round_trip_ec(jwa::ec::SigningAlgorithm::ES512)
     }
 
-    #[cfg(feature = "ec")]
+    #[cfg(all(feature = "ec", feature = "private-keys"))]
     fn round_trip_ec(alg: jwa::ec::SigningAlgorithm) -> Result<()> {
         let key = jwa::EllipticCurve::generate(alg.into()).unwrap();
 

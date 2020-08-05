@@ -268,7 +268,7 @@ pub enum JwtSigningError {
 }
 
 /// An error occurring when validating the claims of a JWT
-#[derive(Debug, Error)]
+#[derive(Debug, PartialEq, Error)]
 pub enum ClaimsRejected {
     /// The token algorithm is not acceptable
     #[error("invalid algorithm")]

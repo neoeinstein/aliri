@@ -13,8 +13,12 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 pub struct UnixTime(pub u64);
 
 impl From<SystemTime> for UnixTime {
+    #[inline]
     fn from(t: SystemTime) -> Self {
-        let time = t.duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs();
+        let time = t
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .expect("times before Unix epoch are not expected")
+            .as_secs();
 
         UnixTime(time)
     }

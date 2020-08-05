@@ -224,11 +224,11 @@ impl jws::Signer for Rsa {
     type Algorithm = SigningAlgorithm;
     type Error = error::SigningError;
 
-    fn can_sign(&self, alg: Self::Algorithm) -> bool {
+    fn can_sign(&self, _alg: Self::Algorithm) -> bool {
         false
     }
 
-    fn sign(&self, alg: Self::Algorithm, data: &[u8]) -> Result<Vec<u8>, Self::Error> {
+    fn sign(&self, _alg: Self::Algorithm, _data: &[u8]) -> Result<Vec<u8>, Self::Error> {
         Err(error::missing_private_key().into())
     }
 }
