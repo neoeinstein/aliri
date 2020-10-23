@@ -1,7 +1,6 @@
 use std::{collections::hash_set, iter::FromIterator, str::FromStr};
 
 use ahash::AHashSet;
-use aliri_jose::jwt;
 use aliri_macros::typed_string;
 use serde::{Deserialize, Serialize};
 
@@ -19,12 +18,21 @@ pub trait HasScopes {
     ///
     /// Scopes claimed by the underlying token, generally in the `scope`
     /// claim.
-    fn scopes(&self) -> &Scopes {
-        &*EMPTY_SCOPES
-    }
+    fn scopes(&self) -> &Scopes;
 }
 
-impl HasScopes for jwt::Empty {}
+/// A convenience structure for payloads where the user only cares about the scope
+#[derive(Clone, Debug, Deserialize)]
+pub struct JustScope {
+    /// The `scope` claim
+    pub scope: Scopes,
+}
+
+impl HasScopes for JustScope {
+    fn scopes(&self) -> &Scopes {
+        &self.scope
+    }
+}
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(untagged)]
@@ -78,6 +86,17 @@ impl Scopes {
         S: Into<Scope>,
     {
         let mut s = Self::empty();
+        s.insert(scope.into());
+        s
+    }
+
+    /// Adds an additional scope to the set
+    #[inline]
+    pub fn and<S>(self, scope: S) -> Self
+    where
+        S: Into<Scope>,
+    {
+        let mut s = self;
         s.insert(scope.into());
         s
     }

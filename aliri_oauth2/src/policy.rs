@@ -123,6 +123,14 @@ impl ScopesPolicy {
         }
     }
 
+    /// Add an alternate set of reqired scopes
+    #[inline]
+    pub fn or_allow(self, scopes: Scopes) -> Self {
+        let mut s = self;
+        s.alternatives.push(scopes);
+        s
+    }
+
     /// Add an alternative set of required scopes
     #[inline]
     pub fn allow(&mut self, scopes: Scopes) {

@@ -22,4 +22,4 @@ mod scope;
 
 pub use authority::{Authority, AuthorityError};
 pub use policy::{InsufficientScopes, ScopesPolicy};
-pub use scope::{HasScopes, Scope, ScopeRef, Scopes};
+pub use scope::{HasScopes, JustScope, Scope, ScopeRef, Scopes};
