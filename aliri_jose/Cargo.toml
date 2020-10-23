@@ -33,7 +33,7 @@ thiserror = "1"
 openssl = { version = "0.10", optional = true }
 
 [dev-dependencies]
-color-eyre = "0.4"
+color-eyre = "0.5"
 
 [package.metadata.workspaces]
 independent = true
