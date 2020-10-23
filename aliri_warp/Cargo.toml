@@ -14,7 +14,7 @@ repository = "https://github.com/neoeinstein/aliri"
 [dependencies]
 aliri = { version = "0.1.0", path = "../aliri" }
 aliri_jose = { version = "0.2.0", path = "../aliri_jose" }
-aliri_oauth2 = { version = "0.2.0", path = "../aliri_oauth2", features = [ "reqwest" ] }
+aliri_oauth2 = { version = "0.3.0", path = "../aliri_oauth2", features = [ "reqwest" ] }
 serde = { version = "1", features = [ "derive" ] }
 thiserror = "1"
 tracing = "0.1"
