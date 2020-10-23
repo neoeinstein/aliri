@@ -20,7 +20,7 @@ unstable = []
 default = [ "hmac", "rsa" ]
 
 [dependencies]
-aliri_core = { version = "0.1.0", path = "../aliri_core" }
+aliri_core = { version = "0.2.0", path = "../aliri_core" }
 aliri_macros = { version = "0.1.0", path = "../aliri_macros" }
 lazy_static = { version = "1" }
 regex = "1"

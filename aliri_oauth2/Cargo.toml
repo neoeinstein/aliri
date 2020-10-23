@@ -19,7 +19,7 @@ default = [ "rsa" ]
 [dependencies]
 ahash = "0.5"
 aliri = { version = "0.1.0", path = "../aliri" }
-aliri_core = { version = "0.1.0", path = "../aliri_core" }
+aliri_core = { version = "0.2.0", path = "../aliri_core" }
 aliri_jose = { version = "0.1.0", path = "../aliri_jose", default-features = false }
 aliri_macros = { version = "0.1.0", path = "../aliri_macros" }
 arc-swap = "0.4"
