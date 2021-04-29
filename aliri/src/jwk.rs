@@ -249,7 +249,7 @@ impl Signer for Jwk {
 
         let alg = jws::Algorithm::try_from(alg)?;
 
-        Ok(self.key.sign(alg, data)?)
+        self.key.sign(alg, data)
     }
 }
 

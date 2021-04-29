@@ -198,8 +198,8 @@ where
 mod tests {
     use super::*;
     use actix_web::{get, test, App, HttpResponse, Responder};
-    use aliri_base64::Base64Url;
     use aliri::{jwa, jwk, Jwk, Jwks};
+    use aliri_base64::Base64Url;
     use aliri_oauth2::Scopes;
     use color_eyre::Result;
     use once_cell::sync::OnceCell;

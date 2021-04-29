@@ -192,26 +192,17 @@ pub enum JwkVerifyError {
 impl JwkVerifyError {
     /// Whether the error is due to an incompatible algorithm
     pub fn is_incompatible_alg(&self) -> bool {
-        match self {
-            Self::IncompatibleAlgorithm(_) => true,
-            _ => false,
-        }
+        matches!(self, Self::IncompatibleAlgorithm(_))
     }
 
     /// Whether the error is due to a usage mismatch
     pub fn is_usage_mismatch(&self) -> bool {
-        match self {
-            Self::JwkUsageMismatch(_) => true,
-            _ => false,
-        }
+        matches!(self, Self::JwkUsageMismatch(_))
     }
 
     /// Whether the error is due to a signature mismatch
     pub fn is_signature_mismatch(&self) -> bool {
-        match self {
-            Self::SignatureMismatch(_) => true,
-            _ => false,
-        }
+        matches!(self, Self::SignatureMismatch(_))
     }
 }
 

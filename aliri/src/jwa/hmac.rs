@@ -58,6 +58,7 @@ impl Hmac {
 /// This list may be expanded in the future.
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "UPPERCASE")]
+#[allow(clippy::upper_case_acronyms)]
 #[non_exhaustive]
 pub enum SigningAlgorithm {
     /// HMAC using SHA-256

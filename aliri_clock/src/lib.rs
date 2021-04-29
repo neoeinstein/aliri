@@ -5,6 +5,21 @@
 //! Types included allow messing with and mocking out clocks and other
 //! side-effect-laden time operations.
 
+#![warn(
+    missing_docs,
+    unused_import_braces,
+    unused_imports,
+    unused_qualifications
+)]
+#![deny(
+    missing_debug_implementations,
+    missing_copy_implementations,
+    trivial_casts,
+    trivial_numeric_casts,
+    unsafe_code,
+    unused_must_use
+)]
+
 use std::time::SystemTime;
 
 #[cfg(feature = "serde")]

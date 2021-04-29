@@ -29,7 +29,7 @@ async fn check_jwt<C: for<'de> serde::Deserialize<'de>>(
     let decomposed: jwt::Decomposed<jwt::Empty> = jwt.decompose()?;
     let jwk = jwks
         .get_key_by_opt(decomposed.kid(), decomposed.alg())
-        .ok_or_else(|| VerifyError::NoValidKeyFound)?;
+        .ok_or(VerifyError::NoValidKeyFound)?;
     let v: jwt::Validated<C> = decomposed.verify(jwk, validator)?;
     let (_, c) = v.take();
     Ok(c)

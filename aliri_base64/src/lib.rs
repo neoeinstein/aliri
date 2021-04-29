@@ -64,7 +64,6 @@
 //! created that will encode the underlying byte array as a base64 string
 //! using the relevant encoding.
 
-
 #![warn(
     missing_docs,
     unused_import_braces,
@@ -490,5 +489,7 @@ mod doctests {
     /// assert_eq!(data, deserialized);
     /// ```
     #[cfg(feature = "serde")]
-    fn base64_round_trips_through_serde() -> ! { loop {} }
+    fn base64_round_trips_through_serde() -> ! {
+        loop {}
+    }
 }

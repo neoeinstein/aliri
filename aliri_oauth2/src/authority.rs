@@ -1,12 +1,14 @@
 use std::sync::Arc;
 
-use aliri_traits::Policy;
 use aliri::{
     jwt::{self, CoreHeaders, HasAlgorithm},
     Jwks, JwtRef,
 };
+use aliri_traits::Policy;
 use arc_swap::ArcSwap;
-use color_eyre::{eyre::bail, Result};
+#[cfg(feature = "reqwest")]
+use color_eyre::eyre::bail;
+use color_eyre::Result;
 #[cfg(feature = "reqwest")]
 use reqwest::{
     header::{self, HeaderValue},

@@ -50,7 +50,7 @@ impl PublicKey {
 
         let key = Rsa::from_public_components(modulus, exponent).map_err(error::unexpected)?;
         let pem = key.public_key_to_pem().map_err(error::unexpected)?;
-        Ok(String::from_utf8(pem).map_err(error::unexpected)?)
+        String::from_utf8(pem).map_err(error::unexpected)
     }
 
     /// Constructs a public key from the modulus and exponent

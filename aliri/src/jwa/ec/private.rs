@@ -86,7 +86,7 @@ impl PrivateKey {
             .map_err(error::unexpected)?
             .private_key_to_pem_pkcs8()
             .map_err(error::unexpected)?;
-        Ok(String::from_utf8(x).map_err(error::unexpected)?)
+        String::from_utf8(x).map_err(error::unexpected)
     }
 
     /// Provides access to the public key parameters

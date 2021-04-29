@@ -68,14 +68,14 @@ use crate::{error, jwa, jwk, jws, Jwk};
 mod validator;
 
 #[cfg(feature = "unstable")]
-use validator::{Validator, ValidatorExt};
+use validator::Validator;
 
 #[inline(never)]
 #[cfg(feature = "unstable")]
 fn do_validate(
     b: impl Validator<(Headers, Claims), Error = error::ClaimsRejected>,
-    header: crate::jwt::Headers,
-    claims: crate::jwt::Claims,
+    header: Headers,
+    claims: Claims,
 ) -> Result<(), error::ClaimsRejected> {
     b.validate(&(header, claims))
 }
@@ -399,9 +399,7 @@ impl Audiences {
     /// An audience set with a single audience
     #[inline]
     pub fn single(aud: impl Into<Audience>) -> Self {
-        let mut v = Vec::with_capacity(1);
-        v.push(aud.into());
-        Self(v)
+        Self(vec![aud.into()])
     }
 
     /// An empty audience set

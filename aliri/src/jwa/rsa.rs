@@ -114,6 +114,7 @@ impl Rsa {
 /// This list may be expanded in the future.
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "UPPERCASE")]
+#[allow(clippy::upper_case_acronyms)]
 #[non_exhaustive]
 pub enum SigningAlgorithm {
     /// RSA using a 2048-bit key, producing a 8192-bit signature, using SHA-256 and PKCS 1.5
