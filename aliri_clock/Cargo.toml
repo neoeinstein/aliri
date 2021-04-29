@@ -1,7 +1,9 @@
 [package]
 name = "aliri_clock"
 description = "Timing utilities used by the `aliri` family of crates"
-version = "0.1.1"
+keywords = [ "unixtime", "test" ]
+categories = [ "date-and-time", "development-tools::testing" ]
+version = "0.1.2"
 authors = ["Marcus Griep <marcus@griep.us>"]
 edition = "2018"
 readme = "../README.md"
