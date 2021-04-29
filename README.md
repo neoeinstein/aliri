@@ -23,15 +23,20 @@ provides some functionality for using a local or remote _JSON Web Key Set
 (JWKS)_ as an authority to authenticate tokens. Some of this functionality maybe
 broken off as part of planned _OpenID Connect (OIDC)_ functionality.
 
-The [`aliri_warp`][] crate provides bindings to the [`warp`][] web server, and
-includes filters useful for authenticating access to endpoints.
+The [`aliri_actix`][] crate provides some useful bindings to create scope guards
+for the [`actix-web`][] web server.
 
-The remaining crates provide supporting functionality to these three primary
-crates.
+Similarly, the [`aliri_warp`][] crate provides bindings to the [`warp`][] web
+server, and includes filters useful for authenticating access to endpoints.
+
+Other crates under the `aliri` header provide supporting functionality to these
+primary crates.
 
   [`aliri`]: https://crates.io/crates/aliri
   [aliri:doc]: https://docs.rs/aliri
   [`aliri_oauth2`]: https://crates.io/crates/aliri_oauth2
+  [`aliri_actix`]: https://crates.io/crates/aliri_actix
+  [`actix-web`]: https://crates.io/crates/actix-web
   [`aliri_warp`]: https://crates.io/crates/aliri_warp
   [`warp`]: https://crates.io/crates/warp
 
@@ -80,6 +85,7 @@ the JWA specification are technically optional.
 
 * Support JWE
 * Support OpenID Connect as a relying party
+* Support obtaining tokens and token management
 
 ## Alternatives
 
@@ -102,14 +108,14 @@ as `&Base64Ref`. This reinterpretation is safe because the wrappers around `str`
 use `#[repr(transparent)]`, which means that the wrappers share the exact same
 representation as the underlying slice.
 
-For the above reason, my crates use `#![deny(unsafe_code)]` rather than
-`#![forbid(unsafe_code)]`. The only `#![allow(unsafe_code)]` in the code base is
-tucked away in the `typed_string!` and `b64_builder!` macros.
+For the above reason, some of the included crates use `#![deny(unsafe_code)]`
+rather than `#![forbid(unsafe_code)]`. The only `#![allow(unsafe_code)]` in
+the code base can be found in the `typed_string!` and `b64_builder!` macros.
 
-I have made this choice I prefer and value _strongly-typed_ APIs over
+I have made this choice because of my preference for _strongly-typed_ APIs over
 _stringly-typed_ APIs. I believe that consumers of this library will benefit
 from this choice, as it will help them to prevent silly bugs.
 
 Note that, because `cargo-geiger` has difficulty parsing out unsafe usage from
 within macros, that tool won't report these crates as "radioactive", but
-probably should. _Do your due dilligence._
+probably should. _Do your due diligence._

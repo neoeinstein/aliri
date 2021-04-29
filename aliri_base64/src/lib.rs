@@ -2,6 +2,11 @@
 //!
 //! Wrappers for values that should be serialized or represented as base64
 //!
+//! The [`aliri_base64`][] crate provides some utilities for more easily working
+//! with byte arrays and buffers that need to be serialized using Base64 encoding.
+//! This is particularly necessary for many of the types that [`aliri`][] works with,
+//! but may also be of use to others as well.
+//!
 //! Underlying data is stored as an actual byte slice. Costs of conversions
 //! between base64 and raw bytes only occur for calls to `from_encoded()` or
 //! conversions to strings via debug or display formatting.
@@ -10,6 +15,41 @@
 //! as [`Debug`][std::fmt::Debug] and [`Display`][std::fmt::Display]
 //! implementations are provided as better views of the underlying byte data.
 //!
+//! The underlying encoding/decoding mechanism is provided by the [`base64`][]
+//! crate.
+//!
+//!   [`aliri`]: https://docs.rs/aliri
+//!   [`aliri_base64`]: https://docs.rs/aliri_base64
+//!   [`base64`]: https://docs.rs/base64
+//!
+//! ## Supported encodings
+//!
+//! [`Base64`][] and [`Base64Ref`][] wrap owned and borrowed byte arrays that must be
+//! serialized in the standard Base64 encoding with padding.
+//!
+//! [`Base64Url`][] and [`Base64UrlRef`][] wrap owned and borrowed byte arrays that
+//! must be serialized in the URL-safe Base64 encoding with no padding.
+//!
+//! Additional encodings may be added in the future, but these were the two
+//! primary encodings required to support my base set of use cases.
+//!
+//! ## Unsafe code
+//!
+//! _Aliri Base64_ makes use of two lines of unsafe code. This unsafe code is limited
+//! to the functions that allow the [`Base64Ref`][] and [`Base64UrlRef`][] to wrap borrowed
+//! byte slices. This reinterpretation is safe because these types are transparent
+//! wrappers around `[u8]`, use `#[repr(transparent)]`, and thus share the exact same
+//! representation as the underlying slice. This is currently necessary as there is
+//! currently no way to transmute equivalent representations of dynamically sized
+//! values in safe Rust.
+//!
+//! For the above reason, this crate uses `#![deny(unsafe_code)]` rather than
+//! `#![forbid(unsafe_code)]`. The only `#![allow(unsafe_code)]` in the crate can
+//! be located in the private `b64_builder!` macro.
+//!
+//! Note that, because `cargo-geiger` has difficulty parsing out unsafe usage from
+//! within macros, that tool won't report these crates as "radioactive", but
+//! probably should. _Do your due diligence._
 //! ## Example
 //!
 //! Using [`ToString::to_string()`][std::string::ToString::to_string()]:
@@ -123,22 +163,34 @@ macro_rules! b64_builder {
         /// are only incurred when serializing or displaying the value in
         /// its base64 representation.
         ///
-        /// Data is held in memory in its raw form. Costs of converting to
-        /// base64 form are only incurred when serializing or displaying the
-        /// value. Cost of converting from base64 form are incurred on calling
-        /// `from_encoded`.
+        /// Implementations of the [`From`] trait assume that assume that the
+        /// underlying structure is in raw form.
         $v struct $ty(Vec<u8>);
 
         impl $ty {
+            /// Creates an empty buffer
+            #[inline]
+            pub const fn new() -> Self {
+                Self(Vec::new())
+            }
+
             /// Creates a new buffer from an owned value
             ///
-            /// To decode a base64-encoded buffer, use `from_encoded`.
+            /// This function has no cost for [`Vec<u8>`]. Other types incur
+            /// the cost of copying into a buffer.
+            ///
+            /// To decode a base64-encoded buffer, use [`from_encoded()`][Self::from_encoded()].
             #[inline]
             pub fn from_raw<T: Into<Vec<u8>>>(raw: T) -> Self {
                 Self(raw.into())
             }
 
             /// Constructs a new buffer from a base64-encoded slice
+            ///
+            /// This function will decode the slice into a new owned buffer.
+            ///
+            /// If the underlying buffer has already been decoded, then
+            /// transparently wrap the buffer using [`from_raw()`][Self::from_raw()].
             pub fn from_encoded<T: AsRef<[u8]>>(enc: T) -> Result<Self, InvalidBase64Data> {
                 let data = ::base64::decode_config(enc, $config)?;
                 Ok(Self(data))
@@ -150,9 +202,21 @@ macro_rules! b64_builder {
                 self.0
             }
 
+            /// Provides access to the underlying buffer as a vector
+            #[inline]
+            pub fn as_vec(&self) -> &Vec<u8> {
+                &self.0
+            }
+
+            /// Provides mutable access to the underlying buffer as a vector
+            #[inline]
+            pub fn as_vec_mut(&mut self) -> &mut Vec<u8> {
+                &mut self.0
+            }
+
             /// Calculates the expected length of the base64-encoding for a buffer of size `len`
             #[inline]
-            pub fn calc_encoded_len(len: usize) -> usize {
+            pub const fn calc_encoded_len(len: usize) -> usize {
                 if $is_padded {
                     (len + 2) / 3 * 4
                 } else {
@@ -305,7 +369,7 @@ macro_rules! b64_builder {
 
             /// Calculates the expected length of the base64-encoding of this buffer
             #[inline]
-            pub fn encoded_len(&self) -> usize {
+            pub const fn encoded_len(&self) -> usize {
                 $ty::calc_encoded_len(self.as_slice().len())
             }
 
