@@ -78,6 +78,7 @@
     unsafe_code,
     unused_must_use
 )]
+#![cfg_attr(docsrs, feature(doc_cfg))]
 
 use std::{error::Error, fmt};
 

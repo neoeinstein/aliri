@@ -1,7 +1,7 @@
 [package]
 name = "aliri_base64"
 description = "Wrappers that make debugging and using byte arrays a bit nicer"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Marcus Griep <marcus@griep.us>"]
 edition = "2018"
 readme = "../README.md"

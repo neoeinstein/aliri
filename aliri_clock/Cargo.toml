@@ -1,7 +1,7 @@
 [package]
 name = "aliri_clock"
 description = "Timing utilities used by the `aliri` family of crates"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Marcus Griep <marcus@griep.us>"]
 edition = "2018"
 readme = "../README.md"
@@ -12,3 +12,10 @@ repository = "https://github.com/neoeinstein/aliri"
 
 [dependencies]
 serde = { version = "1", features = [ "derive" ], optional = true }
+
+[package.metadata.docs.rs]
+features = ["serde"]
+rustdoc-args = ["--cfg", "docsrs"]
+
+[package.metadata.playground]
+features = ["serde"]
