@@ -3,26 +3,26 @@ name = "aliri_warp"
 description = "Warp filters for interacting with `aliri` authorities"
 keywords = [ "warp", "jose", "jwt", "oauth2", "auth" ]
 categories = [ "authentication", "web-programming", "web-programming::http-server" ]
-version = "0.3.0"
+version = "0.4.0"
 authors = ["Marcus Griep <marcus@griep.us>"]
 edition = "2018"
+readme = "../README.md"
 license = "MIT/Apache-2.0"
 repository = "https://github.com/neoeinstein/aliri"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-aliri = { version = "0.1.0", path = "../aliri" }
-aliri_jose = { version = "0.2.0", path = "../aliri_jose" }
-aliri_oauth2 = { version = "0.3.0", path = "../aliri_oauth2", features = [ "reqwest" ] }
+aliri = { version = "0.3.0", path = "../aliri" }
+aliri_oauth2 = { version = "0.4.0", path = "../aliri_oauth2", features = [ "reqwest" ] }
 serde = { version = "1", features = [ "derive" ] }
 thiserror = "1"
 tracing = "0.1"
-warp = "0.2"
+warp = "0.3"
 
 [dev-dependencies]
 color-eyre = "0.5"
-tokio = { version = "0.3", features = [ "rt-multi-thread", "macros", "time" ] }
+tokio = { version = "1", features = [ "rt-multi-thread", "macros", "time" ] }
 regex = "1"
 serde_json = "1"
 

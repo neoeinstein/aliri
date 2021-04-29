@@ -1,6 +1,6 @@
 //! Warp filters for extracting JSON Web Tokens (JWTs)
 
-use aliri_jose::Jwt;
+use aliri::Jwt;
 use thiserror::Error;
 use warp::Filter;
 

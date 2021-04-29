@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use aliri::Policy;
-use aliri_jose::{
+use aliri_traits::Policy;
+use aliri::{
     jwt::{self, CoreHeaders, HasAlgorithm},
     Jwks, JwtRef,
 };
@@ -27,7 +27,7 @@ pub enum AuthorityError {
     UnknownKeyId,
     /// Indicates that the JWT was malformed or otherwise defective
     #[error("invalid JWT")]
-    JwtVerifyError(#[from] aliri_jose::error::JwtVerifyError),
+    JwtVerifyError(#[from] aliri::error::JwtVerifyError),
     /// Indicates that, while the JWT was acceptable, it does not grant the
     /// level of authorization requested.
     #[error("access denied by policy")]
@@ -200,7 +200,7 @@ impl Authority {
 mod tests {
     use std::time::Duration;
 
-    use aliri_jose::{jwk, jws, jwt, Jwk};
+    use aliri::{jwk, jws, jwt, Jwk};
     use color_eyre::Result;
 
     use super::*;

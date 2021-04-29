@@ -437,7 +437,7 @@ where
     }
 }
 
-pub struct Timing<Clock = aliri_core::clock::System> {
+pub struct Timing<Clock = aliri_clock::System> {
     pub validate_exp: bool,
     pub validate_nbf: bool,
     pub leeway: u64,
@@ -445,31 +445,31 @@ pub struct Timing<Clock = aliri_core::clock::System> {
 }
 
 pub trait HasTiming {
-    fn exp(&self) -> Option<aliri_core::clock::UnixTime>;
-    fn iat(&self) -> Option<aliri_core::clock::UnixTime>;
-    fn nbf(&self) -> Option<aliri_core::clock::UnixTime>;
+    fn exp(&self) -> Option<aliri_clock::UnixTime>;
+    fn iat(&self) -> Option<aliri_clock::UnixTime>;
+    fn nbf(&self) -> Option<aliri_clock::UnixTime>;
 }
 
 impl<C> HasTiming for super::Claims<C> {
     #[inline]
-    fn exp(&self) -> Option<aliri_core::clock::UnixTime> {
+    fn exp(&self) -> Option<aliri_clock::UnixTime> {
         self.exp
     }
 
     #[inline]
-    fn iat(&self) -> Option<aliri_core::clock::UnixTime> {
+    fn iat(&self) -> Option<aliri_clock::UnixTime> {
         None
     }
 
     #[inline]
-    fn nbf(&self) -> Option<aliri_core::clock::UnixTime> {
+    fn nbf(&self) -> Option<aliri_clock::UnixTime> {
         self.nbf
     }
 }
 
 impl<H, C, Clock> Validator<(H, C)> for Timing<Clock>
 where
-    Clock: aliri_core::clock::Clock,
+    Clock: aliri_clock::Clock,
     C: HasTiming,
 {
     type Error = crate::error::ClaimsRejected;
@@ -655,7 +655,7 @@ mod tests {
         let claims = crate::jwt::Claims::new()
             .with_issuer(issuer.clone())
             .with_audience(audience.clone())
-            .with_expiration(aliri_core::clock::UnixTime(0));
+            .with_expiration(aliri_clock::UnixTime(0));
 
         let validator = crate::jwt::CoreValidator::default()
             .require_issuer(issuer)

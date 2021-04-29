@@ -28,8 +28,8 @@
 //! [RFC7519]: https://tools.ietf.org/html/rfc7519
 //!
 //! ```
-//! use aliri_core::base64::Base64UrlRef;
-//! use aliri_jose::{jwa, jws, jwt, Jwk, JwtRef};
+//! use aliri_base64::Base64UrlRef;
+//! use aliri::{jwa, jws, jwt, Jwk, JwtRef};
 //! use regex::Regex;
 //!
 //! let token = JwtRef::from_str(concat!(
@@ -55,11 +55,8 @@
 
 use std::{convert::TryFrom, time::Duration};
 
-use aliri_core::{
-    base64::Base64Url,
-    clock::{Clock, System, UnixTime},
-    OneOrMany,
-};
+use aliri_base64::Base64Url;
+use aliri_clock::{Clock, System, UnixTime};
 use aliri_macros::typed_string;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
@@ -937,11 +934,22 @@ impl<P> Claims<P> {
     }
 }
 
+/// A type representing one or more items, primarily for serialization
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(untagged)]
+pub enum OneOrMany<T> {
+    /// A single item
+    One(T),
+
+    /// Zero or more items, to be serialized/deserialized as an array
+    Many(Vec<T>),
+}
+
 #[cfg(test)]
 mod tests {
     use color_eyre::Result;
 
-    use aliri_core::clock::TestClock;
+    use aliri_clock::TestClock;
 
     use super::*;
 

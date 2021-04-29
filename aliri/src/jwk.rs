@@ -511,7 +511,7 @@ impl Signer for Key {
 #[cfg(test)]
 #[cfg(any(feature = "ec", feature = "rsa", feature = "hmac"))]
 mod tests {
-    use aliri_core::base64::Base64Url;
+    use aliri_base64::Base64Url;
     use color_eyre::Result;
 
     use super::*;

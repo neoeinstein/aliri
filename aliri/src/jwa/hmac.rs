@@ -2,7 +2,7 @@
 
 use std::{convert::TryFrom, fmt};
 
-use aliri_core::base64::{Base64Url, Base64UrlRef};
+use aliri_base64::{Base64Url, Base64UrlRef};
 use ring::rand::SecureRandom;
 use serde::{Deserialize, Serialize};
 

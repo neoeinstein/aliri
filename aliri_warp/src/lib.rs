@@ -1,6 +1,6 @@
 //! # aliri_warp
 //!
-//! Warp filters for interacting with `aliri` authorities
+//! Warp filters for interacting with `aliri_traits` authorities
 
 #![warn(
     missing_docs,

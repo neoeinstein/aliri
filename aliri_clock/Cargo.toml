@@ -1,7 +1,7 @@
 [package]
-name = "aliri_macros"
-description = "Macros used by the `aliri` family of crates"
-version = "0.1.1"
+name = "aliri_clock"
+description = "Timing utilities used by the `aliri` family of crates"
+version = "0.1.0"
 authors = ["Marcus Griep <marcus@griep.us>"]
 edition = "2018"
 readme = "../README.md"
@@ -10,8 +10,5 @@ repository = "https://github.com/neoeinstein/aliri"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-[dev-dependencies]
-serde = "1"
-
-[package.metadata.workspaces]
-independent = true
+[dependencies]
+serde = { version = "1", features = [ "derive" ], optional = true }

@@ -1,17 +1,55 @@
+//! # aliri_base64
+//!
 //! Wrappers for values that should be serialized or represented as base64
+//!
+//! Underlying data is stored as an actual byte slice. Costs of conversions
+//! between base64 and raw bytes only occur for calls to `from_encoded()` or
+//! conversions to strings via debug or display formatting.
+//!
+//! This can make debugging byte arrays significantly less annoying,
+//! as [`Debug`][std::fmt::Debug] and [`Display`][std::fmt::Display]
+//! implementations are provided as better views of the underlying byte data.
 //!
 //! ## Example
 //!
+//! Using [`ToString::to_string()`][std::string::ToString::to_string()]:
+//!
 //! ```
-//! use aliri_core::base64::Base64;
+//! use aliri_base64::Base64;
 //!
 //! let data = Base64::from_raw("👋 hello, world! 👋".as_bytes());
 //! let enc = data.to_string();
 //! assert_eq!(enc, "8J+RiyBoZWxsbywgd29ybGQhIPCfkYs=");
 //! ```
 //!
+//! Using [`format!`] and [`Display`][std::fmt::Display]:
+//!
 //! ```
-//! use aliri_core::base64::{Base64, Base64Url};
+//! use aliri_base64::Base64;
+//!
+//! let data = Base64::from_raw("👋 hello, world! 👋".as_bytes());
+//! let enc = format!("MyData: {}", data);
+//! assert_eq!(enc, "MyData: 8J+RiyBoZWxsbywgd29ybGQhIPCfkYs=");
+//! ```
+//!
+//! Using [`format!`] and [`Debug`][std::fmt::Debug]:
+//!
+//! Note that the output data is fenced in backticks when formatted for
+//! debugging.
+//!
+//! ```
+//! use aliri_base64::Base64;
+//!
+//! let data = Base64::from_raw("👋 hello, world! 👋".as_bytes());
+//! let enc = format!("MyData: {:?}", data);
+//! assert_eq!(enc, "MyData: `8J+RiyBoZWxsbywgd29ybGQhIPCfkYs=`");
+//! ```
+//!
+//! Reinterpreting raw data, moving from URL encoding with no padding to
+//! standard encoding with padding:
+//!
+//! ```
+//! use aliri_base64::{Base64, Base64Url};
 //!
 //! let data = Base64Url::from_encoded("8J-RiyBoZWxsbywgd29ybGQhIPCfkYs").unwrap();
 //! assert_eq!(data.as_slice(), "👋 hello, world! 👋".as_bytes());
@@ -19,6 +57,28 @@
 //! let enc = transcode.to_string();
 //! assert_eq!(enc, "8J+RiyBoZWxsbywgd29ybGQhIPCfkYs=");
 //! ```
+//!
+//! ## Serde
+//!
+//! With the `serde` feature enabled, serializers and deserializers will be
+//! created that will encode the underlying byte array as a base64 string
+//! using the relevant encoding.
+
+
+#![warn(
+    missing_docs,
+    unused_import_braces,
+    unused_imports,
+    unused_qualifications
+)]
+#![deny(
+    missing_debug_implementations,
+    missing_copy_implementations,
+    trivial_casts,
+    trivial_numeric_casts,
+    unsafe_code,
+    unused_must_use
+)]
 
 use std::{error::Error, fmt};
 
@@ -186,6 +246,9 @@ macro_rules! b64_builder {
             }
         }
 
+        /// Serialize the underlying byte array as a base64 string
+        #[cfg(any(feature = "serde", doctest, doc))]
+        #[cfg_attr(docsrs, doc(cfg(feature = "serde")))]
         impl ::serde::Serialize for $ty {
             #[inline]
             fn serialize<S: ::serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
@@ -193,6 +256,9 @@ macro_rules! b64_builder {
             }
         }
 
+        /// Deserialize a base64 string and decode it into a byte array
+        #[cfg(any(feature = "serde", doctest, doc))]
+        #[cfg_attr(docsrs, doc(cfg(feature = "serde")))]
         impl<'de> ::serde::Deserialize<'de> for $ty {
             fn deserialize<D: ::serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
                 let raw: &[u8] = ::serde::Deserialize::deserialize(deserializer)?;
@@ -293,6 +359,9 @@ macro_rules! b64_builder {
             }
         }
 
+        /// Serialize the underlying byte array as a base64 string
+        #[cfg(any(feature = "serde", doctest, doc))]
+        #[cfg_attr(docsrs, doc(cfg(feature = "serde")))]
         impl ::serde::Serialize for $ty_ref {
             fn serialize<S: ::serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
                 let encoded = ::base64::encode_config(&self.0, $config);
@@ -336,7 +405,7 @@ mod doctests {
     /// Verifies that `from_slice` does not extend lifetimes
     ///
     /// ```compile_fail
-    /// use aliri_core::base64::Base64UrlRef;
+    /// use aliri_base64::Base64UrlRef;
     ///
     /// let b64 = {
     ///     let data = vec![0; 16];
@@ -352,7 +421,7 @@ mod doctests {
     /// Verifies that `from_mut_slice` does not extend lifetimes
     ///
     /// ```compile_fail
-    /// use aliri_core::base64::Base64UrlRef;
+    /// use aliri_base64::Base64UrlRef;
     ///
     /// let b64 = {
     ///     let mut data = vec![0; 16];
@@ -368,7 +437,7 @@ mod doctests {
     /// Verifies that `from_slice` does not extend lifetimes
     ///
     /// ```compile_fail
-    /// use aliri_core::base64::Base64Ref;
+    /// use aliri_base64::Base64Ref;
     ///
     /// let b64 = {
     ///     let data = vec![0; 16];
@@ -384,7 +453,7 @@ mod doctests {
     /// Verifies that `from_mut_slice` does not extend lifetimes
     ///
     /// ```compile_fail
-    /// use aliri_core::base64::Base64Ref;
+    /// use aliri_base64::Base64Ref;
     ///
     /// let b64 = {
     ///     let mut data = vec![0; 16];
@@ -396,4 +465,30 @@ mod doctests {
     fn base64_from_mut_slice_does_not_extend_lifetimes() -> ! {
         loop {}
     }
+
+    /// Verifies that `serde` serialization round-trips
+    ///
+    /// ```
+    /// use serde::{Serialize, Deserialize};
+    /// use aliri_base64::Base64Url;
+    ///
+    /// #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+    /// struct MyData {
+    ///     data: Base64Url,
+    /// }
+    ///
+    /// let data = MyData {
+    ///     data: Base64Url::from_raw("👋 hello, world! 👋".to_string().into_bytes()),
+    /// };
+    ///
+    /// let serialized = serde_json::to_string(&data).unwrap();
+    ///
+    /// assert_eq!(serialized, r#"{"data":"8J-RiyBoZWxsbywgd29ybGQhIPCfkYs"}"#);
+    ///
+    /// let deserialized: MyData = serde_json::from_str(&serialized).unwrap();
+    ///
+    /// assert_eq!(data, deserialized);
+    /// ```
+    #[cfg(feature = "serde")]
+    fn base64_round_trips_through_serde() -> ! { loop {} }
 }

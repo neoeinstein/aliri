@@ -1,7 +1,13 @@
+//! # aliri_clock
+//!
 //! Utilities for messing with time
+//!
+//! Types included allow messing with and mocking out clocks and other
+//! side-effect-laden time operations.
 
 use std::time::SystemTime;
 
+#[cfg(feature = "serde")]
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 /// Unix time
@@ -24,6 +30,8 @@ impl From<SystemTime> for UnixTime {
     }
 }
 
+#[cfg(any(feature = "serde", doc))]
+#[cfg_attr(docsrs, doc(cfg(feature = "serde")))]
 impl Serialize for UnixTime {
     #[inline]
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
@@ -31,6 +39,8 @@ impl Serialize for UnixTime {
     }
 }
 
+#[cfg(any(feature = "serde", doc))]
+#[cfg_attr(docsrs, doc(cfg(feature = "serde")))]
 impl<'de> Deserialize<'de> for UnixTime {
     #[inline]
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {

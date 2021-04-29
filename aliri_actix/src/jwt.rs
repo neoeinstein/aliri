@@ -5,7 +5,7 @@ use actix_web::{
     http::{header, StatusCode},
     FromRequest, HttpRequest, ResponseError,
 };
-use aliri_jose::{jwt, JwtRef};
+use aliri::{jwt, JwtRef};
 use aliri_oauth2::{Authority, AuthorityError, HasScopes, ScopesPolicy};
 use serde::Deserialize;
 use thiserror::Error;
@@ -87,7 +87,7 @@ fn get_jwt_from_req(request: &HttpRequest) -> Result<&JwtRef, JwtError> {
 /// ```
 /// use actix_web::{get, HttpResponse, Responder};
 /// use aliri_actix::jwt::{ScopesGuard, Scoped};
-/// use aliri_jose::jwt;
+/// use aliri::jwt;
 /// use aliri_oauth2::{JustScope, Scopes, ScopesPolicy};
 /// use once_cell::sync::OnceCell;
 /// use serde::Deserialize;
@@ -198,8 +198,8 @@ where
 mod tests {
     use super::*;
     use actix_web::{get, test, App, HttpResponse, Responder};
-    use aliri_core::base64::Base64Url;
-    use aliri_jose::{jwa, jwk, Jwk, Jwks};
+    use aliri_base64::Base64Url;
+    use aliri::{jwa, jwk, Jwk, Jwks};
     use aliri_oauth2::Scopes;
     use color_eyre::Result;
     use once_cell::sync::OnceCell;

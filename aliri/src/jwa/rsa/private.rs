@@ -1,6 +1,6 @@
 use std::{convert::TryFrom, fmt, sync::Arc};
 
-use aliri_core::base64::Base64Url;
+use aliri_base64::Base64Url;
 use openssl::{
     bn::BigNum,
     pkey::Private,

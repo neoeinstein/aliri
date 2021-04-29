@@ -1,6 +1,6 @@
 use std::convert::TryFrom;
 
-use aliri_core::base64::{Base64Url, Base64UrlRef};
+use aliri_base64::{Base64Url, Base64UrlRef};
 #[cfg(feature = "openssl")]
 use openssl::{bn::BigNum, rsa::Rsa};
 use serde::{Deserialize, Serialize};

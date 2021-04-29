@@ -1,0 +1,29 @@
+[package]
+name = "aliri_base64"
+description = "Wrappers that make debugging and using byte arrays a bit nicer"
+version = "0.1.0"
+authors = ["Marcus Griep <marcus@griep.us>"]
+edition = "2018"
+readme = "../README.md"
+license = "MIT/Apache-2.0"
+repository = "https://github.com/neoeinstein/aliri"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+base64 = "0.13"
+serde = { version = "1", features = [ "derive" ], optional = true }
+
+[dev-dependencies]
+serde = { version = "1", features = [ "derive" ] }
+serde_json = "1"
+
+[package.metadata.workspaces]
+independent = true
+
+[package.metadata.docs.rs]
+features = ["serde"]
+rustdoc-args = ["--cfg", "docsrs"]
+
+[package.metadata.playground]
+features = ["serde"]

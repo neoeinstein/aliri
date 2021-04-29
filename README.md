@@ -12,10 +12,10 @@ access.
 
 ## Features
 
-The [`aliri_jose`][] crate provides primary support for the _JavaScript/JSON
+The [`aliri`][] crate provides primary support for the _JavaScript/JSON
 Object Signing and Encryption (JOSE)_ standard. For more information about the
 RFCs relating to this standard, see the
-[crate's documentation][aliri_jose:doc].
+[crate's documentation][aliri:doc].
 
 The [`aliri_oauth2`][] crate provides some support for incorporating checks to
 ensure a bearer of a token has sufficient _scopes_ to permit access. It also
@@ -29,8 +29,8 @@ includes filters useful for authenticating access to endpoints.
 The remaining crates provide supporting functionality to these three primary
 crates.
 
-  [`aliri_jose`]: https://crates.io/crates/aliri_jose
-  [aliri_jose:doc]: https://docs.rs/aliri_jose
+  [`aliri`]: https://crates.io/crates/aliri
+  [aliri:doc]: https://docs.rs/aliri
   [`aliri_oauth2`]: https://crates.io/crates/aliri_oauth2
   [`aliri_warp`]: https://crates.io/crates/aliri_warp
   [`warp`]: https://crates.io/crates/warp

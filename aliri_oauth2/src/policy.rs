@@ -21,7 +21,7 @@ pub struct InsufficientScopes;
 ///
 /// ### Deny all requests
 /// ```
-/// use aliri::Policy;
+/// use aliri_traits::Policy;
 /// use aliri_oauth2::{Scopes, ScopesPolicy};
 ///
 /// let policy = ScopesPolicy::deny_all();
@@ -32,7 +32,7 @@ pub struct InsufficientScopes;
 ///
 /// ### Allow all requests
 /// ```
-/// use aliri::Policy;
+/// use aliri_traits::Policy;
 /// use aliri_oauth2::{Scopes, ScopesPolicy};
 ///
 /// let policy = ScopesPolicy::allow_all();
@@ -43,7 +43,7 @@ pub struct InsufficientScopes;
 ///
 /// ### Allow requests with a single scope
 /// ```
-/// use aliri::Policy;
+/// use aliri_traits::Policy;
 /// use aliri_oauth2::{Scopes, ScopesPolicy};
 ///
 /// let policy = ScopesPolicy::allow_one(
@@ -64,7 +64,7 @@ pub struct InsufficientScopes;
 ///
 /// ### Allow requests with multiple potential sets of scopes
 /// ```
-/// use aliri::Policy;
+/// use aliri_traits::Policy;
 /// use aliri_oauth2::{Scopes, ScopesPolicy};
 ///
 /// let mut policy = ScopesPolicy::deny_all();
@@ -138,7 +138,7 @@ impl ScopesPolicy {
     }
 }
 
-impl aliri::Policy for ScopesPolicy {
+impl aliri_traits::Policy for ScopesPolicy {
     type Request = Scopes;
     type Denial = InsufficientScopes;
 

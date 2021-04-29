@@ -1,6 +1,6 @@
 //! Filters for verifying JWTs using a JWK
 
-use aliri_jose::{
+use aliri::{
     jwt::{self, CoreHeaders, HasAlgorithm},
     Jwks, Jwt,
 };
@@ -12,7 +12,7 @@ use warp::Filter;
 #[error("error verifying jwt")]
 pub enum VerifyError {
     /// JWT verification error
-    JwtVerifyError(#[from] aliri_jose::error::JwtVerifyError),
+    JwtVerifyError(#[from] aliri::error::JwtVerifyError),
 
     /// Unable to find an appropriate JWK in the set
     #[error("no JWK found to verify this token")]

@@ -1,6 +1,6 @@
 //! Warp filters for validating JWTs against OAuth2 authorities and scopes
 
-use aliri_jose::{jwt, Jwt};
+use aliri::{jwt, Jwt};
 use aliri_oauth2::{Authority, AuthorityError, HasScopes, ScopesPolicy};
 use serde::Deserialize;
 use thiserror::Error;

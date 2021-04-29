@@ -4,13 +4,13 @@ use std::{
     sync::Arc,
 };
 
-use aliri_jose::{
+use aliri::{
     jwa, jwk,
     jwt::{self, CoreClaims},
     Jwk, Jwks, Jwt,
 };
 use aliri_oauth2::{Authority, HasScopes, Scopes, ScopesPolicy};
-use aliri_warp as aliri;
+use aliri_warp;
 use color_eyre::Result;
 use serde::{Deserialize, Serialize};
 use warp::{Filter, Reply};
@@ -45,7 +45,7 @@ async fn main() -> Result<()> {
     let hi = warp::path!("hello" / String)
         .and(warp::get())
         .and(warp::header("user-agent"))
-        .and(aliri::jwt::optional())
+        .and(aliri_warp::jwt::optional())
         .map(|param, agent: String, auth: Option<Jwt>| {
             if let Some(auth) = auth {
                 format!("Hello {}, whose agent is {}, auth: {}", param, agent, auth)
@@ -60,7 +60,7 @@ async fn main() -> Result<()> {
     let hi2 = warp::path!("hello2" / String)
         .and(warp::get())
         .and(warp::header("user-agent"))
-        .and(aliri::jwt())
+        .and(aliri_warp::jwt())
         .map(|param, agent: String, auth: Jwt| {
             format!("Hello {}, whose agent is {}, auth: {}", param, agent, auth)
         });
@@ -90,8 +90,8 @@ async fn main() -> Result<()> {
     let hi3 = warp::path!("hello3" / String)
         .and(warp::get())
         .and(warp::header("user-agent"))
-        .and(aliri::jwks(
-            aliri::jwt(),
+        .and(aliri_warp::jwks(
+            aliri_warp::jwt(),
             Arc::clone(&jwks),
             Arc::new(validator.clone()),
         ))
@@ -122,8 +122,8 @@ async fn main() -> Result<()> {
     let hi4 = warp::path!("hello4" / String)
         .and(warp::get())
         .and(warp::header("user-agent"))
-        .and(aliri::oauth2::require_scopes(
-            aliri::jwt(),
+        .and(aliri_warp::oauth2::require_scopes(
+            aliri_warp::jwt(),
             authority,
             Arc::new(policy),
         ))

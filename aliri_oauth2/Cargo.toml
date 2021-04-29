@@ -3,40 +3,40 @@ name = "aliri_oauth2"
 description = "JWT authorization based on validating OAuth2 scopes"
 keywords = [ "jose", "jwk", "jwt", "oauth2", "auth" ]
 categories = [ "authentication" ]
-version = "0.3.0"
+version = "0.4.0"
 authors = ["Marcus Griep <marcus@griep.us>"]
 edition = "2018"
+readme = "../README.md"
 license = "MIT/Apache-2.0"
 repository = "https://github.com/neoeinstein/aliri"
 
 [features]
-ec = [ "aliri_jose/ec" ]
-rsa = [ "aliri_jose/rsa" ]
-hmac = [ "aliri_jose/hmac" ]
-private-keys = [ "aliri_jose/private-keys" ]
+ec = [ "aliri/ec" ]
+rsa = [ "aliri/rsa" ]
+hmac = [ "aliri/hmac" ]
+private-keys = [ "aliri/private-keys" ]
 default = [ "rsa" ]
 
 [dependencies]
 ahash = "0.5"
-aliri = { version = "0.1.0", path = "../aliri" }
-aliri_core = { version = "0.2.0", path = "../aliri_core" }
-aliri_jose = { version = "0.2.0", path = "../aliri_jose", default-features = false }
+aliri = { version = "0.3.0", path = "../aliri", default-features = false }
+aliri_traits = { version = "0.1.0", path = "../aliri_traits" }
 aliri_macros = { version = "0.1.0", path = "../aliri_macros" }
 arc-swap = "0.4"
 color-eyre = "0.5"
 lazy_static = "1"
-reqwest = { version = "0.10", optional = true, features = [ "json" ] }
+reqwest = { version = "0.11", optional = true, features = [ "json" ] }
 serde = { version = "1", features = [ "derive" ] }
 thiserror = "1"
 tracing = "0.1.15"
 tracing-futures = "0.2"
 
 [dev-dependencies]
-aliri_jose = { version = "0.2.0", path = "../aliri_jose", features = [ "private-keys" ] }
+aliri = { version = "0.3.0", path = "../aliri", features = [ "private-keys" ] }
 openssl = "0.10"
 rusty-hook = "0.11"
 serde_json = "1"
-tokio = { version = "0.3", features = [ "rt-multi-thread", "macros" ] }
+tokio = { version = "1", features = [ "rt-multi-thread", "macros" ] }
 
 [package.metadata.workspaces]
 independent = true

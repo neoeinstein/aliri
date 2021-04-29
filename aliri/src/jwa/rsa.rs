@@ -2,7 +2,7 @@
 
 use std::{convert::TryFrom, fmt};
 
-use aliri_core::base64::Base64Url;
+use aliri_base64::Base64Url;
 use serde::{Deserialize, Serialize};
 
 use crate::error;
