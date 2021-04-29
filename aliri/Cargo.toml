@@ -7,7 +7,7 @@ version = "0.3.1"
 authors = ["Marcus Griep <marcus@griep.us>"]
 edition = "2018"
 readme = "../README.md"
-license = "MIT/Apache-2.0"
+license = "MIT OR Apache-2.0"
 repository = "https://github.com/neoeinstein/aliri"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
