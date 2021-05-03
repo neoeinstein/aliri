@@ -21,17 +21,17 @@ pub enum VerifyError {
 
 impl warp::reject::Reject for VerifyError {}
 
-async fn check_jwt<C: for<'de> serde::Deserialize<'de>>(
+async fn check_jwt<C: for<'de> serde::Deserialize<'de> + jwt::CoreClaims>(
     jwt: Jwt,
     jwks: &Jwks,
     validator: &jwt::CoreValidator,
-) -> Result<jwt::Claims<C>, VerifyError> {
-    let decomposed: jwt::Decomposed<jwt::Empty> = jwt.decompose()?;
+) -> Result<C, VerifyError> {
+    let decomposed: jwt::Decomposed = jwt.decompose()?;
     let jwk = jwks
         .get_key_by_opt(decomposed.kid(), decomposed.alg())
         .ok_or(VerifyError::NoValidKeyFound)?;
     let v: jwt::Validated<C> = decomposed.verify(jwk, validator)?;
-    let (_, c) = v.take();
+    let (_, c) = v.extract();
     Ok(c)
 }
 
@@ -47,7 +47,7 @@ where
     V: AsRef<jwt::CoreValidator> + Clone + Send + Sync + 'static,
 {
     self::jwks(jwt, jwks, validator)
-        .map(|_: jwt::Claims<jwt::Empty>| ())
+        .map(|_: jwt::BasicClaims| ())
         .untuple_one()
 }
 
@@ -56,9 +56,9 @@ pub fn jwks<C, F, K, V>(
     jwt: F,
     jwks: K,
     validator: V,
-) -> impl Filter<Extract = (jwt::Claims<C>,), Error = warp::reject::Rejection> + Clone
+) -> impl Filter<Extract = (C,), Error = warp::reject::Rejection> + Clone
 where
-    C: for<'de> serde::Deserialize<'de>,
+    C: for<'de> serde::Deserialize<'de> + jwt::CoreClaims,
     F: Filter<Extract = (Jwt,), Error = warp::reject::Rejection> + Clone,
     K: AsRef<Jwks> + Clone + Send + Sync + 'static,
     V: AsRef<jwt::CoreValidator> + Clone + Send + Sync + 'static,

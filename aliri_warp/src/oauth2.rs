@@ -19,9 +19,9 @@ pub fn require_scopes<C, F, P>(
     jwt: F,
     authority: Authority,
     policy: P,
-) -> impl Filter<Extract = (jwt::Claims<C>,), Error = warp::Rejection> + Clone
+) -> impl Filter<Extract = (C,), Error = warp::Rejection> + Clone
 where
-    C: for<'de> Deserialize<'de> + HasScopes,
+    C: for<'de> Deserialize<'de> + jwt::CoreClaims + HasScopes,
     F: Filter<Extract = (Jwt,), Error = warp::Rejection> + Clone,
     P: AsRef<ScopesPolicy> + Clone + Send + Sync + 'static,
 {

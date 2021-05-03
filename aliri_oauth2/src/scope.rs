@@ -12,28 +12,6 @@ typed_string! {
     pub struct ScopeRef(str);
 }
 
-/// Indicates that the type has OAuth2 scopes
-pub trait HasScopes {
-    /// Scopes
-    ///
-    /// Scopes claimed by the underlying token, generally in the `scope`
-    /// claim.
-    fn scopes(&self) -> &Scopes;
-}
-
-/// A convenience structure for payloads where the user only cares about the scope
-#[derive(Clone, Debug, Deserialize)]
-pub struct JustScope {
-    /// The `scope` claim
-    pub scope: Scopes,
-}
-
-impl HasScopes for JustScope {
-    fn scopes(&self) -> &Scopes {
-        &self.scope
-    }
-}
-
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(untagged)]
 enum ScopesDto {
@@ -193,13 +171,6 @@ where
         let mut set = Self::empty();
         set.extend(iter);
         set
-    }
-}
-
-impl HasScopes for Scopes {
-    #[inline]
-    fn scopes(&self) -> &Scopes {
-        self
     }
 }
 

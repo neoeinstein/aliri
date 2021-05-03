@@ -45,7 +45,7 @@
 //!     .require_issuer(jwt::Issuer::new("authority"))
 //!     .check_subject(Regex::new("^Al.ri$").unwrap());
 //!
-//! let decomposed = token.decompose::<jwt::Empty>().unwrap();
+//! let decomposed: jwt::Decomposed = token.decompose().unwrap();
 //! let key_ref = keys.get_key_by_id(decomposed.kid().unwrap(), decomposed.alg()).unwrap();
 //!
 //! let data: jwt::Validated = token.verify(key_ref, &validator)

@@ -9,23 +9,10 @@ use aliri::{
     jwt::{self, CoreClaims},
     Jwk, Jwks, Jwt,
 };
-use aliri_oauth2::{Authority, HasScopes, Scopes, ScopesPolicy};
+use aliri_oauth2::{jwt::BasicClaimsWithScope, Authority, HasScopes, Scopes, ScopesPolicy};
 use aliri_warp;
 use color_eyre::Result;
-use serde::{Deserialize, Serialize};
 use warp::{Filter, Reply};
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-struct Claims {
-    #[serde(rename = "scope")]
-    scopes: Scopes,
-}
-
-impl HasScopes for Claims {
-    fn scopes(&self) -> &Scopes {
-        &self.scopes
-    }
-}
 
 async fn refresh_jwks(mut interval: tokio::time::Interval, authority: Authority) -> ! {
     interval.tick().await;
@@ -95,7 +82,7 @@ async fn main() -> Result<()> {
             Arc::clone(&jwks),
             Arc::new(validator.clone()),
         ))
-        .map(|param, agent: String, claims: jwt::Claims<Claims>| {
+        .map(|param, agent: String, claims: BasicClaimsWithScope| {
             format!(
                 "Hello {}, whose agent is {}, authorized as {}!",
                 param,
@@ -127,13 +114,13 @@ async fn main() -> Result<()> {
             authority,
             Arc::new(policy),
         ))
-        .map(|param, agent: String, claims: jwt::Claims<Claims>| {
+        .map(|param, agent: String, claims: BasicClaimsWithScope| {
             format!(
                 "Hello {}, whose agent is {}, authorized as {} with scopes {:?}!",
                 param,
                 agent,
                 claims.sub().unwrap(),
-                claims.payload().scopes
+                claims.scopes()
             )
         });
 

@@ -17,9 +17,19 @@
 )]
 
 mod authority;
+pub mod jwt;
 mod policy;
 mod scope;
 
+/// Indicates that the type has OAuth2 scopes
+pub trait HasScopes {
+    /// Scopes
+    ///
+    /// Scopes claimed by the underlying token, generally in the `scope`
+    /// claim.
+    fn scopes(&self) -> &Scopes;
+}
+
 pub use authority::{Authority, AuthorityError};
 pub use policy::{InsufficientScopes, ScopesPolicy};
-pub use scope::{HasScopes, JustScope, Scope, ScopeRef, Scopes};
+pub use scope::{Scope, ScopeRef, Scopes};

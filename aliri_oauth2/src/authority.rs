@@ -162,9 +162,9 @@ impl Authority {
         &self,
         token: &JwtRef,
         policy: &ScopesPolicy,
-    ) -> Result<jwt::Claims<T>, AuthorityError>
+    ) -> Result<T, AuthorityError>
     where
-        T: for<'de> Deserialize<'de> + HasScopes,
+        T: for<'de> Deserialize<'de> + HasScopes + jwt::CoreClaims,
     {
         let decomposed = token.decompose()?;
 
@@ -189,9 +189,9 @@ impl Authority {
             validated = decomposed.verify(key, &self.inner.validator)?;
         }
 
-        policy.evaluate(validated.claims().payload().scopes())?;
+        policy.evaluate(validated.claims().scopes())?;
 
-        let (_, validated_claims) = validated.take();
+        let (_, validated_claims) = validated.extract();
 
         Ok(validated_claims)
     }
@@ -300,9 +300,9 @@ mod tests {
             params: jwk_params,
         };
 
-        let header = jwt::Headers::new(alg.into()).with_key_id(test_kid);
+        let header = jwt::BasicHeaders::with_key_id(alg.into(), test_kid);
 
-        let claims = jwt::Claims::new()
+        let claims = jwt::BsaicClaims::new()
             .with_audience(test_audience.clone())
             .with_issuer(test_issuer.clone())
             .with_future_expiration(60 * 5);

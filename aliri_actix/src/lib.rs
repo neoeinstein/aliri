@@ -2,21 +2,50 @@
 //!
 //! Actix utilities for interacting with `aliri` authorities
 //!
+//! ## Usage
+//!
+//! In order to attach the validator to Actix, you will first need to
+//!
 //! ## Example
+//!
 //! ```
-//! use aliri::{jwa, jwk, jwt, Jwk, Jwks};
+//! use aliri::{jwa, jwk, jwt, jwt::CoreClaims as _, Jwk, Jwks};
 //! use aliri_actix::scope_policy;
 //! use aliri_base64::Base64UrlRef;
-//! use aliri_oauth2::Authority;
+//! use aliri_clock::UnixTime;
+//! use aliri_oauth2::{HasScopes, Authority, Scopes};
 //! use actix_web::{get, web, http::{header, StatusCode}, test, App, HttpResponse, Responder};
 //! use futures::executor::block_on;
+//! use serde::Deserialize;
+//!
+//! #[derive(Clone, Debug, Deserialize)]
+//! pub struct CustomClaims {
+//!     iss: jwt::Issuer,
+//!     aud: jwt::Audiences,
+//!     sub: jwt::Subject,
+//!     #[serde(rename = "scope")]
+//!     scopes: Scopes,
+//! }
+//!
+//! impl jwt::CoreClaims for CustomClaims {
+//!     fn nbf(&self) -> Option<UnixTime> { None }
+//!     fn exp(&self) -> Option<UnixTime> { None }
+//!     fn aud(&self) -> &jwt::Audiences { &self.aud }
+//!     fn iss(&self) -> Option<&jwt::IssuerRef> { Some(&self.iss) }
+//!     fn sub(&self) -> Option<&jwt::SubjectRef> { Some(&self.sub) }
+//! }
+//!
+//! impl HasScopes for CustomClaims {
+//!     fn scopes(&self) -> &Scopes { &self.scopes }
+//! }
 //!
 //! // Define our initial scope
-//! scope_policy!(AdminOnly / AdminOnlyScope; "admin");
+//! scope_policy!(AdminOnly / AdminOnlyScope (CustomClaims); "admin");
 //!
 //! // Define an endpoint that will require this scope
 //! #[get("/test")]
-//! async fn test_endpoint(_: AdminOnly) -> impl Responder {
+//! async fn test_endpoint(token: AdminOnly) -> impl Responder {
+//!     println!("Token subject: {}", token.claims().sub);
 //!     HttpResponse::Ok()
 //! }
 //!

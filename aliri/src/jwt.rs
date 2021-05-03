@@ -107,25 +107,31 @@ fn validate_it() {
 }
 
 /// The validated headers and claims of a JWT
+///
+/// This type can _only_ be generated within this crate to assert that the
+/// headers and claims held by this type have already been validated.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Validated<C = Empty, H = Empty> {
-    headers: Headers<H>,
-    claims: Claims<C>,
+pub struct Validated<C = BasicClaims, H = BasicHeaders> {
+    /// The validated token headers
+    headers: H,
+
+    /// The validated token claims
+    claims: C,
 }
 
 impl<C, H> Validated<C, H> {
     /// Extracts the header and claims from the token
-    pub fn take(self) -> (Headers<H>, Claims<C>) {
+    pub fn extract(self) -> (H, C) {
         (self.headers, self.claims)
     }
 
     /// The validated token headers
-    pub fn headers(&self) -> &Headers<H> {
+    pub fn headers(&self) -> &H {
         &self.headers
     }
 
     /// The validated token claims
-    pub fn claims(&self) -> &Claims<C> {
+    pub fn claims(&self) -> &C {
         &self.claims
     }
 }
@@ -135,8 +141,8 @@ impl<C, H> Validated<C, H> {
 /// This structure is suitable for inspection to determine which key
 /// should be used to validate the JWT.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Decomposed<'a, H = Empty> {
-    pub(crate) header: Headers<H>,
+pub struct Decomposed<'a, H = BasicHeaders> {
+    pub(crate) header: H,
     pub(crate) message: &'a str,
     pub(crate) payload: &'a str,
     pub(crate) signature: Base64Url,
@@ -154,7 +160,7 @@ macro_rules! expect_two {
 
 impl<'a, H> Decomposed<'a, H>
 where
-    H: for<'de> Deserialize<'de>,
+    H: for<'de> Deserialize<'de> + CoreHeaders,
 {
     /// Verifies the decomposed JWT against the given JWK and validation plan
     pub fn verify<C, V>(
@@ -163,7 +169,7 @@ where
         validator: &CoreValidator,
     ) -> Result<Validated<C, H>, error::JwtVerifyError>
     where
-        C: for<'de> Deserialize<'de>,
+        C: for<'de> Deserialize<'de> + CoreClaims,
         V: jws::Verifier<Algorithm = jwa::Algorithm>,
         error::JwtVerifyError: From<V::Error>,
     {
@@ -178,7 +184,7 @@ where
         custom: X,
     ) -> Result<Validated<C, H>, error::JwtVerifyError>
     where
-        C: for<'de> Deserialize<'de>,
+        C: for<'de> Deserialize<'de> + CoreClaims,
         V: jws::Verifier<Algorithm = jwa::Algorithm>,
         error::JwtVerifyError: From<V::Error>,
         X: ClaimsValidator<C, H>,
@@ -191,12 +197,12 @@ where
 
         let p_raw = Base64Url::from_encoded(self.payload).map_err(error::malformed_jwt_payload)?;
 
-        let payload: Claims<C> =
+        let payload: C =
             serde_json::from_slice(p_raw.as_slice()).map_err(error::malformed_jwt_payload)?;
 
         validator.validate(&self.header, &payload)?;
 
-        custom.validate(self.header.headers(), payload.payload())?;
+        custom.validate(&self.header, &payload)?;
 
         Ok(Validated {
             headers: self.header,
@@ -217,7 +223,7 @@ impl JwtRef {
             expect_two!(message.rsplitn(2, '.')).ok_or_else(error::malformed_jwt)?;
         let h_raw = Base64Url::from_encoded(h_str).map_err(error::malformed_jwt_header)?;
         let signature = Base64Url::from_encoded(s_str).map_err(error::malformed_jwt_signature)?;
-        let header: Headers<H> =
+        let header: H =
             serde_json::from_slice(h_raw.as_slice()).map_err(error::malformed_jwt_header)?;
         Ok(Decomposed {
             header,
@@ -237,8 +243,8 @@ impl JwtRef {
         validator: &CoreValidator,
     ) -> Result<Validated<C, H>, error::JwtVerifyError>
     where
-        C: for<'de> Deserialize<'de>,
-        H: for<'de> Deserialize<'de>,
+        C: for<'de> Deserialize<'de> + CoreClaims,
+        H: for<'de> Deserialize<'de> + CoreHeaders,
         V: jws::Verifier<Algorithm = jwa::Algorithm>,
         error::JwtVerifyError: From<V::Error>,
     {
@@ -256,8 +262,8 @@ impl JwtRef {
         custom: X,
     ) -> Result<Validated<C, H>, error::JwtVerifyError>
     where
-        C: for<'de> Deserialize<'de>,
-        H: for<'de> Deserialize<'de>,
+        C: for<'de> Deserialize<'de> + CoreClaims,
+        H: for<'de> Deserialize<'de> + CoreHeaders,
         V: jws::Verifier<Algorithm = jwa::Algorithm>,
         error::JwtVerifyError: From<V::Error>,
         X: ClaimsValidator<C, H>,
@@ -268,13 +274,19 @@ impl JwtRef {
     }
 }
 
-impl<'a, H> HasAlgorithm for Decomposed<'a, H> {
+impl<'a, H> HasAlgorithm for Decomposed<'a, H>
+where
+    H: HasAlgorithm,
+{
     fn alg(&self) -> jwa::Algorithm {
         self.header.alg()
     }
 }
 
-impl<'a, H> CoreHeaders for Decomposed<'a, H> {
+impl<'a, H> CoreHeaders for Decomposed<'a, H>
+where
+    H: CoreHeaders,
+{
     fn kid(&self) -> Option<&jwk::KeyIdRef> {
         self.header.kid()
     }
@@ -285,38 +297,28 @@ pub trait CoreClaims {
     /// Not before
     ///
     /// A verifier MUST reject this token before the given time.
-    fn nbf(&self) -> Option<UnixTime> {
-        None
-    }
+    fn nbf(&self) -> Option<UnixTime>;
 
     /// Expires
     ///
     /// A verifier MUST reject this token after the given time.
-    fn exp(&self) -> Option<UnixTime> {
-        None
-    }
+    fn exp(&self) -> Option<UnixTime>;
 
     /// Audience
     ///
     /// A verifier MUST reject this token none of the audiences specified
     /// is an approved.
-    fn aud(&self) -> &Audiences {
-        Audiences::EMPTY_AUD
-    }
+    fn aud(&self) -> &Audiences;
 
     /// Issuer
     ///
     /// A verifier MUST reject this token if it the issuer is not approved.
-    fn iss(&self) -> Option<&IssuerRef> {
-        None
-    }
+    fn iss(&self) -> Option<&IssuerRef>;
 
     /// Subject
     ///
     /// A verifier SHOULD verify that the subject is acceptable.
-    fn sub(&self) -> Option<&SubjectRef> {
-        None
-    }
+    fn sub(&self) -> Option<&SubjectRef>;
 }
 
 /// Indicates that the type specifies the algorithm
@@ -338,18 +340,8 @@ pub trait CoreHeaders: HasAlgorithm {
     /// A verifier MUST use the JWK with the specified ID to verify
     /// the token. A verifier MAY use a JWK without any ID to verify
     /// the token _if and only if_ there is no JWK with a matching ID.
-    fn kid(&self) -> Option<&jwk::KeyIdRef> {
-        None
-    }
+    fn kid(&self) -> Option<&jwk::KeyIdRef>;
 }
-
-/// An empty structure
-///
-/// Useful for when a consumer has no custom claims to deserialize.
-#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Empty {}
-
-impl CoreClaims for Empty {}
 
 typed_string! {
     /// An audience
@@ -713,69 +705,44 @@ impl CoreValidator {
     }
 }
 
-/// Common headers used on JWTs
+/// Minimal set of headers for common JWTs
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug, PartialEq, Eq)]
-pub struct Headers<H = Empty> {
+pub struct BasicHeaders {
     alg: jwa::Algorithm,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     kid: Option<jwk::KeyId>,
-    #[serde(flatten)]
-    headers: H,
 }
 
-impl<H> HasAlgorithm for Headers<H> {
+impl BasicHeaders {
+    /// Constructs JWT headers, to be signed by the specified algorithm
+    pub const fn new(alg: jwa::Algorithm) -> Self {
+        Self { alg, kid: None }
+    }
+
+    /// Constructs JWT headers, with a specific signing algorithm and key ID
+    pub fn with_key_id(alg: jwa::Algorithm, kid: impl Into<jwk::KeyId>) -> Self {
+        Self {
+            alg,
+            kid: Some(kid.into()),
+        }
+    }
+}
+
+impl HasAlgorithm for BasicHeaders {
     fn alg(&self) -> jwa::Algorithm {
         self.alg
     }
 }
 
-impl<H> CoreHeaders for Headers<H> {
+impl CoreHeaders for BasicHeaders {
     fn kid(&self) -> Option<&jwk::KeyIdRef> {
         self.kid.as_deref()
     }
 }
 
-impl Headers {
-    /// Constructs JWT headers, to be signed by the specified algorithm
-    pub const fn new(alg: jwa::Algorithm) -> Self {
-        Self {
-            alg,
-            kid: None,
-            headers: Empty {},
-        }
-    }
-}
-
-impl<H> Headers<H> {
-    /// Adds a key ID to the JWT header
-    pub fn with_key_id(mut self, kid: impl Into<jwk::KeyId>) -> Self {
-        self.kid = Some(kid.into());
-        self
-    }
-
-    /// Adds custom headers to the JWT
-    pub fn with_headers<G>(self, headers: G) -> Headers<G> {
-        Headers {
-            alg: self.alg,
-            kid: self.kid,
-            headers,
-        }
-    }
-
-    /// A view of the custom headers
-    pub fn headers(&self) -> &H {
-        &self.headers
-    }
-
-    /// Moves the custom headers out
-    pub fn take_headers(self) -> H {
-        self.headers
-    }
-}
-
 /// Common claims used in JWTs
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug, PartialEq, Eq)]
-pub struct Claims<P = Empty> {
+pub struct BasicClaims {
     #[serde(default, skip_serializing_if = "Audiences::is_empty")]
     aud: Audiences,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -786,25 +753,9 @@ pub struct Claims<P = Empty> {
     exp: Option<UnixTime>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     nbf: Option<UnixTime>,
-    #[serde(flatten)]
-    payload: P,
 }
 
-impl Claims {
-    /// Constructs a new, empty payload
-    pub const fn new() -> Self {
-        Self {
-            aud: Audiences::empty(),
-            iss: None,
-            sub: None,
-            exp: None,
-            nbf: None,
-            payload: Empty {},
-        }
-    }
-}
-
-impl<C: Serialize> Claims<C> {
+impl BasicClaims {
     /// Produces a signed JWT with the given header and claims
     pub fn sign<H: Serialize + HasAlgorithm>(
         &self,
@@ -838,7 +789,7 @@ impl<C: Serialize> Claims<C> {
     }
 }
 
-impl<P> CoreClaims for Claims<P> {
+impl CoreClaims for BasicClaims {
     fn aud(&self) -> &Audiences {
         &self.aud
     }
@@ -860,7 +811,18 @@ impl<P> CoreClaims for Claims<P> {
     }
 }
 
-impl<P> Claims<P> {
+impl BasicClaims {
+    /// Constructs a new, empty payload
+    pub const fn new() -> Self {
+        Self {
+            aud: Audiences::empty(),
+            iss: None,
+            sub: None,
+            exp: None,
+            nbf: None,
+        }
+    }
+
     /// Sets the `aud` claim for the JWT
     pub fn with_audience(mut self, aud: impl Into<Audience>) -> Self {
         self.aud = Audiences::from(vec![aud.into()]);
@@ -908,28 +870,6 @@ impl<P> Claims<P> {
         self.nbf = Some(time);
         self
     }
-
-    /// Adds a custom payload of claims to the JWT
-    pub fn with_payload<Q>(self, payload: Q) -> Claims<Q> {
-        Claims {
-            aud: self.aud,
-            iss: self.iss,
-            sub: self.sub,
-            exp: self.exp,
-            nbf: self.nbf,
-            payload,
-        }
-    }
-
-    /// Borrows the custom claims attached to the JWT
-    pub fn payload(&self) -> &P {
-        &self.payload
-    }
-
-    /// Moves the custom claims out
-    pub fn take_payload(self) -> P {
-        self.payload
-    }
 }
 
 /// A type representing one or more items, primarily for serialization
@@ -958,7 +898,7 @@ mod tests {
                 "iss": "me"
             }"#;
 
-        let basic: Claims = serde_json::from_str(DATA)?;
+        let basic: BasicClaims = serde_json::from_str(DATA)?;
         dbg!(&basic);
 
         Ok(())
@@ -975,7 +915,7 @@ mod tests {
 
         let audiences = Audiences::from(vec![Audience::new("marcus"), Audience::new("other")]);
 
-        let claims = Claims::new()
+        let claims = BasicClaims::new()
             .with_not_before(UnixTime(9))
             .with_expiration(UnixTime(5))
             .with_audiences(audiences)
@@ -983,7 +923,7 @@ mod tests {
 
         let clock = TestClock::new(UnixTime(7));
 
-        let header = Headers::new(jwa::Algorithm::RS256);
+        let header = BasicHeaders::new(jwa::Algorithm::RS256);
 
         validation.validate_with_clock(&header, &claims, &clock)
     }
@@ -1091,11 +1031,11 @@ mod tests {
     }
 
     fn round_trip(jwk: Jwk, alg: jwa::Algorithm) -> Result<()> {
-        let claims = Claims::new()
+        let claims = BasicClaims::new()
             .with_expiration(UnixTime(100))
             .with_issuer("Marcus");
 
-        let headers = Headers::new(alg);
+        let headers = BasicHeaders::new(alg);
 
         let token = claims.sign(&jwk, &headers)?;
 

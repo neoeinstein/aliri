@@ -88,7 +88,7 @@ fn get_jwt_from_req(request: &HttpRequest) -> Result<&JwtRef, JwtError> {
 /// use actix_web::{get, HttpResponse, Responder};
 /// use aliri_actix::jwt::{ScopesGuard, Scoped};
 /// use aliri::jwt;
-/// use aliri_oauth2::{JustScope, Scopes, ScopesPolicy};
+/// use aliri_oauth2::{jwt::BasicClaimsWithScope, Scopes, ScopesPolicy};
 /// use once_cell::sync::OnceCell;
 /// use serde::Deserialize;
 ///
@@ -96,12 +96,7 @@ fn get_jwt_from_req(request: &HttpRequest) -> Result<&JwtRef, JwtError> {
 /// struct TestScope;
 ///
 /// impl ScopesGuard for TestScope {
-///     type Claims = JustScope;
-///
-///     #[inline]
-///     fn from_claims(_: jwt::Claims<Self::Claims>) -> Self {
-///         TestScope
-///     }
+///     type Claims = BasicClaimsWithScope;
 ///
 ///     fn scopes_policy() -> &'static ScopesPolicy {
 ///         static POLICY: OnceCell<ScopesPolicy> = OnceCell::new();
@@ -119,14 +114,10 @@ fn get_jwt_from_req(request: &HttpRequest) -> Result<&JwtRef, JwtError> {
 /// async fn test_endpoint(_: Scoped<TestScope>) -> impl Responder {
 ///     HttpResponse::Ok()
 /// }
-///
 /// ```
-pub trait ScopesGuard: Sized {
+pub trait ScopesGuard {
     /// The custom claims payload, which contains the required scopes
-    type Claims: for<'de> Deserialize<'de> + HasScopes + 'static;
-
-    /// Constructs the type from the claims extracted from the authorization token
-    fn from_claims(claims: jwt::Claims<Self::Claims>) -> Self;
+    type Claims: for<'de> Deserialize<'de> + HasScopes + jwt::CoreClaims + 'static;
 
     /// Returns the policy applied to types guarded by this scope
     ///
@@ -151,7 +142,7 @@ pub trait ScopesGuard: Sized {
     fn scopes_policy() -> &'static ScopesPolicy;
 }
 
-fn extract_and_verify_jwt<T>(request: &HttpRequest) -> Result<Scoped<T>, AuthFailed>
+fn extract_and_verify_jwt<T>(request: &HttpRequest) -> Result<T::Claims, AuthFailed>
 where
     T: ScopesGuard,
 {
@@ -161,23 +152,25 @@ where
 
     let token: &JwtRef = get_jwt_from_req(request)?;
 
-    let claims: jwt::Claims<T::Claims> = authority.verify_token(token, T::scopes_policy())?;
+    let claims: T::Claims = authority.verify_token(token, T::scopes_policy())?;
 
-    Ok(Scoped(T::from_claims(claims)))
+    Ok(claims)
 }
 
 /// Convenience wrapper which implements `FromRequest` for types that implement `ScopesGuard`
+///
+/// See the [`scope_policy!`] macro for a more convenient way to use this type.
 #[derive(Debug)]
-pub struct Scoped<T: ScopesGuard>(T);
+pub struct Scoped<T: ScopesGuard>(T::Claims);
 
 impl<T: ScopesGuard> Scoped<T> {
     /// Borrows a reference to the inner ScopesGuard value
-    pub fn inner(&self) -> &T {
+    pub fn claims(&self) -> &T::Claims {
         &self.0
     }
 
     /// Takes ownership of the inner ScopesGuard value
-    pub fn into_inner(self) -> T {
+    pub fn take_claims(self) -> T::Claims {
         self.0
     }
 }
@@ -190,7 +183,119 @@ where
     type Future = futures::future::Ready<Result<Self, Self::Error>>;
     type Config = ();
     fn from_request(request: &HttpRequest, _: &mut Payload) -> Self::Future {
-        futures::future::ready(extract_and_verify_jwt(request))
+        futures::future::ready(extract_and_verify_jwt::<T>(request).map(Scoped))
+    }
+}
+
+/// Convenience wrapper which _only_ verifies that the token is valid
+///
+/// Additional processing beyond validating the core claims is not performed.
+///
+/// ## Examples
+///
+/// Verify the base token claims _only_, discarding the actual payload after.
+///
+/// ```
+/// use actix_web::{get, HttpResponse, Responder};
+/// use aliri_actix::jwt::AllowAll;
+///
+/// #[get("/metrics")]
+/// async fn test_endpoint(_: AllowAll) -> impl Responder {
+///     HttpResponse::Ok()
+/// }
+/// ```
+///
+/// Verifying the base token claims and then using the payload in the handler.
+///
+/// ```
+/// use actix_web::{get, HttpResponse, Responder};
+/// use aliri::jwt::CoreClaims;
+/// use aliri_actix::jwt::AllowAll;
+///
+/// #[get("/metrics")]
+/// async fn test_endpoint(token: AllowAll) -> impl Responder {
+///     if let Some(sub) = token.claims().sub() {
+///         println!("Metrics accessed by {}", sub);
+///     } else {
+///         println!("Metrics accessed by {{missing subject}}");
+///     }
+///     HttpResponse::Ok()
+/// }
+/// ```
+///
+/// Verifying the base token claims and then using the custom payload in the handler.
+///
+/// ```
+/// use actix_web::{get, HttpResponse, Responder};
+/// use aliri_actix::jwt::AllowAll;
+/// use aliri_clock::UnixTime;
+/// use aliri::jwt;
+/// use aliri_oauth2::{HasScopes, Scopes};
+/// use serde::Deserialize;
+///
+/// #[derive(Clone, Debug, Deserialize)]
+/// pub struct CustomClaims {
+///     iss: jwt::Issuer,
+///     aud: jwt::Audiences,
+///     sub: jwt::Subject,
+///     #[serde(rename = "scope")]
+///     scopes: Scopes,
+/// }
+///
+/// impl jwt::CoreClaims for CustomClaims {
+///     fn nbf(&self) -> Option<UnixTime> { None }
+///     fn exp(&self) -> Option<UnixTime> { None }
+///     fn aud(&self) -> &jwt::Audiences { &self.aud }
+///     fn iss(&self) -> Option<&jwt::IssuerRef> { Some(&self.iss) }
+///     fn sub(&self) -> Option<&jwt::SubjectRef> { Some(&self.sub) }
+/// }
+///
+/// impl HasScopes for CustomClaims {
+///     fn scopes(&self) -> &Scopes { &self.scopes }
+/// }
+///
+/// #[get("/metrics")]
+/// async fn test_endpoint(token: AllowAll<CustomClaims>) -> impl Responder {
+///     println!("Metrics accessed by {}", token.claims().sub);
+///     HttpResponse::Ok()
+/// }
+/// ```
+#[derive(Debug)]
+pub struct AllowAll<C = aliri_oauth2::jwt::BasicClaimsWithScope>(C);
+
+impl<C> AllowAll<C> {
+    /// Borrows a reference to the inner claims payload
+    pub fn claims(&self) -> &C {
+        &self.0
+    }
+
+    /// Takes ownership of the inner claims payload
+    pub fn take_claims(self) -> C {
+        self.0
+    }
+}
+
+impl<C> ScopesGuard for AllowAll<C>
+where
+    C: for<'de> Deserialize<'de> + HasScopes + jwt::CoreClaims + 'static,
+{
+    type Claims = C;
+
+    fn scopes_policy() -> &'static ScopesPolicy {
+        static POLICY: once_cell::sync::OnceCell<ScopesPolicy> = once_cell::sync::OnceCell::new();
+        POLICY.get_or_init(ScopesPolicy::allow_all)
+    }
+}
+
+impl<C> FromRequest for AllowAll<C>
+where
+    C: for<'de> Deserialize<'de> + HasScopes + jwt::CoreClaims + 'static,
+{
+    type Error = AuthFailed;
+    type Future = futures::future::Ready<Result<Self, Self::Error>>;
+    type Config = ();
+    fn from_request(request: &HttpRequest, _: &mut Payload) -> Self::Future {
+        futures::future::ready(extract_and_verify_jwt::<Self>(request).map(AllowAll))
     }
 }
 
@@ -200,21 +305,9 @@ mod tests {
     use actix_web::{get, test, App, HttpResponse, Responder};
     use aliri::{jwa, jwk, Jwk, Jwks};
     use aliri_base64::Base64Url;
-    use aliri_oauth2::Scopes;
+    use aliri_oauth2::{jwt::BasicClaimsWithScope, Scopes};
     use color_eyre::Result;
     use once_cell::sync::OnceCell;
-
-    #[derive(Clone, Debug, Deserialize)]
-    struct ScopeClaims {
-        #[serde(rename = "scope")]
-        scopes: Scopes,
-    }
-
-    impl HasScopes for ScopeClaims {
-        fn scopes(&self) -> &Scopes {
-            &self.scopes
-        }
-    }
 
     #[actix_rt::test]
     async fn test_with_missing_authority() -> Result<()> {
@@ -267,12 +360,7 @@ mod tests {
     struct TestScope;
 
     impl ScopesGuard for TestScope {
-        type Claims = ScopeClaims;
-
-        #[inline]
-        fn from_claims(_: jwt::Claims<Self::Claims>) -> Self {
-            TestScope
-        }
+        type Claims = BasicClaimsWithScope;
 
         fn scopes_policy() -> &'static ScopesPolicy {
             static POLICY: OnceCell<ScopesPolicy> = OnceCell::new();
