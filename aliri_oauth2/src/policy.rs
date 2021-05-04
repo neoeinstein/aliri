@@ -2,7 +2,7 @@ use std::iter::FromIterator;
 
 use thiserror::Error;
 
-use super::Scopes;
+use crate::Scopes;
 
 /// Indicates the requestor held insufficient scopes to be granted access
 /// to a controlled resource

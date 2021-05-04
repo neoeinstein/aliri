@@ -1,6 +1,10 @@
+//! OAuth2-specific
+
 use std::{collections::hash_set, iter::FromIterator, str::FromStr};
 
 use ahash::AHashSet;
+use aliri::jwt;
+use aliri_clock::UnixTime;
 use aliri_macros::typed_string;
 use serde::{Deserialize, Serialize};
 
@@ -194,5 +198,67 @@ impl FromStr for Scopes {
     #[inline]
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Ok(Self::from(s))
+    }
+}
+
+/// A convenience structure for payloads where the user only cares about the
+/// scope and other basic claims
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct BasicClaimsWithScope {
+    /// The basic claims
+    #[serde(flatten)]
+    pub basic: jwt::BasicClaims,
+
+    /// The `scope` claim
+    pub scope: Scopes,
+}
+
+impl jwt::CoreClaims for BasicClaimsWithScope {
+    #[inline]
+    fn nbf(&self) -> Option<UnixTime> {
+        self.basic.nbf()
+    }
+
+    #[inline]
+    fn exp(&self) -> Option<UnixTime> {
+        self.basic.exp()
+    }
+
+    #[inline]
+    fn aud(&self) -> &jwt::Audiences {
+        self.basic.aud()
+    }
+
+    #[inline]
+    fn iss(&self) -> Option<&jwt::IssuerRef> {
+        self.basic.iss()
+    }
+
+    #[inline]
+    fn sub(&self) -> Option<&jwt::SubjectRef> {
+        self.basic.sub()
+    }
+}
+
+/// Indicates that the type has OAuth2 scopes
+pub trait HasScopes {
+    /// Scopes
+    ///
+    /// Scopes claimed by the underlying token, generally in the `scope`
+    /// claim.
+    fn scopes(&self) -> &Scopes;
+}
+
+impl HasScopes for BasicClaimsWithScope {
+    #[inline]
+    fn scopes(&self) -> &Scopes {
+        &self.scope
+    }
+}
+
+impl HasScopes for Scopes {
+    #[inline]
+    fn scopes(&self) -> &Scopes {
+        self
     }
 }

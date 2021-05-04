@@ -4,12 +4,8 @@ use std::{
     sync::Arc,
 };
 
-use aliri::{
-    jwa, jwk,
-    jwt::{self, CoreClaims},
-    Jwk, Jwks, Jwt,
-};
-use aliri_oauth2::{jwt::BasicClaimsWithScope, Authority, HasScopes, Scopes, ScopesPolicy};
+use aliri::{jwa, jwk, jwt, jwt::CoreClaims as _, Jwk, Jwks, Jwt};
+use aliri_oauth2::{oauth2, oauth2::HasScopes as _, Authority, ScopesPolicy};
 use aliri_warp;
 use color_eyre::Result;
 use warp::{Filter, Reply};
@@ -82,14 +78,16 @@ async fn main() -> Result<()> {
             Arc::clone(&jwks),
             Arc::new(validator.clone()),
         ))
-        .map(|param, agent: String, claims: BasicClaimsWithScope| {
-            format!(
-                "Hello {}, whose agent is {}, authorized as {}!",
-                param,
-                agent,
-                claims.sub().unwrap()
-            )
-        });
+        .map(
+            |param, agent: String, claims: oauth2::BasicClaimsWithScope| {
+                format!(
+                    "Hello {}, whose agent is {}, authorized as {}!",
+                    param,
+                    agent,
+                    claims.sub().unwrap()
+                )
+            },
+        );
 
     let jwks_url = format!("http://{}/.well-known/jwks.json", addr);
     let authority = Authority::new_from_url(jwks_url, validator).await?;
@@ -100,8 +98,8 @@ async fn main() -> Result<()> {
     ));
 
     let mut policy = ScopesPolicy::deny_all();
-    policy.allow(Scopes::single("say:hello"));
-    policy.allow(Scopes::from_scopes(vec![
+    policy.allow(oauth2::Scopes::single("say:hello"));
+    policy.allow(oauth2::Scopes::from_scopes(vec![
         "say:anything",
         "no-really:anything",
     ]));
@@ -114,15 +112,17 @@ async fn main() -> Result<()> {
             authority,
             Arc::new(policy),
         ))
-        .map(|param, agent: String, claims: BasicClaimsWithScope| {
-            format!(
-                "Hello {}, whose agent is {}, authorized as {} with scopes {:?}!",
-                param,
-                agent,
-                claims.sub().unwrap(),
-                claims.scopes()
-            )
-        });
+        .map(
+            |param, agent: String, claims: oauth2::BasicClaimsWithScope| {
+                format!(
+                    "Hello {}, whose agent is {}, authorized as {} with scopes {:?}!",
+                    param,
+                    agent,
+                    claims.sub().unwrap(),
+                    claims.scopes()
+                )
+            },
+        );
 
     let (addr, fut) =
         warp::serve(hi.or(hi2).or(hi3).or(hi4)).bind_ephemeral((Ipv4Addr::LOCALHOST, 0));

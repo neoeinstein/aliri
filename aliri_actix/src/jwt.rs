@@ -6,7 +6,7 @@ use actix_web::{
     FromRequest, HttpRequest, ResponseError,
 };
 use aliri::{jwt, JwtRef};
-use aliri_oauth2::{Authority, AuthorityError, HasScopes, ScopesPolicy};
+use aliri_oauth2::{oauth2::HasScopes, Authority, AuthorityError, ScopesPolicy};
 use serde::Deserialize;
 use thiserror::Error;
 
@@ -88,7 +88,7 @@ fn get_jwt_from_req(request: &HttpRequest) -> Result<&JwtRef, JwtError> {
 /// use actix_web::{get, HttpResponse, Responder};
 /// use aliri_actix::jwt::{ScopesGuard, Scoped};
 /// use aliri::jwt;
-/// use aliri_oauth2::{jwt::BasicClaimsWithScope, Scopes, ScopesPolicy};
+/// use aliri_oauth2::{oauth2, Scopes, ScopesPolicy};
 /// use once_cell::sync::OnceCell;
 /// use serde::Deserialize;
 ///
@@ -96,7 +96,7 @@ fn get_jwt_from_req(request: &HttpRequest) -> Result<&JwtRef, JwtError> {
 /// struct TestScope;
 ///
 /// impl ScopesGuard for TestScope {
-///     type Claims = BasicClaimsWithScope;
+///     type Claims = oauth2::BasicClaimsWithScope;
 ///
 ///     fn scopes_policy() -> &'static ScopesPolicy {
 ///         static POLICY: OnceCell<ScopesPolicy> = OnceCell::new();
@@ -230,7 +230,7 @@ where
 /// use aliri_actix::jwt::AllowAll;
 /// use aliri_clock::UnixTime;
 /// use aliri::jwt;
-/// use aliri_oauth2::{HasScopes, Scopes};
+/// use aliri_oauth2::oauth2;
 /// use serde::Deserialize;
 ///
 /// #[derive(Clone, Debug, Deserialize)]
@@ -239,7 +239,7 @@ where
 ///     aud: jwt::Audiences,
 ///     sub: jwt::Subject,
 ///     #[serde(rename = "scope")]
-///     scopes: Scopes,
+///     scopes: oauth2::Scopes,
 /// }
 ///
 /// impl jwt::CoreClaims for CustomClaims {
@@ -250,8 +250,8 @@ where
 ///     fn sub(&self) -> Option<&jwt::SubjectRef> { Some(&self.sub) }
 /// }
 ///
-/// impl HasScopes for CustomClaims {
-///     fn scopes(&self) -> &Scopes { &self.scopes }
+/// impl oauth2::HasScopes for CustomClaims {
+///     fn scopes(&self) -> &oauth2::Scopes { &self.scopes }
 /// }
 ///
 /// #[get("/metrics")]
@@ -261,7 +261,7 @@ where
 /// }
 /// ```
 #[derive(Debug)]
-pub struct AllowAll<C = aliri_oauth2::jwt::BasicClaimsWithScope>(C);
+pub struct AllowAll<C = aliri_oauth2::oauth2::BasicClaimsWithScope>(C);
 
 impl<C> AllowAll<C> {
     /// Borrows a reference to the inner claims payload
@@ -305,7 +305,7 @@ mod tests {
     use actix_web::{get, test, App, HttpResponse, Responder};
     use aliri::{jwa, jwk, Jwk, Jwks};
     use aliri_base64::Base64Url;
-    use aliri_oauth2::{jwt::BasicClaimsWithScope, Scopes};
+    use aliri_oauth2::{oauth2::BasicClaimsWithScope, Scopes};
     use color_eyre::Result;
     use once_cell::sync::OnceCell;
 

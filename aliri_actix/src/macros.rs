@@ -119,7 +119,7 @@
 /// use aliri::jwt;
 /// use aliri_actix::scope_policy;
 /// use aliri_clock::UnixTime;
-/// use aliri_oauth2::{HasScopes, Scopes};
+/// use aliri_oauth2::oauth2;
 /// use serde::Deserialize;
 /// use actix_web::{get, HttpResponse, Responder};
 ///
@@ -129,7 +129,7 @@
 ///     aud: jwt::Audiences,
 ///     sub: jwt::Subject,
 ///     #[serde(rename = "scope")]
-///     scopes: Scopes,
+///     scopes: oauth2::Scopes,
 /// }
 ///
 /// impl jwt::CoreClaims for CustomClaims {
@@ -140,8 +140,8 @@
 ///     fn sub(&self) -> Option<&jwt::SubjectRef> { Some(&self.sub) }
 /// }
 ///
-/// impl HasScopes for CustomClaims {
-///     fn scopes(&self) -> &Scopes { &self.scopes }
+/// impl oauth2::HasScopes for CustomClaims {
+///     fn scopes(&self) -> &oauth2::Scopes { &self.scopes }
 /// }
 ///
 /// // Define our initial scope
@@ -165,7 +165,7 @@
 #[macro_export]
 macro_rules! scope_policy {
     ($i:ident/$s:ident; $($($scope:literal),*);*) => {
-      scope_policy!($i/$s(::aliri_oauth2::jwt::BasicClaimsWithScope); $($($scope),*);*)
+      scope_policy!($i/$s(::aliri_oauth2::oauth2::BasicClaimsWithScope); $($($scope),*);*)
     };
     ($i:ident/$s:ident($claim:ty); $($($scope:literal),*);*) => {
         #[derive(Clone, Copy, Debug, PartialEq, Eq)]

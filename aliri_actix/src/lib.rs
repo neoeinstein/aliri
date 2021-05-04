@@ -13,7 +13,7 @@
 //! use aliri_actix::scope_policy;
 //! use aliri_base64::Base64UrlRef;
 //! use aliri_clock::UnixTime;
-//! use aliri_oauth2::{HasScopes, Authority, Scopes};
+//! use aliri_oauth2::{oauth2, Authority};
 //! use actix_web::{get, web, http::{header, StatusCode}, test, App, HttpResponse, Responder};
 //! use futures::executor::block_on;
 //! use serde::Deserialize;
@@ -24,7 +24,7 @@
 //!     aud: jwt::Audiences,
 //!     sub: jwt::Subject,
 //!     #[serde(rename = "scope")]
-//!     scopes: Scopes,
+//!     scopes: oauth2::Scopes,
 //! }
 //!
 //! impl jwt::CoreClaims for CustomClaims {
@@ -35,8 +35,8 @@
 //!     fn sub(&self) -> Option<&jwt::SubjectRef> { Some(&self.sub) }
 //! }
 //!
-//! impl HasScopes for CustomClaims {
-//!     fn scopes(&self) -> &Scopes { &self.scopes }
+//! impl oauth2::HasScopes for CustomClaims {
+//!     fn scopes(&self) -> &oauth2::Scopes { &self.scopes }
 //! }
 //!
 //! // Define our initial scope
