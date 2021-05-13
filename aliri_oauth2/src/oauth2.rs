@@ -5,16 +5,12 @@ use std::{collections::hash_set, iter::FromIterator, str::FromStr};
 use ahash::AHashSet;
 use aliri::jwt;
 use aliri_clock::UnixTime;
-use aliri_macros::typed_string;
+use aliri_braid::braid;
 use serde::{Deserialize, Serialize};
 
-typed_string! {
-    /// An OAuth2 scope
-    pub struct Scope(String);
-
-    /// Reference to a `Scope`
-    pub struct ScopeRef(str);
-}
+/// An OAuth2 scope
+#[braid(serde, ref_doc = "A borrowed reference to an OAuth2 [`Scope`]")]
+pub struct Scope;
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(untagged)]
@@ -38,7 +34,7 @@ impl From<Option<ScopesDto>> for Scopes {
 
 impl From<Scopes> for ScopesDto {
     fn from(s: Scopes) -> Self {
-        let x: Vec<_> = s.0.into_iter().map(Scope::into_inner).collect();
+        let x: Vec<_> = s.0.into_iter().map(Scope::into_string).collect();
         let y = x.join(" ");
         ScopesDto::String(y)
     }

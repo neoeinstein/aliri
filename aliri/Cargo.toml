@@ -23,7 +23,7 @@ default = [ "hmac", "rsa" ]
 [dependencies]
 aliri_base64 = { version = "0.1.0", path = "../aliri_base64", features = [ "serde" ] }
 aliri_clock = { version = "0.1.0", path = "../aliri_clock", features = [ "serde" ] }
-aliri_macros = { version = "0.1.0", path = "../aliri_macros" }
+aliri_braid = { version = "0.1.4" }
 lazy_static = { version = "1" }
 regex = "1"
 ring = "0.16"

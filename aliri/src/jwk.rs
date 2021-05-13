@@ -6,7 +6,7 @@
 
 use std::convert::{TryFrom, TryInto};
 
-use aliri_macros::typed_string;
+use aliri_braid::braid;
 use serde::{Deserialize, Serialize, Serializer};
 
 use crate::jws::Signer;
@@ -15,13 +15,9 @@ use crate::{
     jws::{self, Verifier},
 };
 
-typed_string! {
-    /// An identifier for a JWK
-    pub struct KeyId(String);
-
-    /// Reference to `KeyId`
-    pub struct KeyIdRef(str);
-}
+/// An identifier for a JWK
+#[braid(serde, ref_doc = "A borrowed reference to JWK identifier ([`KeyId`])")]
+pub struct KeyId;
 
 /// An identified JSON Web Key
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize)]

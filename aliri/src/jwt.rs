@@ -57,7 +57,7 @@ use std::{convert::TryFrom, time::Duration};
 
 use aliri_base64::Base64Url;
 use aliri_clock::{Clock, System, UnixTime};
-use aliri_macros::typed_string;
+use aliri_braid::braid;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 
@@ -343,39 +343,23 @@ pub trait CoreHeaders: HasAlgorithm {
     fn kid(&self) -> Option<&jwk::KeyIdRef>;
 }
 
-typed_string! {
-    /// An audience
-    pub struct Audience(String);
+/// An audience
+#[braid(serde, ref_doc = "A borrowed reference to an [`Audience`]")]
+pub struct Audience;
 
-    /// Reference to an `Audience`
-    pub struct AudienceRef(str);
-}
+/// An issuer of JWTs
+#[braid(serde, ref_doc = "A borrowed reference to an [`Issuer`]")]
+pub struct Issuer;
 
-typed_string! {
-    /// An issuer of JWTs
-    pub struct Issuer(String);
+/// The subject of a JWT
+#[braid(serde, ref_doc = "A borrowed reference to a [`Subject`]")]
+pub struct Subject;
 
-    /// Reference to an `Issuer`
-    pub struct IssuerRef(str);
-}
+/// A JSON Web Token
+#[braid(serde, ref_doc = "A borrowed reference to a JSON Web Token ([`Jwt`])")]
+pub struct Jwt;
 
-typed_string! {
-    /// The subject of a JWT
-    pub struct Subject(String);
-
-    /// Reference to a `Subject`
-    pub struct SubjectRef(str);
-}
-
-typed_string! {
-    /// A JSON Web Token
-    pub struct Jwt(String);
-
-    /// Reference to a JSON Web Token
-    pub struct JwtRef(str);
-}
-
-/// A set of zero or more audiences
+/// A set of zero or more [`Audience`]s
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(from = "OneOrMany<Audience>", into = "OneOrMany<Audience>")]
 #[repr(transparent)]
