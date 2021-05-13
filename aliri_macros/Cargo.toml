@@ -1,7 +1,7 @@
 [package]
 name = "aliri_macros"
 description = "Macros used by the `aliri` family of crates"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["Marcus Griep <marcus@griep.us>"]
 edition = "2018"
 readme = "../README.md"
