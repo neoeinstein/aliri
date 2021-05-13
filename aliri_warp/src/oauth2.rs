@@ -1,7 +1,7 @@
-//! Warp filters for validating JWTs against OAuth2 authorities and scopes
+//! Warp filters for validating JWTs against OAuth2 authorities and scope
 
 use aliri::{jwt, Jwt};
-use aliri_oauth2::{oauth2, Authority, AuthorityError, ScopesPolicy};
+use aliri_oauth2::{oauth2, Authority, AuthorityError, ScopePolicy};
 use serde::Deserialize;
 use thiserror::Error;
 use warp::Filter;
@@ -14,16 +14,15 @@ pub struct AuthFailed(#[from] pub AuthorityError);
 impl warp::reject::Reject for AuthFailed {}
 
 /// Require the JWT to be valid according to the JWKS authority and scope
-/// scopesets
-pub fn require_scopes<C, F, P>(
+pub fn require_scope<C, F, P>(
     jwt: F,
     authority: Authority,
     policy: P,
 ) -> impl Filter<Extract = (C,), Error = warp::Rejection> + Clone
 where
-    C: for<'de> Deserialize<'de> + jwt::CoreClaims + oauth2::HasScopes,
+    C: for<'de> Deserialize<'de> + jwt::CoreClaims + oauth2::HasScope,
     F: Filter<Extract = (Jwt,), Error = warp::Rejection> + Clone,
-    P: AsRef<ScopesPolicy> + Clone + Send + Sync + 'static,
+    P: AsRef<ScopePolicy> + Clone + Send + Sync + 'static,
 {
     jwt.and_then(move |jwt: Jwt| {
         let authority = authority.clone();

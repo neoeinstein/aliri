@@ -6,7 +6,7 @@ use actix_web::{
     FromRequest, HttpRequest, ResponseError,
 };
 use aliri::{jwt, JwtRef};
-use aliri_oauth2::{oauth2::HasScopes, Authority, AuthorityError, ScopesPolicy};
+use aliri_oauth2::{oauth2::HasScope, Authority, AuthorityError, ScopePolicy};
 use serde::Deserialize;
 use thiserror::Error;
 
@@ -86,26 +86,26 @@ fn get_jwt_from_req(request: &HttpRequest) -> Result<&JwtRef, JwtError> {
 ///
 /// ```
 /// use actix_web::{get, HttpResponse, Responder};
-/// use aliri_actix::jwt::{ScopesGuard, Scoped};
+/// use aliri_actix::jwt::{ScopeGuard, Scoped};
 /// use aliri::jwt;
-/// use aliri_oauth2::{oauth2, Scopes, ScopesPolicy};
+/// use aliri_oauth2::{oauth2, Scope, ScopePolicy};
 /// use once_cell::sync::OnceCell;
 /// use serde::Deserialize;
 ///
 /// #[derive(Debug)]
 /// struct TestScope;
 ///
-/// impl ScopesGuard for TestScope {
+/// impl ScopeGuard for TestScope {
 ///     type Claims = oauth2::BasicClaimsWithScope;
 ///
-///     fn scopes_policy() -> &'static ScopesPolicy {
-///         static POLICY: OnceCell<ScopesPolicy> = OnceCell::new();
+///     fn scope_policy() -> &'static ScopePolicy {
+///         static POLICY: OnceCell<ScopePolicy> = OnceCell::new();
 ///         POLICY.get_or_init(|| {
-///             ScopesPolicy::deny_all()
-///                 .or_allow(Scopes::single("admin:all"))
-///                 .or_allow(Scopes::single("admin:area"))
-///                 .or_allow(Scopes::single("read:area").and("update:area"))
-///                 .or_allow(Scopes::single("read:area").and("upsert:area"))
+///             ScopePolicy::deny_all()
+///                 .or_allow(Scope::single("admin:all".parse().unwrap()))
+///                 .or_allow(Scope::single("admin:area".parse().unwrap()))
+///                 .or_allow(Scope::single("read:area".parse().unwrap()).and("update:area".parse().unwrap()))
+///                 .or_allow(Scope::single("read:area".parse().unwrap()).and("upsert:area".parse().unwrap()))
 ///         })
 ///     }
 /// }
@@ -115,9 +115,9 @@ fn get_jwt_from_req(request: &HttpRequest) -> Result<&JwtRef, JwtError> {
 ///     HttpResponse::Ok()
 /// }
 /// ```
-pub trait ScopesGuard {
+pub trait ScopeGuard {
     /// The custom claims payload, which contains the required scopes
-    type Claims: for<'de> Deserialize<'de> + HasScopes + jwt::CoreClaims + 'static;
+    type Claims: for<'de> Deserialize<'de> + HasScope + jwt::CoreClaims + 'static;
 
     /// Returns the policy applied to types guarded by this scope
     ///
@@ -127,24 +127,24 @@ pub trait ScopesGuard {
     /// `Lazy`, as in the following example.
     ///
     /// ```
-    /// use aliri_oauth2::{Scopes, ScopesPolicy};
+    /// use aliri_oauth2::{Scope, ScopePolicy};
     /// use once_cell::sync::OnceCell;
     ///
-    /// static POLICY: OnceCell<ScopesPolicy> = OnceCell::new();
+    /// static POLICY: OnceCell<ScopePolicy> = OnceCell::new();
     /// let policy_ref = POLICY.get_or_init(|| {
-    ///     ScopesPolicy::deny_all()
-    ///         .or_allow(Scopes::single("admin:all"))
-    ///         .or_allow(Scopes::single("admin:area"))
-    ///         .or_allow(Scopes::single("read:area").and("update:area"))
-    ///         .or_allow(Scopes::single("read:area").and("upsert:area"))
+    ///     ScopePolicy::deny_all()
+    ///         .or_allow(Scope::single("admin:all".parse().unwrap()))
+    ///         .or_allow(Scope::single("admin:area".parse().unwrap()))
+    ///         .or_allow(Scope::single("read:area".parse().unwrap()).and("update:area".parse().unwrap()))
+    ///         .or_allow(Scope::single("read:area".parse().unwrap()).and("upsert:area".parse().unwrap()))
     /// });
     /// ```
-    fn scopes_policy() -> &'static ScopesPolicy;
+    fn scope_policy() -> &'static ScopePolicy;
 }
 
 fn extract_and_verify_jwt<T>(request: &HttpRequest) -> Result<T::Claims, AuthFailed>
 where
-    T: ScopesGuard,
+    T: ScopeGuard,
 {
     let authority = request
         .app_data::<Authority>()
@@ -152,18 +152,18 @@ where
 
     let token: &JwtRef = get_jwt_from_req(request)?;
 
-    let claims: T::Claims = authority.verify_token(token, T::scopes_policy())?;
+    let claims: T::Claims = authority.verify_token(token, T::scope_policy())?;
 
     Ok(claims)
 }
 
-/// Convenience wrapper which implements `FromRequest` for types that implement `ScopesGuard`
+/// Convenience wrapper which implements [`FromRequest`] for types that implement [`ScopeGuard`]
 ///
 /// See the [`scope_policy!`] macro for a more convenient way to use this type.
 #[derive(Debug)]
-pub struct Scoped<T: ScopesGuard>(T::Claims);
+pub struct Scoped<T: ScopeGuard>(T::Claims);
 
-impl<T: ScopesGuard> Scoped<T> {
+impl<T: ScopeGuard> Scoped<T> {
     /// Borrows a reference to the inner ScopesGuard value
     pub fn claims(&self) -> &T::Claims {
         &self.0
@@ -177,7 +177,7 @@ impl<T: ScopesGuard> Scoped<T> {
 
 impl<T> FromRequest for Scoped<T>
 where
-    T: ScopesGuard,
+    T: ScopeGuard,
 {
     type Error = AuthFailed;
     type Future = futures::future::Ready<Result<Self, Self::Error>>;
@@ -238,8 +238,7 @@ where
 ///     iss: jwt::Issuer,
 ///     aud: jwt::Audiences,
 ///     sub: jwt::Subject,
-///     #[serde(rename = "scope")]
-///     scopes: oauth2::Scopes,
+///     scope: oauth2::Scope,
 /// }
 ///
 /// impl jwt::CoreClaims for CustomClaims {
@@ -250,8 +249,8 @@ where
 ///     fn sub(&self) -> Option<&jwt::SubjectRef> { Some(&self.sub) }
 /// }
 ///
-/// impl oauth2::HasScopes for CustomClaims {
-///     fn scopes(&self) -> &oauth2::Scopes { &self.scopes }
+/// impl oauth2::HasScope for CustomClaims {
+///     fn scope(&self) -> &oauth2::Scope { &self.scope }
 /// }
 ///
 /// #[get("/metrics")]
@@ -275,21 +274,21 @@ impl<C> AllowAll<C> {
     }
 }
 
-impl<C> ScopesGuard for AllowAll<C>
+impl<C> ScopeGuard for AllowAll<C>
 where
-    C: for<'de> Deserialize<'de> + HasScopes + jwt::CoreClaims + 'static,
+    C: for<'de> Deserialize<'de> + HasScope + jwt::CoreClaims + 'static,
 {
     type Claims = C;
 
-    fn scopes_policy() -> &'static ScopesPolicy {
-        static POLICY: once_cell::sync::OnceCell<ScopesPolicy> = once_cell::sync::OnceCell::new();
-        POLICY.get_or_init(ScopesPolicy::allow_all)
+    fn scope_policy() -> &'static ScopePolicy {
+        static POLICY: once_cell::sync::OnceCell<ScopePolicy> = once_cell::sync::OnceCell::new();
+        POLICY.get_or_init(ScopePolicy::allow_all)
     }
 }
 
 impl<C> FromRequest for AllowAll<C>
 where
-    C: for<'de> Deserialize<'de> + HasScopes + jwt::CoreClaims + 'static,
+    C: for<'de> Deserialize<'de> + HasScope + jwt::CoreClaims + 'static,
 {
     type Error = AuthFailed;
     type Future = futures::future::Ready<Result<Self, Self::Error>>;
@@ -305,7 +304,7 @@ mod tests {
     use actix_web::{get, test, App, HttpResponse, Responder};
     use aliri::{jwa, jwk, Jwk, Jwks};
     use aliri_base64::Base64Url;
-    use aliri_oauth2::{oauth2::BasicClaimsWithScope, Scopes};
+    use aliri_oauth2::{oauth2::BasicClaimsWithScope, Scope};
     use color_eyre::Result;
     use once_cell::sync::OnceCell;
 
@@ -359,17 +358,17 @@ mod tests {
     #[derive(Debug)]
     struct TestScope;
 
-    impl ScopesGuard for TestScope {
+    impl ScopeGuard for TestScope {
         type Claims = BasicClaimsWithScope;
 
-        fn scopes_policy() -> &'static ScopesPolicy {
-            static POLICY: OnceCell<ScopesPolicy> = OnceCell::new();
+        fn scope_policy() -> &'static ScopePolicy {
+            static POLICY: OnceCell<ScopePolicy> = OnceCell::new();
             POLICY.get_or_init(|| {
-                ScopesPolicy::deny_all()
-                    .or_allow(Scopes::single("test"))
-                    .or_allow(Scopes::single("peter").and("paul"))
-                    .or_allow(Scopes::single("peter").and("steve"))
-                    .or_allow(Scopes::single("roger"))
+                ScopePolicy::deny_all()
+                    .or_allow(Scope::single("test".parse().unwrap()))
+                    .or_allow(Scope::single("peter".parse().unwrap()).and("paul".parse().unwrap()))
+                    .or_allow(Scope::single("peter".parse().unwrap()).and("steve".parse().unwrap()))
+                    .or_allow(Scope::single("roger".parse().unwrap()))
             })
         }
     }

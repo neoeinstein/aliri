@@ -56,8 +56,8 @@
 use std::{convert::TryFrom, time::Duration};
 
 use aliri_base64::Base64Url;
-use aliri_clock::{Clock, System, UnixTime};
 use aliri_braid::braid;
+use aliri_clock::{Clock, System, UnixTime};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 

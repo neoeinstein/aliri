@@ -17,7 +17,7 @@ use reqwest::{
 use serde::Deserialize;
 use thiserror::Error;
 
-use crate::{oauth2::HasScopes, ScopesPolicy};
+use crate::{oauth2::HasScope, ScopePolicy};
 
 /// Indicates the requestor held insufficient scopes to be granted access
 /// to a controlled resource
@@ -33,7 +33,7 @@ pub enum AuthorityError {
     /// Indicates that, while the JWT was acceptable, it does not grant the
     /// level of authorization requested.
     #[error("access denied by policy")]
-    PolicyDenial(#[from] crate::InsufficientScopes),
+    PolicyDenial(#[from] crate::InsufficientScope),
 }
 
 #[derive(Debug)]
@@ -158,13 +158,9 @@ impl Authority {
     }
 
     /// Authenticates the token and checks access according to the policy
-    pub fn verify_token<T>(
-        &self,
-        token: &JwtRef,
-        policy: &ScopesPolicy,
-    ) -> Result<T, AuthorityError>
+    pub fn verify_token<T>(&self, token: &JwtRef, policy: &ScopePolicy) -> Result<T, AuthorityError>
     where
-        T: for<'de> Deserialize<'de> + HasScopes + jwt::CoreClaims,
+        T: for<'de> Deserialize<'de> + HasScope + jwt::CoreClaims,
     {
         let decomposed = token.decompose()?;
 
@@ -189,7 +185,7 @@ impl Authority {
             validated = decomposed.verify(key, &self.inner.validator)?;
         }
 
-        policy.evaluate(validated.claims().scopes())?;
+        policy.evaluate(validated.claims().scope())?;
 
         let (_, validated_claims) = validated.extract();
 

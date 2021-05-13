@@ -23,8 +23,7 @@
 //!     iss: jwt::Issuer,
 //!     aud: jwt::Audiences,
 //!     sub: jwt::Subject,
-//!     #[serde(rename = "scope")]
-//!     scopes: oauth2::Scopes,
+//!     scope: oauth2::Scope,
 //! }
 //!
 //! impl jwt::CoreClaims for CustomClaims {
@@ -35,8 +34,8 @@
 //!     fn sub(&self) -> Option<&jwt::SubjectRef> { Some(&self.sub) }
 //! }
 //!
-//! impl oauth2::HasScopes for CustomClaims {
-//!     fn scopes(&self) -> &oauth2::Scopes { &self.scopes }
+//! impl oauth2::HasScope for CustomClaims {
+//!     fn scope(&self) -> &oauth2::Scope { &self.scope }
 //! }
 //!
 //! // Define our initial scope

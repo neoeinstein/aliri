@@ -21,5 +21,5 @@ pub mod oauth2;
 mod policy;
 
 pub use authority::{Authority, AuthorityError};
-pub use oauth2::Scopes;
-pub use policy::{InsufficientScopes, ScopesPolicy};
+pub use oauth2::Scope;
+pub use policy::{InsufficientScope, ScopePolicy};

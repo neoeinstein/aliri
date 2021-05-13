@@ -128,8 +128,7 @@
 ///     iss: jwt::Issuer,
 ///     aud: jwt::Audiences,
 ///     sub: jwt::Subject,
-///     #[serde(rename = "scope")]
-///     scopes: oauth2::Scopes,
+///     scope: oauth2::Scope,
 /// }
 ///
 /// impl jwt::CoreClaims for CustomClaims {
@@ -140,8 +139,8 @@
 ///     fn sub(&self) -> Option<&jwt::SubjectRef> { Some(&self.sub) }
 /// }
 ///
-/// impl oauth2::HasScopes for CustomClaims {
-///     fn scopes(&self) -> &oauth2::Scopes { &self.scopes }
+/// impl oauth2::HasScope for CustomClaims {
+///     fn scope(&self) -> &oauth2::Scope { &self.scope }
 /// }
 ///
 /// // Define our initial scope
@@ -171,7 +170,7 @@ macro_rules! scope_policy {
         #[derive(Clone, Copy, Debug, PartialEq, Eq)]
         pub struct $s;
 
-        #[doc = "Verifies the JWT and ensures that it has the appropriate scopes"]
+        #[doc = "Verifies the JWT and ensures that it has an appropriate scope"]
         #[doc = ""]
         #[doc = "The JWT must have one of the following sets of scopes to be considered authorized."]
         #[doc = "Within each set, all scopes must be present, but only one set must be satisfied."]
@@ -184,20 +183,20 @@ macro_rules! scope_policy {
         )*
         pub type $i = ::aliri_actix::jwt::Scoped<$s>;
 
-        impl ::aliri_actix::jwt::ScopesGuard for $s {
+        impl ::aliri_actix::jwt::ScopeGuard for $s {
             type Claims = $claim;
 
-            fn scopes_policy() -> &'static ::aliri_oauth2::ScopesPolicy {
+            fn scope_policy() -> &'static ::aliri_oauth2::ScopePolicy {
                 use ::once_cell::sync::OnceCell;
 
-                static POLICY: OnceCell<aliri_oauth2::ScopesPolicy> = OnceCell::new();
+                static POLICY: OnceCell<::aliri_oauth2::ScopePolicy> = OnceCell::new();
                 POLICY.get_or_init(|| {
-                    ::aliri_oauth2::ScopesPolicy::deny_all()
+                    ::aliri_oauth2::ScopePolicy::deny_all()
                     $(
                         .or_allow(
-                            aliri_oauth2::Scopes::empty()
+                            ::aliri_oauth2::Scope::empty()
                             $(
-                                .and($scope)
+                                .and(::std::convert::TryFrom::try_from($scope).unwrap())
                             )*
                         )
                     )*

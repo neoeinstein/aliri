@@ -2,13 +2,13 @@ use std::iter::FromIterator;
 
 use thiserror::Error;
 
-use crate::Scopes;
+use crate::Scope;
 
-/// Indicates the requestor held insufficient scopes to be granted access
+/// Indicates the requestor held insufficient scope to be granted access
 /// to a controlled resource
 #[derive(Copy, Clone, Debug, Hash, Eq, PartialEq, Error)]
-#[error("insufficient scopes")]
-pub struct InsufficientScopes;
+#[error("insufficient scope")]
+pub struct InsufficientScope;
 
 /// An access policy based on OAuth2 scopes
 ///
@@ -22,81 +22,90 @@ pub struct InsufficientScopes;
 /// ### Deny all requests
 /// ```
 /// use aliri_traits::Policy;
-/// use aliri_oauth2::{Scopes, ScopesPolicy};
+/// use aliri_oauth2::{Scope, ScopePolicy};
 ///
-/// let policy = ScopesPolicy::deny_all();
+/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+/// let policy = ScopePolicy::deny_all();
 ///
-/// let request = Scopes::single("admin");
+/// let request = Scope::single("admin".parse()?);
 /// assert!(policy.evaluate(&request).is_err());
+/// # Ok(())
+/// # }
 /// ```
 ///
 /// ### Allow all requests
 /// ```
 /// use aliri_traits::Policy;
-/// use aliri_oauth2::{Scopes, ScopesPolicy};
+/// use aliri_oauth2::{Scope, ScopePolicy};
 ///
-/// let policy = ScopesPolicy::allow_all();
+/// let policy = ScopePolicy::allow_all();
 ///
-/// let request = Scopes::empty();
+/// let request = Scope::empty();
 /// assert!(policy.evaluate(&request).is_ok());
 /// ```
 ///
 /// ### Allow requests with a single scope
 /// ```
 /// use aliri_traits::Policy;
-/// use aliri_oauth2::{Scopes, ScopesPolicy};
+/// use aliri_oauth2::{Scope, ScopePolicy};
 ///
-/// let policy = ScopesPolicy::allow_one(
-///     Scopes::single("admin")
+/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+/// let policy = ScopePolicy::allow_one(
+///     Scope::single("admin".parse()?)
 /// );
 ///
-/// let request = Scopes::from_scopes(vec![
-///     "admin",
-///     "user",
+/// let request = Scope::from_scope_tokens(vec![
+///     "admin".parse()?,
+///     "user".parse()?,
 /// ]);
 /// assert!(policy.evaluate(&request).is_ok());
 ///
-/// let user_request = Scopes::from_scopes(vec![
-///     "user",
+/// let user_request = Scope::from_scope_tokens(vec![
+///     "user".parse()?,
 /// ]);
 /// assert!(policy.evaluate(&user_request).is_err());
+/// # Ok(())
+/// # }
 /// ```
 ///
 /// ### Allow requests with multiple potential sets of scopes
 /// ```
 /// use aliri_traits::Policy;
-/// use aliri_oauth2::{Scopes, ScopesPolicy};
+/// use aliri_oauth2::{Scope, ScopePolicy};
 ///
-/// let mut policy = ScopesPolicy::deny_all();
-/// policy.allow(Scopes::single("admin"));
-/// policy.allow(Scopes::from_scopes(vec![
-///     "special",
-///     "user",
+/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+/// let mut policy = ScopePolicy::deny_all();
+/// policy.allow(Scope::single("admin".parse()?));
+/// policy.allow(Scope::from_scope_tokens(vec![
+///     "special".parse()?,
+///     "user".parse()?,
 /// ]));
 ///
-/// let admin_request = Scopes::from_scopes(vec![
-///     "admin",
+/// let admin_request = Scope::from_scope_tokens(vec![
+///     "admin".parse()?,
 /// ]);
 /// assert!(policy.evaluate(&admin_request).is_ok());
 ///
-/// let user_request = Scopes::from_scopes(vec![
-///     "user",
+/// let user_request = Scope::from_scope_tokens(vec![
+///     "user".parse()?,
 /// ]);
 /// assert!(policy.evaluate(&user_request).is_err());
 ///
-/// let special_user_request = Scopes::from_scopes(vec![
-///     "special",
-///     "user",
+/// let special_user_request = Scope::from_scope_tokens(vec![
+///     "special".parse()?,
+///     "user".parse()?,
 /// ]);
 /// assert!(policy.evaluate(&special_user_request).is_ok());
+/// # Ok(())
+/// # }
 /// ```
 ///
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct ScopesPolicy {
-    alternatives: Vec<Scopes>,
+pub struct ScopePolicy {
+    alternatives: Vec<Scope>,
 }
 
-impl ScopesPolicy {
+impl ScopePolicy {
     /// Constructs a policy that has no permissible alternatives
     ///
     /// By default, this policy will deny all requests
@@ -111,21 +120,21 @@ impl ScopesPolicy {
     #[inline]
     pub fn allow_all() -> Self {
         Self {
-            alternatives: vec![Scopes::empty()],
+            alternatives: vec![Scope::empty()],
         }
     }
 
     /// Constructs a policy that requires this set of scopes
     #[inline]
-    pub fn allow_one(scopes: Scopes) -> Self {
+    pub fn allow_one(scopes: Scope) -> Self {
         Self {
             alternatives: vec![scopes],
         }
     }
 
-    /// Add an alternate set of reqired scopes
+    /// Add an alternate set of required scopes
     #[inline]
-    pub fn or_allow(self, scopes: Scopes) -> Self {
+    pub fn or_allow(self, scopes: Scope) -> Self {
         let mut s = self;
         s.alternatives.push(scopes);
         s
@@ -133,14 +142,14 @@ impl ScopesPolicy {
 
     /// Add an alternative set of required scopes
     #[inline]
-    pub fn allow(&mut self, scopes: Scopes) {
+    pub fn allow(&mut self, scopes: Scope) {
         self.alternatives.push(scopes);
     }
 }
 
-impl aliri_traits::Policy for ScopesPolicy {
-    type Request = Scopes;
-    type Denial = InsufficientScopes;
+impl aliri_traits::Policy for ScopePolicy {
+    type Request = Scope;
+    type Denial = InsufficientScope;
 
     fn evaluate(&self, held: &Self::Request) -> Result<(), Self::Denial> {
         let allowed = self.alternatives.iter().any(|req| held.contains_all(req));
@@ -148,14 +157,14 @@ impl aliri_traits::Policy for ScopesPolicy {
         if allowed {
             Ok(())
         } else {
-            Err(InsufficientScopes)
+            Err(InsufficientScope)
         }
     }
 }
 
-impl IntoIterator for ScopesPolicy {
-    type Item = Scopes;
-    type IntoIter = <Vec<Scopes> as IntoIterator>::IntoIter;
+impl IntoIterator for ScopePolicy {
+    type Item = Scope;
+    type IntoIter = <Vec<Scope> as IntoIterator>::IntoIter;
 
     #[inline]
     fn into_iter(self) -> Self::IntoIter {
@@ -166,11 +175,11 @@ impl IntoIterator for ScopesPolicy {
 /// An iterator over a set of borrowed scopes
 #[derive(Clone, Debug)]
 pub struct Iter<'a> {
-    iter: std::slice::Iter<'a, Scopes>,
+    iter: std::slice::Iter<'a, Scope>,
 }
 
 impl<'a> Iterator for Iter<'a> {
-    type Item = &'a Scopes;
+    type Item = &'a Scope;
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
@@ -178,8 +187,8 @@ impl<'a> Iterator for Iter<'a> {
     }
 }
 
-impl<'a> IntoIterator for &'a ScopesPolicy {
-    type Item = &'a Scopes;
+impl<'a> IntoIterator for &'a ScopePolicy {
+    type Item = &'a Scope;
     type IntoIter = Iter<'a>;
 
     #[inline]
@@ -190,21 +199,21 @@ impl<'a> IntoIterator for &'a ScopesPolicy {
     }
 }
 
-impl Extend<Scopes> for ScopesPolicy {
+impl Extend<Scope> for ScopePolicy {
     #[inline]
     fn extend<I>(&mut self, iter: I)
     where
-        I: IntoIterator<Item = Scopes>,
+        I: IntoIterator<Item = Scope>,
     {
         self.alternatives.extend(iter)
     }
 }
 
-impl FromIterator<Scopes> for ScopesPolicy {
+impl FromIterator<Scope> for ScopePolicy {
     #[inline]
     fn from_iter<I>(iter: I) -> Self
     where
-        I: IntoIterator<Item = Scopes>,
+        I: IntoIterator<Item = Scope>,
     {
         let mut set = Self::deny_all();
         set.extend(iter);

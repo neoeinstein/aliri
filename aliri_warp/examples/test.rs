@@ -5,7 +5,7 @@ use std::{
 };
 
 use aliri::{jwa, jwk, jwt, jwt::CoreClaims as _, Jwk, Jwks, Jwt};
-use aliri_oauth2::{oauth2, oauth2::HasScopes as _, Authority, ScopesPolicy};
+use aliri_oauth2::{oauth2, oauth2::HasScope as _, Authority, ScopePolicy};
 use aliri_warp;
 use color_eyre::Result;
 use warp::{Filter, Reply};
@@ -97,17 +97,17 @@ async fn main() -> Result<()> {
         authority.clone(),
     ));
 
-    let mut policy = ScopesPolicy::deny_all();
-    policy.allow(oauth2::Scopes::single("say:hello"));
-    policy.allow(oauth2::Scopes::from_scopes(vec![
-        "say:anything",
-        "no-really:anything",
+    let mut policy = ScopePolicy::deny_all();
+    policy.allow(oauth2::Scope::single("say:hello".parse()?));
+    policy.allow(oauth2::Scope::from_scope_tokens(vec![
+        "say:anything".parse()?,
+        "no-really:anything".parse()?,
     ]));
 
     let hi4 = warp::path!("hello4" / String)
         .and(warp::get())
         .and(warp::header("user-agent"))
-        .and(aliri_warp::oauth2::require_scopes(
+        .and(aliri_warp::oauth2::require_scope(
             aliri_warp::jwt(),
             authority,
             Arc::new(policy),
@@ -115,11 +115,11 @@ async fn main() -> Result<()> {
         .map(
             |param, agent: String, claims: oauth2::BasicClaimsWithScope| {
                 format!(
-                    "Hello {}, whose agent is {}, authorized as {} with scopes {:?}!",
+                    "Hello {}, whose agent is {}, authorized as {} with scope {:?}!",
                     param,
                     agent,
                     claims.sub().unwrap(),
-                    claims.scopes()
+                    claims.scope()
                 )
             },
         );
