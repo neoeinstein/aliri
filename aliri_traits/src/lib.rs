@@ -1,5 +1,3 @@
-//! # aliri_traits
-//!
 //! Token-based authorization with authorities that verify access grants.
 
 #![warn(

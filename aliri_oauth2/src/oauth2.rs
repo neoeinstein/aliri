@@ -26,7 +26,12 @@ pub enum InvalidScopeToken {
     },
 }
 
-/// An OAuth2 scope token as defined in RFC6749, Section 3.3
+/// An OAuth2 scope token as defined in [RFC 6749, Section 3.3][RFC6749 3.3]
+///
+/// A scope token must be composed of printable ASCII characters excluding
+/// ` ` (space), `"` (double quote), and `\` (backslash).
+///
+///   [RFC6749 3.3]: (https://datatracker.ietf.org/doc/html/rfc6749#section-3.3)
 #[braid(
     serde,
     validator,

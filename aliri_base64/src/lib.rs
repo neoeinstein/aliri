@@ -1,5 +1,3 @@
-//! # aliri_base64
-//!
 //! Wrappers for values that should be serialized or represented as base64
 //!
 //! The [`aliri_base64`][] crate provides some utilities for more easily working
@@ -22,7 +20,7 @@
 //!   [`aliri_base64`]: https://docs.rs/aliri_base64
 //!   [`base64`]: https://docs.rs/base64
 //!
-//! ## Supported encodings
+//! # Supported encodings
 //!
 //! [`Base64`][] and [`Base64Ref`][] wrap owned and borrowed byte arrays that must be
 //! serialized in the standard Base64 encoding with padding.
@@ -33,7 +31,7 @@
 //! Additional encodings may be added in the future, but these were the two
 //! primary encodings required to support my base set of use cases.
 //!
-//! ## Unsafe code
+//! # Unsafe code
 //!
 //! _Aliri Base64_ makes use of two lines of unsafe code. This unsafe code is limited
 //! to the functions that allow the [`Base64Ref`][] and [`Base64UrlRef`][] to wrap borrowed
@@ -50,7 +48,7 @@
 //! Note that, because `cargo-geiger` has difficulty parsing out unsafe usage from
 //! within macros, that tool won't report these crates as "radioactive", but
 //! probably should. _Do your due diligence._
-//! ## Example
+//! # Example
 //!
 //! Using [`ToString::to_string()`][std::string::ToString::to_string()]:
 //!
@@ -98,7 +96,7 @@
 //! assert_eq!(enc, "8J+RiyBoZWxsbywgd29ybGQhIPCfkYs=");
 //! ```
 //!
-//! ## Serde
+//! # Serde
 //!
 //! With the `serde` feature enabled, serializers and deserializers will be
 //! created that will encode the underlying byte array as a base64 string

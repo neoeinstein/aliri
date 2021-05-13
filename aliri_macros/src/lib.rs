@@ -1,5 +1,3 @@
-//! # aliri_macros
-//!
 //! Macros used by the `aliri` family of crates.
 
 #![warn(

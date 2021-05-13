@@ -82,7 +82,7 @@ fn get_jwt_from_req(request: &HttpRequest) -> Result<&JwtRef, JwtError> {
 /// In order to work, an `Authority` must have been established in `actix_web`. This can be done using
 /// `App::app_data()` to attach the authority for verifying tokens.
 ///
-/// ## Examples
+/// # Examples
 ///
 /// ```
 /// use actix_web::{get, HttpResponse, Responder};
@@ -191,7 +191,7 @@ where
 ///
 /// Additional processing beyond validating the core claims is not performed.
 ///
-/// ## Examples
+/// # Examples
 ///
 /// Verify the base token claims _only_, discarding the actual payload after.
 ///

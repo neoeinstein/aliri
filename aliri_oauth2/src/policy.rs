@@ -17,9 +17,9 @@ pub struct InsufficientScope;
 /// access. If the policy contains no alternatives, the default effect is to
 /// deny access.
 ///
-/// ## Examples
+/// # Examples
 ///
-/// ### Deny all requests
+/// ## Deny all requests
 /// ```
 /// use aliri_traits::Policy;
 /// use aliri_oauth2::{Scope, ScopePolicy};
@@ -33,7 +33,7 @@ pub struct InsufficientScope;
 /// # }
 /// ```
 ///
-/// ### Allow all requests
+/// ## Allow all requests
 /// ```
 /// use aliri_traits::Policy;
 /// use aliri_oauth2::{Scope, ScopePolicy};
@@ -44,7 +44,7 @@ pub struct InsufficientScope;
 /// assert!(policy.evaluate(&request).is_ok());
 /// ```
 ///
-/// ### Allow requests with a single scope
+/// ## Allow requests with a single scope
 /// ```
 /// use aliri_traits::Policy;
 /// use aliri_oauth2::{Scope, ScopePolicy};
@@ -68,7 +68,7 @@ pub struct InsufficientScope;
 /// # }
 /// ```
 ///
-/// ### Allow requests with multiple potential sets of scopes
+/// ## Allow requests with multiple potential sets of scopes
 /// ```
 /// use aliri_traits::Policy;
 /// use aliri_oauth2::{Scope, ScopePolicy};

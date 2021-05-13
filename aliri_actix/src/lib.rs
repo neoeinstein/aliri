@@ -1,12 +1,10 @@
-//! # aliri_actix
-//!
 //! Actix utilities for interacting with `aliri` authorities
 //!
-//! ## Usage
+//! # Usage
 //!
 //! In order to attach the validator to Actix, you will first need to
 //!
-//! ## Example
+//! # Example
 //!
 //! ```
 //! use aliri::{jwa, jwk, jwt, jwt::CoreClaims as _, Jwk, Jwks};

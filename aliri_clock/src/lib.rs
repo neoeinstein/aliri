@@ -1,5 +1,3 @@
-//! # aliri_clock
-//!
 //! Utilities for messing with time
 //!
 //! Types included allow messing with and mocking out clocks and other

@@ -1,5 +1,3 @@
-//! # aliri
-//!
 //! This crate implements the Javascript/JSON Object Signing and Encryption (JOSE)
 //! standards, including:
 //!
@@ -16,7 +14,7 @@
 //! [RFC7518]: https://tools.ietf.org/html/rfc7518
 //! [RFC7519]: https://tools.ietf.org/html/rfc7519
 //!
-//! ## Example
+//! # Example
 //!
 //! ```
 //! use aliri_base64::Base64UrlRef;

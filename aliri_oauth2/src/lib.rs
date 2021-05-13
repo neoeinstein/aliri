@@ -1,6 +1,7 @@
-//! # aliri_oauth2
+//! JWT authorization based on validating OAuth2 scopes
 //!
-//! JWT authorization based on validating OAuth2 scopes.
+//! This module uses the definition of OAuth2 as defined in
+//! [RFC 6749](https://datatracker.ietf.org/doc/html/rfc6749).
 
 #![warn(
     missing_docs,
