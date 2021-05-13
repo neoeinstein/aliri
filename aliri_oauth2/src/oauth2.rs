@@ -119,8 +119,7 @@ impl Scope {
 
     /// Adds an additional scope token
     #[inline]
-    pub fn and(self, scope_token: ScopeToken) -> Self
-    {
+    pub fn and(self, scope_token: ScopeToken) -> Self {
         let mut s = self;
         s.insert(scope_token);
         s
