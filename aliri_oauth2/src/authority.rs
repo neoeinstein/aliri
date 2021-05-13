@@ -105,7 +105,7 @@ impl Authority {
         let etag = response.headers().get(header::ETAG).map(ToOwned::to_owned);
         let jwks = response.json::<Jwks>().await?;
 
-        let data = VolatileData { etag, jwks };
+        let data = VolatileData { jwks, etag };
 
         Ok(Self {
             inner: Arc::new(Inner {
@@ -142,7 +142,7 @@ impl Authority {
                 let etag = response.headers().get("etag").map(ToOwned::to_owned);
                 let jwks = response.json::<Jwks>().await?;
 
-                let data = Arc::new(VolatileData { etag, jwks });
+                let data = Arc::new(VolatileData { jwks, etag });
 
                 self.inner.data.store(data);
             }
