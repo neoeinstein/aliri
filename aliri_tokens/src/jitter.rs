@@ -12,6 +12,13 @@ pub trait JitterSource {
 #[derive(Debug)]
 pub struct NullJitter;
 
+impl JitterSource for NullJitter {
+    #[inline]
+    fn jitter(&mut self, time: UnixTime) -> UnixTime {
+        time
+    }
+}
+
 #[cfg(feature = "rand")]
 mod random {
     use aliri_clock::{DurationSecs, UnixTime};
