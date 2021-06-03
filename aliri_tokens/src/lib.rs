@@ -101,7 +101,7 @@
 //!
 //! # Features
 //!
-//! The following features are supported by this crate:
+//! The following features are supported by this crate, all of which are enabled by default:
 //!
 //! * `oauth2`: Provides implementations of token refresh sources corresponding to the
 //!   _client credentials_ and _refresh token_ flows.
