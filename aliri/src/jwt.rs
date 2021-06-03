@@ -53,7 +53,7 @@
 //! # let _ = data;
 //! ```
 
-use std::{convert::TryFrom, time::Duration};
+use std::{convert::TryFrom, fmt, time::Duration};
 
 use aliri_base64::Base64Url;
 use aliri_braid::braid;
@@ -356,8 +356,158 @@ pub struct Issuer;
 pub struct Subject;
 
 /// A JSON Web Token
-#[braid(serde, ref_doc = "A borrowed reference to a JSON Web Token ([`Jwt`])")]
+///
+/// This type provides custom implementations of [`Display`][JwtRef#impl-Display] and
+/// [`Debug`][JwtRef#impl-Debug] to prevent unintentional disclosures of sensitive values.
+/// See teh documentation on those trait implementations on the [`JwtRef`] type for more
+/// information.
+#[braid(
+    serde,
+    debug_impl = "owned",
+    display_impl = "owned",
+    ref_doc = "\
+    A borrowed reference to a JSON Web Token ([`Jwt`])\n\
+    \n\
+    This type provides custom implementations of [`Display`][Self#impl-Display] and \
+    [`Debug`][Self#impl-Debug] to prevent unintentional disclosures of sensitive values. \
+    See the documentation on those trait implementations for more information.
+    "
+)]
 pub struct Jwt;
+
+/// By default, this type holds potentially sensitive information. To prevent
+/// unintentional disclosure of this value, this type will not print out its
+/// contents without explicitly specifying the alternate debug format,
+/// i.e. `{:#?}`. When specified in this form, it will print out the entire header
+/// and payload, but will omit the token's signature. To change the number of
+/// characters in the signature that should be printed, specify the amount as a
+/// width in the format string, i.e. `{:#25?}`.
+///
+/// If not specified, a placeholder value will be printed out instead to indicate
+/// that it is hiding sensitive information.
+///
+/// If, for any reason, the token does not contain a `.` character, then the limitations
+/// specified above will apply to the token as a whole.
+///
+/// # Example
+///
+/// ```
+///# use aliri::jwt::JwtRef;
+///#
+/// let token = JwtRef::from_str(concat!(
+///     "eyJhbGciOiJIUzI1NiJ9.",
+///     "eyJzdWIiOiJBbGlyaSIsImF1ZCI6Im15X2FwaSIsImlzcyI6ImF1dGhvcml0eSJ9.",
+///     "2N5yyY2UjqlUKSSCpFVWzfixfBRTWahiN2PrUuiuxbE"
+/// ));
+///
+/// assert_eq!(format!("{:?}", token), "***JWT***");
+/// assert_eq!(format!("{:#?}", token), concat!(
+///     "\"eyJhbGciOiJIUzI1NiJ9.",
+///     "eyJzdWIiOiJBbGlyaSIsImF1ZCI6Im15X2FwaSIsImlzcyI6ImF1dGhvcml0eSJ9.",
+///     "…\""
+/// ));
+/// assert_eq!(format!("{:#5?}", token), concat!(
+///     "\"eyJhbGciOiJIUzI1NiJ9.",
+///     "eyJzdWIiOiJBbGlyaSIsImF1ZCI6Im15X2FwaSIsImlzcyI6ImF1dGhvcml0eSJ9.",
+///     "2N5y…\""
+/// ));
+/// assert_eq!(format!("{:#9999?}", token), concat!(
+///     "\"eyJhbGciOiJIUzI1NiJ9.",
+///     "eyJzdWIiOiJBbGlyaSIsImF1ZCI6Im15X2FwaSIsImlzcyI6ImF1dGhvcml0eSJ9.",
+///     "2N5yyY2UjqlUKSSCpFVWzfixfBRTWahiN2PrUuiuxbE\""
+/// ));
+/// ```
+impl fmt::Debug for JwtRef {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if f.alternate() {
+            f.write_str("\"")?;
+            let last_period = &self.0.rfind('.');
+            if let Some(last_period) = last_period {
+                f.write_str(&self.0[..last_period + 1])?;
+                limited_reveal(&self.0[last_period + 1..], &mut *f, 0)?;
+            } else {
+                limited_reveal(&self.0, &mut *f, 0)?;
+            }
+            f.write_str("\"")
+        } else {
+            f.write_str(concat!("***", "JWT", "***"))
+        }
+    }
+}
+
+/// By default, this type holds potentially sensitive information. To prevent
+/// unintentional disclosure of this value, this type will not print out its
+/// contents without explicitly specifying the alternate format,
+/// i.e. `{:#}`. When specified in this form, it will print out the entire token by default.
+/// However, if it is preferrable to elide some of the characters in the signature, then that
+/// can be modified by specify the quantity as a width in the format string, i.e. `{:#10}`.
+///
+/// If not specified, a placeholder value will be printed out instead to indicate
+/// that it is hiding sensitive information.
+///
+/// If, for any reason, the token does not contain a `.` character, then the limitations
+/// specified above will apply to the token as a whole.
+///
+/// # Example
+///
+/// ```
+///# use aliri::jwt::JwtRef;
+///#
+/// let token = JwtRef::from_str(concat!(
+///     "eyJhbGciOiJIUzI1NiJ9.",
+///     "eyJzdWIiOiJBbGlyaSIsImF1ZCI6Im15X2FwaSIsImlzcyI6ImF1dGhvcml0eSJ9.",
+///     "2N5yyY2UjqlUKSSCpFVWzfixfBRTWahiN2PrUuiuxbE"
+/// ));
+///
+/// assert_eq!(format!("{}", token), "***JWT***");
+/// assert_eq!(format!("{:#}", token), concat!(
+///     "eyJhbGciOiJIUzI1NiJ9.",
+///     "eyJzdWIiOiJBbGlyaSIsImF1ZCI6Im15X2FwaSIsImlzcyI6ImF1dGhvcml0eSJ9.",
+///     "2N5yyY2UjqlUKSSCpFVWzfixfBRTWahiN2PrUuiuxbE"
+/// ));
+/// assert_eq!(format!("{:#5}", token), concat!(
+///     "eyJhbGciOiJIUzI1NiJ9.",
+///     "eyJzdWIiOiJBbGlyaSIsImF1ZCI6Im15X2FwaSIsImlzcyI6ImF1dGhvcml0eSJ9.",
+///     "2N5y…"
+/// ));
+/// assert_eq!(format!("{:#9999}", token), concat!(
+///     "eyJhbGciOiJIUzI1NiJ9.",
+///     "eyJzdWIiOiJBbGlyaSIsImF1ZCI6Im15X2FwaSIsImlzcyI6ImF1dGhvcml0eSJ9.",
+///     "2N5yyY2UjqlUKSSCpFVWzfixfBRTWahiN2PrUuiuxbE"
+/// ));
+/// ```
+impl fmt::Display for JwtRef {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if f.alternate() {
+            let last_period = &self.0.rfind('.');
+            if let Some(last_period) = last_period {
+                f.write_str(&self.0[..last_period + 1])?;
+                limited_reveal(&self.0[last_period + 1..], &mut *f, usize::MAX)
+            } else {
+                limited_reveal(&self.0, &mut *f, usize::MAX)
+            }
+        } else {
+            f.write_str(concat!("***", "JWT", "***"))
+        }
+    }
+}
+
+fn limited_reveal(unprotected: &str, f: &mut std::fmt::Formatter, default_len: usize) -> std::fmt::Result {
+    let max_len = f.width().unwrap_or(default_len);
+    if max_len <= 1 {
+        f.write_str("…")
+    } else if max_len > unprotected.len() {
+        f.write_str(unprotected)
+    } else {
+        match unprotected.char_indices().nth(max_len - 2) {
+            Some((idx, c)) if idx + c.len_utf8() < unprotected.len() => {
+                f.write_str(&unprotected[0..idx + c.len_utf8()])?;
+                f.write_str("…")
+            }
+            _ => f.write_str(unprotected),
+        }
+    }
+}
 
 /// A set of zero or more [`Audience`]s
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]

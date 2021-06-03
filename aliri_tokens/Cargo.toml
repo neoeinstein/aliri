@@ -1,0 +1,41 @@
+[package]
+name = "aliri_tokens"
+description = "Background token management and renewal based on best practices"
+keywords = [ "jwt", "oauth2", "auth" ]
+categories = [ "authentication" ]
+version = "0.1.0"
+authors = ["Marcus Griep <marcus@griep.us>"]
+edition = "2018"
+readme = "../README.md"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/neoeinstein/aliri"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[features]
+default = ["file", "oauth2", "rand"]
+file = ["serde_json", "tokio/fs"]
+oauth2 = ["reqwest"]
+
+[dependencies]
+aliri = { version = "0.5.0", path = "../aliri" }
+aliri_braid = "0.1.5"
+aliri_clock = { version = "0.1.4", path = "../aliri_clock" }
+aliri_oauth2 = { version = "0.6.1", path = "../aliri_oauth2" }
+async-trait = "0.1.50"
+rand = { version = "0.8.3", optional = true }
+reqwest = { version = "0.11", features = [ "json" ], optional = true }
+serde = { version = "1", features = [ "derive" ] }
+serde_json = { version = "1", optional = true }
+thiserror = "1"
+tokio = { version = "1", features = [ "time" ] }
+tracing = "0.1.15"
+tracing-futures = "0.2"
+
+[dev-dependencies]
+color-eyre = "0.5"
+dotenv = "0.15.0"
+structopt = "0.3.21"
+tracing-subscriber = { version = "0.2.18", features = [ "fmt", "env-filter" ] }
+test-env-log = { version = "0.2", default-features = false, features = [ "trace" ] }
+tokio = { version = "1", features = [ "rt-multi-thread", "macros" ] }
