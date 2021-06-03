@@ -19,7 +19,14 @@
 #![forbid(unsafe_code)]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 
-use std::{fmt, ops, sync::{atomic::{Ordering, AtomicU64}, Arc}, time::{Duration, SystemTime}};
+use std::{
+    fmt, ops,
+    sync::{
+        atomic::{AtomicU64, Ordering},
+        Arc,
+    },
+    time::{Duration, SystemTime},
+};
 
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Deserializer, Serialize, Serializer};

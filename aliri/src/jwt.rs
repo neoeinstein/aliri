@@ -492,7 +492,11 @@ impl fmt::Display for JwtRef {
     }
 }
 
-fn limited_reveal(unprotected: &str, f: &mut std::fmt::Formatter, default_len: usize) -> std::fmt::Result {
+fn limited_reveal(
+    unprotected: &str,
+    f: &mut std::fmt::Formatter,
+    default_len: usize,
+) -> std::fmt::Result {
     let max_len = f.width().unwrap_or(default_len);
     if max_len <= 1 {
         f.write_str("…")
