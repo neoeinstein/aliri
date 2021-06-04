@@ -132,4 +132,4 @@ mod watcher;
 
 pub use braids::*;
 pub use tokens::{TokenLifetimeConfig, TokenStatus, TokenWithLifetime};
-pub use watcher::{BorrowedToken, TokenPublisherQuit, TokenWatcher};
+pub use watcher::{BorrowedToken, TokenWatcher};

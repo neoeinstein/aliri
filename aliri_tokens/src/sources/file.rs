@@ -35,7 +35,7 @@ impl FileTokenSource {
             .create(true)
             .truncate(true)
             .write(true)
-            .mode(0o600)
+            //.mode(0o600)
             .open(&self.path)
             .await?;
         let data = serde_json::to_string_pretty(&token)?;

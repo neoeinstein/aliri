@@ -5,14 +5,13 @@ use crate::{
     TokenWithLifetime,
 };
 use aliri_clock::{Clock, DurationSecs, System, UnixTime};
-use std::{error, ops, time::Duration};
-use thiserror::Error;
+use std::{error, ops, sync::Arc, time::Duration};
 use tokio::sync::watch;
 
 /// A token watcher that can be uses to obtain up-to-date tokens
 #[derive(Clone, Debug)]
 pub struct TokenWatcher {
-    watcher: watch::Receiver<TokenWithLifetime>,
+    watcher: watch::Receiver<Arc<TokenWithLifetime>>,
 }
 
 /// An outstanding borrow of a token
@@ -21,7 +20,7 @@ pub struct TokenWatcher {
 /// token borrows will block updates of a new token.
 #[derive(Debug)]
 pub struct BorrowedToken<'a> {
-    inner: watch::Ref<'a, TokenWithLifetime>,
+    inner: watch::Ref<'a, Arc<TokenWithLifetime>>,
 }
 
 impl<'a> ops::Deref for BorrowedToken<'a> {
@@ -31,11 +30,6 @@ impl<'a> ops::Deref for BorrowedToken<'a> {
         &self.inner
     }
 }
-
-/// An error generated when the token publisher ceases to publish new tokens
-#[derive(Debug, Error)]
-#[error("token publisher has quit publishing new tokens")]
-pub struct TokenPublisherQuit(#[from] watch::error::RecvError);
 
 impl TokenWatcher {
     /// Spawns a new token watcher which will automatically and periodically refresh
@@ -81,7 +75,7 @@ impl TokenWatcher {
 
         let first_stale = initial_token.stale();
 
-        let (tx, rx) = watch::channel(initial_token);
+        let (tx, rx) = watch::channel(initial_token.into());
 
         let join = tokio::spawn(forever_refresh(
             token_source,
@@ -109,13 +103,13 @@ impl TokenWatcher {
         Ok(TokenWatcher { watcher: rx })
     }
 
-    /// A future that returns as ready whenever a new token is published
-    ///
-    /// If the publisher is ever dropped, then this function will return an error
-    /// indicating that no new tokens will be published.
-    pub async fn changed(&mut self) -> Result<(), TokenPublisherQuit> {
-        Ok(self.watcher.changed().await?)
-    }
+    // /// A future that returns as ready whenever a new token is published
+    // ///
+    // /// If the publisher is ever dropped, then this function will return an error
+    // /// indicating that no new tokens will be published.
+    // pub async fn changed(&mut self) -> Result<(), TokenPublisherQuit> {
+    //     Ok(self.watcher.changed().await?)
+    // }
 
     /// Borrows the current valid token
     ///
@@ -127,25 +121,25 @@ impl TokenWatcher {
         }
     }
 
-    /// Runs a given asynchronous function whenever a new token update is provided
-    ///
-    /// Loops forever so long as the publisher is still alive.
-    pub async fn watch<
-        X: Fn(TokenWithLifetime) -> F,
-        F: std::future::Future<Output = ()> + 'static,
-    >(
-        mut self,
-        sink: X,
-    ) {
-        loop {
-            if self.changed().await.is_err() {
-                break;
-            }
-
-            let t = (*self.token()).clone_it();
-            sink(t).await
-        }
-    }
+    // /// Runs a given asynchronous function whenever a new token update is provided
+    // ///
+    // /// Loops forever so long as the publisher is still alive.
+    // pub async fn watch<
+    //     X: Fn(TokenWithLifetime) -> F,
+    //     F: std::future::Future<Output = ()> + 'static,
+    // >(
+    //     mut self,
+    //     sink: X,
+    // ) {
+    //     loop {
+    //         if self.changed().await.is_err() {
+    //             break;
+    //         }
+    //
+    //         let t = (*self.token()).clone_it();
+    //         sink(t).await
+    //     }
+    // }
 }
 
 enum Delay {
@@ -156,7 +150,7 @@ enum Delay {
 async fn forever_refresh<S, J, C>(
     mut token_source: S,
     mut jitter_source: J,
-    tx: watch::Sender<TokenWithLifetime>,
+    tx: watch::Sender<Arc<TokenWithLifetime>>,
     first_stale: UnixTime,
     backoff_config: ErrorBackoffConfig,
     clock: C,
@@ -171,7 +165,7 @@ async fn forever_refresh<S, J, C>(
     loop {
         match stale_epoch {
             Delay::ForDuration(d) => {
-                tokio::time::sleep(d).await;
+                tokio::time::delay_for(d).await;
             }
             Delay::UntilTime(t) => {
                 // We do this dance because the timer does not "advance" while a system is suspended.
@@ -195,7 +189,7 @@ async fn forever_refresh<S, J, C>(
                             until_stale = until_stale.0,
                             "token not yet stale, sleeping…"
                         );
-                        tokio::time::sleep(delay.into()).await;
+                        tokio::time::delay_for(delay.into()).await;
                     }
                 }
             }
@@ -210,7 +204,7 @@ async fn forever_refresh<S, J, C>(
             Ok(token) => {
                 let token_stale = token.stale();
 
-                if tx.send(token).is_err() {
+                if tx.broadcast(token.into()).is_err() {
                     tracing::info!(
                         "no one is listening for token refreshes anymore, halting refreshes"
                     );

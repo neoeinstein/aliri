@@ -14,7 +14,7 @@ repository = "https://github.com/neoeinstein/aliri"
 
 [features]
 default = ["file", "oauth2", "rand"]
-file = ["serde_json", "tokio/fs"]
+file = ["serde_json", "tokio/fs", "tokio/io-util"]
 oauth2 = ["reqwest"]
 
 [dependencies]
@@ -24,11 +24,11 @@ aliri_clock = { version = "0.1.4", path = "../aliri_clock" }
 aliri_oauth2 = { version = "0.6.1", path = "../aliri_oauth2" }
 async-trait = "0.1.50"
 rand = { version = "0.8.3", optional = true }
-reqwest = { version = "0.11", features = [ "json" ], optional = true }
+reqwest = { version = "0.10", features = [ "json" ], optional = true }
 serde = { version = "1", features = [ "derive" ] }
 serde_json = { version = "1", optional = true }
 thiserror = "1"
-tokio = { version = "1", features = [ "time" ] }
+tokio = { version = "0.2", features = [ "time", "sync" ] }
 tracing = "0.1.15"
 tracing-futures = "0.2"
 
@@ -38,4 +38,4 @@ dotenv = "0.15.0"
 structopt = "0.3.21"
 tracing-subscriber = { version = "0.2.18", features = [ "fmt", "env-filter" ] }
 test-env-log = { version = "0.2", default-features = false, features = [ "trace" ] }
-tokio = { version = "1", features = [ "rt-multi-thread", "macros" ] }
+tokio = { version = "0.2", features = [ "rt-threaded", "macros" ] }

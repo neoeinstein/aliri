@@ -86,12 +86,12 @@ async fn main() -> color_eyre::Result<()> {
         "first access token"
     );
 
-    tokio::spawn(watcher.clone().watch(|token| async move {
-        tracing::info!(
-            token = format_args!("{:#?}", token.access_token()),
-            "new access token"
-        );
-    }));
+    // tokio::spawn(watcher.clone().watch(|token| async move {
+    //     tracing::info!(
+    //         token = format_args!("{:#?}", token.access_token()),
+    //         "new access token"
+    //     );
+    // }));
 
     let mut interval = time::interval(Duration::from_secs(5));
     loop {
