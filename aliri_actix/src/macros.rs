@@ -24,6 +24,7 @@
 /// use aliri_actix::scope_policy;
 ///
 /// scope_policy!(ReadProfile / ReadProfileScope; "read:profile");
+/// # fn main() {}
 /// ```
 ///
 /// In more complex scenarios, multiple sets of scopes can be accepted by separating sets with
@@ -37,6 +38,7 @@
 ///     "read:profile";
 ///     "admin"
 /// );
+/// # fn main() {}
 /// ```
 ///
 /// In situations where multiple scopes must all be present, the scopes can be separated with
@@ -49,6 +51,7 @@
 ///     DeleteProfileAndAdmin / DeleteProfileAndAdminScope;
 ///     "delete:profile", "admin"
 /// );
+/// # fn main() {}
 /// ```
 ///
 /// These two different forms can be combined to add more complex scope guards:
@@ -164,7 +167,7 @@
 #[macro_export]
 macro_rules! scope_policy {
     ($i:ident/$s:ident; $($($scope:literal),*);*) => {
-      scope_policy!($i/$s(::aliri_oauth2::oauth2::BasicClaimsWithScope); $($($scope),*);*)
+      scope_policy!($i/$s(::aliri_oauth2::oauth2::BasicClaimsWithScope); $($($scope),*);*);
     };
     ($i:ident/$s:ident($claim:ty); $($($scope:literal),*);*) => {
         #[derive(Clone, Copy, Debug, PartialEq, Eq)]
