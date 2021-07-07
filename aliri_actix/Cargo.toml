@@ -13,7 +13,7 @@ repository = "https://github.com/neoeinstein/aliri"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-actix-web = "3.1"
+actix-web = "3.2"
 aliri = { version = "0.5.0", path = "../aliri" }
 aliri_traits = { version = "0.1.0", path = "../aliri_traits" }
 aliri_oauth2 = { version = "0.6.0", path = "../aliri_oauth2", features = [ "reqwest" ] }
@@ -24,7 +24,7 @@ thiserror = "1"
 tracing = "0.1"
 
 [dev-dependencies]
-actix-rt = "1"
+actix-rt = "1.1"
 aliri_base64 = { version = "0.1.0", path = "../aliri_base64" }
 aliri_clock = { version = "0.1.0", path = "../aliri_clock" }
 color-eyre = "0.5"
