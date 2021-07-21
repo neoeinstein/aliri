@@ -385,7 +385,7 @@ impl Jwt {
     /// * If the algorithm requested in the header is not usable as a signing algorithm
     /// * If serialization of either the header or payload fails
     /// * If the key's algorithm or usage is incompatible with the requested signing algorithm
-    fn try_from_parts_with_signature<H: Serialize + HasAlgorithm, P: Serialize>(
+    pub fn try_from_parts_with_signature<H: Serialize + HasAlgorithm, P: Serialize>(
         headers: &H,
         payload: &P,
         jwk: &Jwk,
