@@ -375,6 +375,48 @@ pub struct Subject;
 )]
 pub struct Jwt;
 
+impl Jwt {
+    /// Constructs a new JWT from a header and payload, signed by the specified JWK
+    ///
+    /// Headers and payload will be serialized as JSON blobs.
+    ///
+    /// # Errors
+    ///
+    /// * If the algorithm requested in the header is not usable as a signing algorithm
+    /// * If serialization of either the header or payload fails
+    /// * If the key's algorithm or usage is incompatible with the requested signing algorithm
+    fn try_from_parts_with_signature<H: Serialize + HasAlgorithm, P: Serialize>(
+        headers: &H,
+        payload: &P,
+        jwk: &Jwk,
+    ) -> Result<Self, error::JwtSigningError> {
+        use std::fmt::Write;
+
+        let alg = jws::Algorithm::try_from(headers.alg()).map_err(error::SigningError::from)?;
+
+        let h_raw =
+            Base64Url::from_raw(serde_json::to_vec(headers).map_err(error::malformed_jwt_header)?);
+        let p_raw =
+            Base64Url::from_raw(serde_json::to_vec(payload).map_err(error::malformed_jwt_payload)?);
+
+        let expected_len = h_raw.encoded_len()
+            + p_raw.encoded_len()
+            + Base64Url::calc_encoded_len(alg.signature_size())
+            + 2;
+
+        let mut message = String::with_capacity(expected_len);
+        write!(message, "{}.{}", h_raw, p_raw).expect("writes to strings never fail");
+
+        let s = Base64Url::from_raw(jwk.sign(headers.alg(), message.as_bytes())?);
+
+        write!(message, ".{}", s).expect("writes to strings never fail");
+
+        debug_assert_eq!(message.len(), expected_len);
+
+        Ok(Self::new(message))
+    }
+}
+
 /// By default, this type holds potentially sensitive information. To prevent
 /// unintentional disclosure of this value, this type will not print out its
 /// contents without explicitly specifying the alternate debug format,
@@ -900,30 +942,7 @@ impl BasicClaims {
         jwk: &Jwk,
         headers: &H,
     ) -> Result<Jwt, error::JwtSigningError> {
-        use std::fmt::Write;
-
-        let alg = jws::Algorithm::try_from(headers.alg()).map_err(error::SigningError::from)?;
-
-        let h_raw =
-            Base64Url::from_raw(serde_json::to_vec(headers).map_err(error::malformed_jwt_header)?);
-        let p_raw =
-            Base64Url::from_raw(serde_json::to_vec(self).map_err(error::malformed_jwt_payload)?);
-
-        let expected_len = h_raw.encoded_len()
-            + p_raw.encoded_len()
-            + Base64Url::calc_encoded_len(alg.signature_size())
-            + 2;
-
-        let mut message = String::with_capacity(expected_len);
-        write!(message, "{}.{}", h_raw, p_raw).expect("writes to strings never fail");
-
-        let s = Base64Url::from_raw(jwk.sign(headers.alg(), message.as_bytes())?);
-
-        write!(message, ".{}", s).expect("writes to strings never fail");
-
-        debug_assert_eq!(message.len(), expected_len);
-
-        Ok(Jwt::new(message))
+        Jwt::try_from_parts_with_signature(headers, self, jwk)
     }
 }
 
