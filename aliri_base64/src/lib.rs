@@ -309,7 +309,7 @@ macro_rules! b64_builder {
         }
 
         /// Serialize the underlying byte array as a base64 string
-        #[cfg(any(feature = "serde", doctest, doc))]
+        #[cfg(any(feature = "serde", docsrs))]
         #[cfg_attr(docsrs, doc(cfg(feature = "serde")))]
         impl ::serde::Serialize for $ty {
             #[inline]
@@ -319,7 +319,7 @@ macro_rules! b64_builder {
         }
 
         /// Deserialize a base64 string and decode it into a byte array
-        #[cfg(any(feature = "serde", doctest, doc))]
+        #[cfg(any(feature = "serde", docsrs))]
         #[cfg_attr(docsrs, doc(cfg(feature = "serde")))]
         impl<'de> ::serde::Deserialize<'de> for $ty {
             fn deserialize<D: ::serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
@@ -422,7 +422,7 @@ macro_rules! b64_builder {
         }
 
         /// Serialize the underlying byte array as a base64 string
-        #[cfg(any(feature = "serde", doctest, doc))]
+        #[cfg(any(feature = "serde", docsrs))]
         #[cfg_attr(docsrs, doc(cfg(feature = "serde")))]
         impl ::serde::Serialize for $ty_ref {
             fn serialize<S: ::serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
