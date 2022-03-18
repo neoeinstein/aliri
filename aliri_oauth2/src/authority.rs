@@ -89,7 +89,10 @@ impl Authority {
 
     /// Constructs a new JWKS authority from a URL
     #[cfg(feature = "reqwest")]
-    pub async fn new_from_url(jwks_url: String, validator: jwt::CoreValidator) -> Result<Self, reqwest::Error> {
+    pub async fn new_from_url(
+        jwks_url: String,
+        validator: jwt::CoreValidator,
+    ) -> Result<Self, reqwest::Error> {
         let client = Client::builder()
             .user_agent(concat!("aliri_oauth2/", env!("CARGO_PKG_VERSION")))
             .build()?;

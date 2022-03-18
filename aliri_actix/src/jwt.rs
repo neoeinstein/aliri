@@ -336,8 +336,7 @@ mod tests {
             .add_allowed_audience(jwt::Audience::new("https://api.resource.com/"));
 
         let authority = Authority::new(jwks, validator);
-        let app =
-            test::init_service(App::new().app_data(authority).service(test_endpoint)).await;
+        let app = test::init_service(App::new().app_data(authority).service(test_endpoint)).await;
 
         let req = test::TestRequest::with_uri("/test")
             .insert_header((header::AUTHORIZATION, format!("Bearer {}", token)))
@@ -396,8 +395,7 @@ mod tests {
             .add_allowed_audience(jwt::Audience::new("https://api.resource.com/"));
 
         let authority = Authority::new(jwks, validator);
-        let app =
-            test::init_service(App::new().app_data(authority).service(test_endpoint)).await;
+        let app = test::init_service(App::new().app_data(authority).service(test_endpoint)).await;
 
         let req = test::TestRequest::with_uri("/test")
             .insert_header((header::AUTHORIZATION, format!("Bearer {}", token)))
@@ -433,8 +431,7 @@ mod tests {
             .add_allowed_audience(jwt::Audience::new("https://api.resource.com/"));
 
         let authority = Authority::new(jwks, validator);
-        let app =
-            test::init_service(App::new().app_data(authority).service(test_endpoint)).await;
+        let app = test::init_service(App::new().app_data(authority).service(test_endpoint)).await;
 
         let req = test::TestRequest::with_uri("/test")
             .insert_header((header::AUTHORIZATION, format!("Bearer {}", token)))
@@ -470,8 +467,7 @@ mod tests {
             .add_allowed_audience(jwt::Audience::new("https://api.resource.com/"));
 
         let authority = Authority::new(jwks, validator);
-        let app =
-            test::init_service(App::new().app_data(authority).service(test_endpoint)).await;
+        let app = test::init_service(App::new().app_data(authority).service(test_endpoint)).await;
 
         let req = test::TestRequest::with_uri("/test")
             .insert_header((header::AUTHORIZATION, format!("Bearer {}", token)))
@@ -507,8 +503,7 @@ mod tests {
             .add_allowed_audience(jwt::Audience::new("https://api.resource.com/"));
 
         let authority = Authority::new(jwks, validator);
-        let app =
-            test::init_service(App::new().app_data(authority).service(test_endpoint)).await;
+        let app = test::init_service(App::new().app_data(authority).service(test_endpoint)).await;
 
         let req = test::TestRequest::with_uri("/test")
             .insert_header((header::AUTHORIZATION, format!("Bearer {}", token)))
@@ -544,8 +539,7 @@ mod tests {
             .add_allowed_audience(jwt::Audience::new("https://api.resource.com/"));
 
         let authority = Authority::new(jwks, validator);
-        let app =
-            test::init_service(App::new().app_data(authority).service(test_endpoint)).await;
+        let app = test::init_service(App::new().app_data(authority).service(test_endpoint)).await;
 
         let req = test::TestRequest::with_uri("/test")
             .insert_header((header::AUTHORIZATION, format!("Bearer {}", token)))
@@ -581,8 +575,7 @@ mod tests {
             .add_allowed_audience(jwt::Audience::new("https://api.resource.com/"));
 
         let authority = Authority::new(jwks, validator);
-        let app =
-            test::init_service(App::new().app_data(authority).service(test_endpoint)).await;
+        let app = test::init_service(App::new().app_data(authority).service(test_endpoint)).await;
 
         let req = test::TestRequest::with_uri("/test")
             .insert_header((header::AUTHORIZATION, format!("Bearer {}", token)))
@@ -618,8 +611,7 @@ mod tests {
             .add_allowed_audience(jwt::Audience::new("https://api.resource.com/"));
 
         let authority = Authority::new(jwks, validator);
-        let app =
-            test::init_service(App::new().app_data(authority).service(test_endpoint)).await;
+        let app = test::init_service(App::new().app_data(authority).service(test_endpoint)).await;
 
         let req = test::TestRequest::with_uri("/test")
             .insert_header((header::AUTHORIZATION, format!("Bearer {}", token)))
@@ -655,8 +647,7 @@ mod tests {
             .add_allowed_audience(jwt::Audience::new("https://api.resource.com/"));
 
         let authority = Authority::new(jwks, validator);
-        let app =
-            test::init_service(App::new().app_data(authority).service(test_endpoint)).await;
+        let app = test::init_service(App::new().app_data(authority).service(test_endpoint)).await;
 
         let req = test::TestRequest::with_uri("/test")
             .insert_header((header::AUTHORIZATION, format!("Bearer {}", token)))
