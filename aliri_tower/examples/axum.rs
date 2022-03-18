@@ -9,6 +9,41 @@ use axum::routing::{get, post};
 use axum::Router;
 use tower_http::auth::RequireAuthorizationLayer;
 
+#[tokio::main]
+async fn main() {
+    let authority = construct_authority();
+
+    let verify_jwt = VerifyJwt::<CustomClaims>::new(authority)
+        .with_error_handler(DefaultErrorHandler::<_>::new());
+
+    let require_scope = |scope: Scope| {
+        let verify_scope = verify_jwt
+            .scopes_verifier(ScopePolicy::allow_one(scope))
+            .with_error_handler(DefaultErrorHandler::<_>::new());
+        RequireAuthorizationLayer::custom(verify_scope)
+    };
+
+    let check_jwt = RequireAuthorizationLayer::custom(verify_jwt.clone());
+
+    let app = Router::new()
+        .route(
+            "/users",
+            post(handle_post).layer(require_scope("post_user".parse().unwrap())),
+        )
+        .route(
+            "/users/:id",
+            get(handle_get).layer(require_scope("get_user".parse().unwrap())),
+        )
+        .layer(&check_jwt);
+
+    println!("Press Ctrl+C to exit");
+
+    axum::Server::bind(&"127.0.0.1:8080".parse().unwrap())
+        .serve(app.into_make_service())
+        .await
+        .unwrap();
+}
+
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct CustomClaims {
     iss: jwt::Issuer,
@@ -73,41 +108,6 @@ async fn handle_post() -> &'static str {
 
 async fn handle_get(Path(id): Path<u64>) -> String {
     format!("Handled GET /users/{}", id)
-}
-
-#[tokio::main]
-async fn main() {
-    let authority = construct_authority();
-
-    let verify_jwt = VerifyJwt::<CustomClaims>::new(authority)
-        .with_error_handler(DefaultErrorHandler::<_>::new());
-
-    let require_scope = |scope: Scope| {
-        let verify_scope = verify_jwt
-            .scopes_verifier(ScopePolicy::allow_one(scope))
-            .with_error_handler(DefaultErrorHandler::<_>::new());
-        RequireAuthorizationLayer::custom(verify_scope)
-    };
-
-    let check_jwt = RequireAuthorizationLayer::custom(verify_jwt.clone());
-
-    let app = Router::new()
-        .route(
-            "/users",
-            post(handle_post).layer(require_scope("post_user".parse().unwrap())),
-        )
-        .route(
-            "/users/:id",
-            get(handle_get).layer(require_scope("get_user".parse().unwrap())),
-        )
-        .layer(&check_jwt);
-
-    println!("Press Ctrl+C to exit");
-
-    axum::Server::bind(&"127.0.0.1:8080".parse().unwrap())
-        .serve(app.into_make_service())
-        .await
-        .unwrap();
 }
 
 fn print_example_token(key: &Jwk) {
