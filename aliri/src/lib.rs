@@ -56,6 +56,7 @@
 //!   [token]: https://jwt.io/#debugger-io?token=eyJhbGciOiJIUzI1NiIsImtpZCI6InRlc3Qga2V5In0.eyJzdWIiOiJBbGlyaSIsImF1ZCI6Im15X2FwaSIsImlzcyI6ImF1dGhvcml0eSJ9.yKDd4Ba3fdedqRKHrSUUMuF01-ctdXzEKM9oyWjSx9A
 //!
 
+#![cfg_attr(docsrs, feature(doc_cfg))]
 #![warn(
     missing_docs,
     unused_import_braces,
