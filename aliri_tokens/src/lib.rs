@@ -110,6 +110,7 @@
 //! * `rand`: Provides for an implementation of [JitterSource][jitter::JitterSource] based on
 //!   the random number generator provided by the [rand] crate.
 
+#![cfg_attr(docsrs, feature(doc_cfg))]
 #![warn(
     missing_docs,
     unused_import_braces,

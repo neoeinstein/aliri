@@ -3,6 +3,7 @@
 //! This module uses the definition of OAuth2 as defined in
 //! [RFC 6749](https://datatracker.ietf.org/doc/html/rfc6749).
 
+#![cfg_attr(docsrs, feature(doc_cfg))]
 #![warn(
     missing_docs,
     unused_import_braces,
