@@ -89,6 +89,7 @@ impl Authority {
 
     /// Constructs a new JWKS authority from a URL
     #[cfg(feature = "reqwest")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "reqwest")))]
     pub async fn new_from_url(
         jwks_url: String,
         validator: jwt::CoreValidator,

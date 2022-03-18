@@ -17,6 +17,9 @@ hmac = [ "aliri/hmac" ]
 private-keys = [ "aliri/private-keys" ]
 default = [ "rsa" ]
 
+[package.metadata.docs.rs]
+rustc-args = ["--cfg", "docsrs"]
+
 [dependencies]
 ahash = "0.7"
 aliri = { version = "0.5.0", path = "../aliri", default-features = false }
