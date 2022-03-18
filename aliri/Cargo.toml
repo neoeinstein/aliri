@@ -18,6 +18,7 @@ rsa = []
 hmac = []
 private-keys = [ "openssl" ]
 unstable = []
+no-unstable = []
 default = [ "hmac", "rsa" ]
 
 [package.metadata.docs.rs]

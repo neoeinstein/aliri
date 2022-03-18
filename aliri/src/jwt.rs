@@ -64,14 +64,14 @@ use serde::{Deserialize, Serialize};
 use crate::jws::Signer;
 use crate::{error, jwa, jwk, jws, Jwk};
 
-#[cfg(feature = "unstable")]
+#[cfg(all(not(feature = "no-unstable"), feature = "unstable"))]
 mod validator;
 
-#[cfg(feature = "unstable")]
+#[cfg(all(not(feature = "no-unstable"), feature = "unstable"))]
 use validator::Validator;
 
 #[inline(never)]
-#[cfg(feature = "unstable")]
+#[cfg(all(not(feature = "no-unstable"), feature = "unstable"))]
 fn do_validate(
     b: impl Validator<(Headers, Claims), Error = error::ClaimsRejected>,
     header: Headers,
@@ -80,7 +80,7 @@ fn do_validate(
     b.validate(&(header, claims))
 }
 
-#[cfg(feature = "unstable")]
+#[cfg(all(not(feature = "no-unstable"), feature = "unstable"))]
 fn validate_it() {
     let issuer = IssuerRef::from_str("issuer");
     let audience = AudienceRef::from_str("audience");
