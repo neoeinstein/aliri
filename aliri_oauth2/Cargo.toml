@@ -19,6 +19,7 @@ default = [ "rsa" ]
 
 [package.metadata.docs.rs]
 rustc-args = ["--cfg", "docsrs"]
+features = [ "rsa", "ec", "hmac", "private-keys", "reqwest" ]
 
 [dependencies]
 ahash = "0.7"
