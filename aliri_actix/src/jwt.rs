@@ -181,7 +181,6 @@ where
 {
     type Error = AuthFailed;
     type Future = futures::future::Ready<Result<Self, Self::Error>>;
-    type Config = ();
     fn from_request(request: &HttpRequest, _: &mut Payload) -> Self::Future {
         futures::future::ready(extract_and_verify_jwt::<T>(request).map(Scoped))
     }
@@ -292,7 +291,6 @@ where
 {
     type Error = AuthFailed;
     type Future = futures::future::Ready<Result<Self, Self::Error>>;
-    type Config = ();
     fn from_request(request: &HttpRequest, _: &mut Payload) -> Self::Future {
         futures::future::ready(extract_and_verify_jwt::<Self>(request).map(AllowAll))
     }
@@ -310,11 +308,11 @@ mod tests {
 
     #[actix_rt::test]
     async fn test_with_missing_authority() -> Result<()> {
-        let mut app = test::init_service(App::new().service(test_endpoint)).await;
+        let app = test::init_service(App::new().service(test_endpoint)).await;
 
         let req = test::TestRequest::with_uri("/test").to_request();
 
-        let resp = test::call_service(&mut app, req).await;
+        let resp = test::call_service(&app, req).await;
         assert_eq!(resp.status(), StatusCode::INTERNAL_SERVER_ERROR);
         Ok(())
     }
@@ -338,20 +336,21 @@ mod tests {
             .add_allowed_audience(jwt::Audience::new("https://api.resource.com/"));
 
         let authority = Authority::new(jwks, validator);
-        let mut app =
+        let app =
             test::init_service(App::new().app_data(authority).service(test_endpoint)).await;
 
         let req = test::TestRequest::with_uri("/test")
-            .header(header::AUTHORIZATION, format!("Bearer {}", token))
+            .insert_header((header::AUTHORIZATION, format!("Bearer {}", token)))
             .to_request();
 
-        let mut resp = test::call_service(&mut app, req).await;
+        let resp = test::call_service(&app, req).await;
+        let status = resp.status();
         println!("{:?}", resp.response());
         println!(
             "{}",
-            std::str::from_utf8(test::load_stream(resp.take_body()).await.unwrap().as_ref())?
+            std::str::from_utf8(test::read_body(resp).await.as_ref())?
         );
-        assert_eq!(resp.status(), StatusCode::OK);
+        assert_eq!(status, StatusCode::OK);
         Ok(())
     }
 
@@ -397,20 +396,21 @@ mod tests {
             .add_allowed_audience(jwt::Audience::new("https://api.resource.com/"));
 
         let authority = Authority::new(jwks, validator);
-        let mut app =
+        let app =
             test::init_service(App::new().app_data(authority).service(test_endpoint)).await;
 
         let req = test::TestRequest::with_uri("/test")
-            .header(header::AUTHORIZATION, format!("Bearer {}", token))
+            .insert_header((header::AUTHORIZATION, format!("Bearer {}", token)))
             .to_request();
 
-        let mut resp = test::call_service(&mut app, req).await;
+        let resp = test::call_service(&app, req).await;
+        let status = resp.status();
         println!("{:?}", resp.response());
         println!(
             "{}",
-            std::str::from_utf8(test::load_stream(resp.take_body()).await.unwrap().as_ref())?
+            std::str::from_utf8(test::read_body(resp).await.as_ref())?
         );
-        assert_eq!(resp.status(), StatusCode::OK);
+        assert_eq!(status, StatusCode::OK);
         Ok(())
     }
 
@@ -433,20 +433,21 @@ mod tests {
             .add_allowed_audience(jwt::Audience::new("https://api.resource.com/"));
 
         let authority = Authority::new(jwks, validator);
-        let mut app =
+        let app =
             test::init_service(App::new().app_data(authority).service(test_endpoint)).await;
 
         let req = test::TestRequest::with_uri("/test")
-            .header(header::AUTHORIZATION, format!("Bearer {}", token))
+            .insert_header((header::AUTHORIZATION, format!("Bearer {}", token)))
             .to_request();
 
-        let mut resp = test::call_service(&mut app, req).await;
+        let resp = test::call_service(&app, req).await;
+        let status = resp.status();
         println!("{:?}", resp.response());
         println!(
             "{}",
-            std::str::from_utf8(test::load_stream(resp.take_body()).await.unwrap().as_ref())?
+            std::str::from_utf8(test::read_body(resp).await.as_ref())?
         );
-        assert_eq!(resp.status(), StatusCode::OK);
+        assert_eq!(status, StatusCode::OK);
         Ok(())
     }
 
@@ -469,20 +470,21 @@ mod tests {
             .add_allowed_audience(jwt::Audience::new("https://api.resource.com/"));
 
         let authority = Authority::new(jwks, validator);
-        let mut app =
+        let app =
             test::init_service(App::new().app_data(authority).service(test_endpoint)).await;
 
         let req = test::TestRequest::with_uri("/test")
-            .header(header::AUTHORIZATION, format!("Bearer {}", token))
+            .insert_header((header::AUTHORIZATION, format!("Bearer {}", token)))
             .to_request();
 
-        let mut resp = test::call_service(&mut app, req).await;
+        let resp = test::call_service(&app, req).await;
+        let status = resp.status();
         println!("{:?}", resp.response());
         println!(
             "{}",
-            std::str::from_utf8(test::load_stream(resp.take_body()).await.unwrap().as_ref())?
+            std::str::from_utf8(test::read_body(resp).await.as_ref())?
         );
-        assert_eq!(resp.status(), StatusCode::OK);
+        assert_eq!(status, StatusCode::OK);
         Ok(())
     }
 
@@ -505,20 +507,21 @@ mod tests {
             .add_allowed_audience(jwt::Audience::new("https://api.resource.com/"));
 
         let authority = Authority::new(jwks, validator);
-        let mut app =
+        let app =
             test::init_service(App::new().app_data(authority).service(test_endpoint)).await;
 
         let req = test::TestRequest::with_uri("/test")
-            .header(header::AUTHORIZATION, format!("Bearer {}", token))
+            .insert_header((header::AUTHORIZATION, format!("Bearer {}", token)))
             .to_request();
 
-        let mut resp = test::call_service(&mut app, req).await;
+        let resp = test::call_service(&app, req).await;
+        let status = resp.status();
         println!("{:?}", resp.response());
         println!(
             "{}",
-            std::str::from_utf8(test::load_stream(resp.take_body()).await.unwrap().as_ref())?
+            std::str::from_utf8(test::read_body(resp).await.as_ref())?
         );
-        assert_eq!(resp.status(), StatusCode::OK);
+        assert_eq!(status, StatusCode::OK);
         Ok(())
     }
 
@@ -541,20 +544,21 @@ mod tests {
             .add_allowed_audience(jwt::Audience::new("https://api.resource.com/"));
 
         let authority = Authority::new(jwks, validator);
-        let mut app =
+        let app =
             test::init_service(App::new().app_data(authority).service(test_endpoint)).await;
 
         let req = test::TestRequest::with_uri("/test")
-            .header(header::AUTHORIZATION, format!("Bearer {}", token))
+            .insert_header((header::AUTHORIZATION, format!("Bearer {}", token)))
             .to_request();
 
-        let mut resp = test::call_service(&mut app, req).await;
+        let resp = test::call_service(&app, req).await;
+        let status = resp.status();
         println!("{:?}", resp.response());
         println!(
             "{}",
-            std::str::from_utf8(test::load_stream(resp.take_body()).await.unwrap().as_ref())?
+            std::str::from_utf8(test::read_body(resp).await.as_ref())?
         );
-        assert_eq!(resp.status(), StatusCode::OK);
+        assert_eq!(status, StatusCode::OK);
         Ok(())
     }
 
@@ -577,20 +581,21 @@ mod tests {
             .add_allowed_audience(jwt::Audience::new("https://api.resource.com/"));
 
         let authority = Authority::new(jwks, validator);
-        let mut app =
+        let app =
             test::init_service(App::new().app_data(authority).service(test_endpoint)).await;
 
         let req = test::TestRequest::with_uri("/test")
-            .header(header::AUTHORIZATION, format!("Bearer {}", token))
+            .insert_header((header::AUTHORIZATION, format!("Bearer {}", token)))
             .to_request();
 
-        let mut resp = test::call_service(&mut app, req).await;
+        let resp = test::call_service(&app, req).await;
+        let status = resp.status();
         println!("{:?}", resp.response());
         println!(
             "{}",
-            std::str::from_utf8(test::load_stream(resp.take_body()).await.unwrap().as_ref())?
+            std::str::from_utf8(test::read_body(resp).await.as_ref())?
         );
-        assert_eq!(resp.status(), StatusCode::FORBIDDEN);
+        assert_eq!(status, StatusCode::FORBIDDEN);
         Ok(())
     }
 
@@ -613,20 +618,21 @@ mod tests {
             .add_allowed_audience(jwt::Audience::new("https://api.resource.com/"));
 
         let authority = Authority::new(jwks, validator);
-        let mut app =
+        let app =
             test::init_service(App::new().app_data(authority).service(test_endpoint)).await;
 
         let req = test::TestRequest::with_uri("/test")
-            .header(header::AUTHORIZATION, format!("Bearer {}", token))
+            .insert_header((header::AUTHORIZATION, format!("Bearer {}", token)))
             .to_request();
 
-        let mut resp = test::call_service(&mut app, req).await;
+        let resp = test::call_service(&app, req).await;
+        let status = resp.status();
         println!("{:?}", resp.response());
         println!(
             "{}",
-            std::str::from_utf8(test::load_stream(resp.take_body()).await.unwrap().as_ref())?
+            std::str::from_utf8(test::read_body(resp).await.as_ref())?
         );
-        assert_eq!(resp.status(), StatusCode::FORBIDDEN);
+        assert_eq!(status, StatusCode::FORBIDDEN);
         Ok(())
     }
 
@@ -649,20 +655,21 @@ mod tests {
             .add_allowed_audience(jwt::Audience::new("https://api.resource.com/"));
 
         let authority = Authority::new(jwks, validator);
-        let mut app =
+        let app =
             test::init_service(App::new().app_data(authority).service(test_endpoint)).await;
 
         let req = test::TestRequest::with_uri("/test")
-            .header(header::AUTHORIZATION, format!("Bearer {}", token))
+            .insert_header((header::AUTHORIZATION, format!("Bearer {}", token)))
             .to_request();
 
-        let mut resp = test::call_service(&mut app, req).await;
+        let resp = test::call_service(&app, req).await;
+        let status = resp.status();
         println!("{:?}", resp.response());
         println!(
             "{}",
-            std::str::from_utf8(test::load_stream(resp.take_body()).await.unwrap().as_ref())?
+            std::str::from_utf8(test::read_body(resp).await.as_ref())?
         );
-        assert_eq!(resp.status(), StatusCode::FORBIDDEN);
+        assert_eq!(status, StatusCode::FORBIDDEN);
         Ok(())
     }
 }

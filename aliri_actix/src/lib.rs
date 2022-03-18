@@ -85,7 +85,7 @@
 //! );
 //!
 //! let req = test::TestRequest::with_uri("/test")
-//!     .header(header::AUTHORIZATION, format!("Bearer {}", token))
+//!     .insert_header((header::AUTHORIZATION, format!("Bearer {}", token)))
 //!     .to_request();
 //!
 //! let mut resp = test::call_service(&mut app, req).await;
@@ -100,7 +100,7 @@
 //! );
 //!
 //! let req = test::TestRequest::with_uri("/test")
-//!     .header(header::AUTHORIZATION, format!("Bearer {}", bad_token))
+//!     .insert_header((header::AUTHORIZATION, format!("Bearer {}", bad_token)))
 //!     .to_request();
 //!
 //! let mut resp = test::call_service(&mut app, req).await;
@@ -109,7 +109,7 @@
 //! // Use a malformed token
 //!
 //! let req = test::TestRequest::with_uri("/test")
-//!     .header(header::AUTHORIZATION, "Bearer totally-not-a-jwt")
+//!     .insert_header((header::AUTHORIZATION, "Bearer totally-not-a-jwt"))
 //!     .to_request();
 //!
 //! let mut resp = test::call_service(&mut app, req).await;
