@@ -30,6 +30,7 @@ impl PartialEq for PrivateKey {
 impl Eq for PrivateKey {}
 
 #[cfg(feature = "private-keys")]
+#[cfg_attr(docsrs, doc(cfg(feature = "private-keys")))]
 impl PrivateKey {
     /// Generates a new 2048-bit RSA key pair
     pub fn generate() -> Result<Self, error::Unexpected> {

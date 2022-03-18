@@ -17,6 +17,7 @@ mod private;
 mod public;
 
 #[cfg(feature = "private-keys")]
+#[cfg_attr(docsrs, doc(cfg(feature = "private-keys")))]
 pub use private::PrivateKey;
 pub use public::PublicKey;
 
@@ -232,11 +233,11 @@ impl jws::Verifier for EllipticCurve {
     }
 }
 
-#[cfg(feature = "private-keys")]
 impl jws::Signer for EllipticCurve {
     type Algorithm = SigningAlgorithm;
     type Error = error::SigningError;
 
+    #[cfg(feature = "private-keys")]
     fn can_sign(&self, alg: Self::Algorithm) -> bool {
         if let Some(p) = self.private_key() {
             p.can_sign(alg)
@@ -245,6 +246,12 @@ impl jws::Signer for EllipticCurve {
         }
     }
 
+    #[cfg(not(feature = "private-keys"))]
+    fn can_sign(&self, _alg: Self::Algorithm) -> bool {
+        false
+    }
+
+    #[cfg(feature = "private-keys")]
     fn sign(&self, alg: Self::Algorithm, data: &[u8]) -> Result<Vec<u8>, Self::Error> {
         if let Some(p) = self.private_key() {
             Ok(p.sign(alg, data)?)
@@ -252,17 +259,8 @@ impl jws::Signer for EllipticCurve {
             Err(error::missing_private_key().into())
         }
     }
-}
 
-#[cfg(not(feature = "private-keys"))]
-impl jws::Signer for EllipticCurve {
-    type Algorithm = SigningAlgorithm;
-    type Error = error::SigningError;
-
-    fn can_sign(&self, _alg: Self::Algorithm) -> bool {
-        false
-    }
-
+    #[cfg(not(feature = "private-keys"))]
     fn sign(&self, _alg: Self::Algorithm, _data: &[u8]) -> Result<Vec<u8>, Self::Error> {
         Err(error::missing_private_key().into())
     }
@@ -280,23 +278,23 @@ impl fmt::Display for SigningAlgorithm {
     }
 }
 
-#[cfg(feature = "private-keys")]
 impl From<PublicKey> for EllipticCurve {
+    #[cfg(feature = "private-keys")]
     fn from(key: PublicKey) -> Self {
         Self {
             key: MaybePrivate::PublicOnly(key),
         }
     }
-}
 
-#[cfg(not(feature = "private-keys"))]
-impl From<PublicKey> for EllipticCurve {
+    #[cfg(not(feature = "private-keys"))]
     fn from(key: PublicKey) -> Self {
         Self { key }
     }
+
 }
 
 #[cfg(feature = "private-keys")]
+#[cfg_attr(docsrs, doc(cfg(feature = "private-keys")))]
 impl From<PrivateKey> for EllipticCurve {
     fn from(key: PrivateKey) -> Self {
         Self {

@@ -31,6 +31,7 @@ impl fmt::Display for Algorithm {
 }
 
 #[cfg(feature = "hmac")]
+#[cfg_attr(docsrs, doc(cfg(feature = "hmac")))]
 impl Algorithm {
     /// The HS256 signing algorithm
     pub const HS256: Algorithm = Self::Signing(jws::Algorithm::HS256);
@@ -41,6 +42,7 @@ impl Algorithm {
 }
 
 #[cfg(feature = "rsa")]
+#[cfg_attr(docsrs, doc(cfg(feature = "rsa")))]
 impl Algorithm {
     /// The RS256 signing algorithm
     pub const RS256: Algorithm = Self::Signing(jws::Algorithm::RS256);
@@ -57,6 +59,7 @@ impl Algorithm {
 }
 
 #[cfg(feature = "ec")]
+#[cfg_attr(docsrs, doc(cfg(feature = "ec")))]
 impl Algorithm {
     /// The ES256 signing algorithm
     pub const ES256: Algorithm = Self::Signing(jws::Algorithm::ES256);

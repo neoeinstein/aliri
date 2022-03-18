@@ -20,6 +20,9 @@ private-keys = [ "openssl" ]
 unstable = []
 default = [ "hmac", "rsa" ]
 
+[package.metadata.docs.rs]
+rustc-args = ["--cfg", "docsrs"]
+
 [dependencies]
 aliri_base64 = { version = "0.1.0", path = "../aliri_base64", features = [ "serde" ] }
 aliri_clock = { version = "0.1.0", path = "../aliri_clock", features = [ "serde" ] }

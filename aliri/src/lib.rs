@@ -88,8 +88,3 @@ pub use jwks::Jwks;
 
 #[doc(inline)]
 pub use jwt::{Jwt, JwtRef};
-
-#[cfg(not(any(feature = "rsa", feature = "hmac", feature = "ec")))]
-compiler_error!(
-    "At least one of `rsa`, `hmac`, or `ec` must be enabled for this crate to be of any use."
-);

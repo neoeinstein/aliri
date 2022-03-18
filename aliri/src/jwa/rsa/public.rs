@@ -34,6 +34,7 @@ impl PublicKey {
 
     /// Imports an RSA public key from a PEM file
     #[cfg(feature = "openssl")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "openssl")))]
     pub fn from_pem(pem: &str) -> Result<Self, error::KeyRejected> {
         let rsa = Rsa::public_key_from_pem(pem.as_bytes()).map_err(error::key_rejected)?;
         Ok(PublicKey {
@@ -44,6 +45,7 @@ impl PublicKey {
 
     /// Exports an RSA public key to a PEM file
     #[cfg(feature = "openssl")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "openssl")))]
     pub fn to_pem(&self) -> Result<String, error::Unexpected> {
         let modulus = BigNum::from_slice(self.modulus.as_slice()).map_err(error::unexpected)?;
         let exponent = BigNum::from_slice(self.exponent.as_slice()).map_err(error::unexpected)?;

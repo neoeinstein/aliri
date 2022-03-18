@@ -19,18 +19,22 @@ use crate::jwa;
 pub enum Algorithm {
     /// HMAC symmetric
     #[cfg(feature = "hmac")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "hmac")))]
     Hmac(jwa::hmac::SigningAlgorithm),
 
     /// RSA public/private key pair
     #[cfg(feature = "rsa")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "rsa")))]
     Rsa(jwa::rsa::SigningAlgorithm),
 
     /// Elliptic curve cryptography
     #[cfg(feature = "ec")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "ec")))]
     EllipticCurve(jwa::ec::SigningAlgorithm),
 }
 
 #[cfg(feature = "hmac")]
+#[cfg_attr(docsrs, doc(cfg(feature = "hmac")))]
 impl Algorithm {
     /// The HS256 signing algorithm
     pub const HS256: Algorithm = Self::Hmac(jwa::hmac::SigningAlgorithm::HS256);
@@ -41,6 +45,7 @@ impl Algorithm {
 }
 
 #[cfg(feature = "rsa")]
+#[cfg_attr(docsrs, doc(cfg(feature = "rsa")))]
 impl Algorithm {
     /// The RS256 signing algorithm
     pub const RS256: Algorithm = Self::Rsa(jwa::rsa::SigningAlgorithm::RS256);
@@ -57,6 +62,7 @@ impl Algorithm {
 }
 
 #[cfg(feature = "ec")]
+#[cfg_attr(docsrs, doc(cfg(feature = "ec")))]
 impl Algorithm {
     /// The ES256 signing algorithm
     pub const ES256: Algorithm = Self::EllipticCurve(jwa::ec::SigningAlgorithm::ES256);
@@ -131,6 +137,9 @@ impl fmt::Display for Algorithm {
 
             #[cfg(feature = "ec")]
             Self::EllipticCurve(a) => fmt::Display::fmt(a, f),
+
+            #[cfg(not(any(feature = "hmac", feature = "rsa", feature = "ec")))]
+            _ => unreachable!(),
         }
     }
 }

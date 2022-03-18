@@ -13,6 +13,7 @@ mod private;
 mod public;
 
 #[cfg(feature = "private-keys")]
+#[cfg_attr(docsrs, doc(cfg(feature = "private-keys")))]
 pub use private::PrivateKey;
 pub use public::PublicKey;
 
@@ -31,6 +32,7 @@ pub struct Rsa {
 #[serde(untagged)]
 enum MaybePrivate {
     #[cfg(feature = "private-keys")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "private-keys")))]
     PublicAndPrivate(PrivateKey),
     PublicOnly(PublicKey),
 }
@@ -38,6 +40,7 @@ enum MaybePrivate {
 impl Rsa {
     /// Generates a newly minted RSA public/private key pair
     #[cfg(feature = "private-keys")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "openssl")))]
     pub fn generate() -> Result<Self, error::Unexpected> {
         let private_key = PrivateKey::generate()?;
 
@@ -48,6 +51,7 @@ impl Rsa {
 
     /// Constructs a private key from a PEM file
     #[cfg(feature = "private-keys")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "private-keys")))]
     pub fn private_key_from_pem(pem: &str) -> Result<Self, error::KeyRejected> {
         let private_key = PrivateKey::from_pem(pem)?;
 
@@ -56,6 +60,7 @@ impl Rsa {
 
     /// Constructs a public key from a PEM file
     #[cfg(feature = "openssl")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "openssl")))]
     pub fn public_key_from_pem(pem: &str) -> Result<Self, error::KeyRejected> {
         let public_key = PublicKey::from_pem(pem)?;
 
@@ -94,6 +99,7 @@ impl Rsa {
     }
 
     #[cfg(feature = "private-keys")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "private-keys")))]
     /// Removes the private key components, if any
     pub fn public_only(self) -> Self {
         match self.key {
@@ -198,11 +204,11 @@ impl jws::Verifier for Rsa {
     }
 }
 
-#[cfg(feature = "private-keys")]
 impl jws::Signer for Rsa {
     type Algorithm = SigningAlgorithm;
     type Error = error::SigningError;
 
+    #[cfg(feature = "private-keys")]
     fn can_sign(&self, alg: Self::Algorithm) -> bool {
         if let Some(p) = self.private_key() {
             p.can_sign(alg)
@@ -211,6 +217,12 @@ impl jws::Signer for Rsa {
         }
     }
 
+    #[cfg(not(feature = "private-keys"))]
+    fn can_sign(&self, _alg: Self::Algorithm) -> bool {
+        false
+    }
+
+    #[cfg(feature = "private-keys")]
     fn sign(&self, alg: Self::Algorithm, data: &[u8]) -> Result<Vec<u8>, Self::Error> {
         if let Some(p) = self.private_key() {
             Ok(p.sign(alg, data)?)
@@ -218,17 +230,8 @@ impl jws::Signer for Rsa {
             Err(error::missing_private_key().into())
         }
     }
-}
 
-#[cfg(not(feature = "private-keys"))]
-impl jws::Signer for Rsa {
-    type Algorithm = SigningAlgorithm;
-    type Error = error::SigningError;
-
-    fn can_sign(&self, _alg: Self::Algorithm) -> bool {
-        false
-    }
-
+    #[cfg(not(feature = "private-keys"))]
     fn sign(&self, _alg: Self::Algorithm, _data: &[u8]) -> Result<Vec<u8>, Self::Error> {
         Err(error::missing_private_key().into())
     }
@@ -249,23 +252,22 @@ impl fmt::Display for SigningAlgorithm {
     }
 }
 
-#[cfg(feature = "private-keys")]
 impl From<PublicKey> for Rsa {
+    #[cfg(feature = "private-keys")]
     fn from(key: PublicKey) -> Self {
         Self {
             key: MaybePrivate::PublicOnly(key),
         }
     }
-}
 
-#[cfg(not(feature = "private-keys"))]
-impl From<PublicKey> for Rsa {
+    #[cfg(not(feature = "private-keys"))]
     fn from(key: PublicKey) -> Self {
         Self { key }
     }
 }
 
 #[cfg(feature = "private-keys")]
+#[cfg_attr(docsrs, doc(cfg(feature = "private-keys")))]
 impl From<PrivateKey> for Rsa {
     fn from(key: PrivateKey) -> Self {
         Self {

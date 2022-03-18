@@ -86,6 +86,7 @@ impl Jwk {
 }
 
 #[cfg(feature = "hmac")]
+#[cfg_attr(docsrs, doc(cfg(feature = "hmac")))]
 impl From<jwa::Hmac> for Jwk {
     fn from(key: jwa::Hmac) -> Self {
         Self {
@@ -98,6 +99,7 @@ impl From<jwa::Hmac> for Jwk {
 }
 
 #[cfg(feature = "rsa")]
+#[cfg_attr(docsrs, doc(cfg(feature = "rsa")))]
 impl From<jwa::Rsa> for Jwk {
     fn from(key: jwa::Rsa) -> Self {
         Self {
@@ -110,6 +112,7 @@ impl From<jwa::Rsa> for Jwk {
 }
 
 #[cfg(feature = "rsa")]
+#[cfg_attr(docsrs, doc(cfg(feature = "rsa")))]
 impl From<jwa::rsa::PublicKey> for Jwk {
     fn from(key: jwa::rsa::PublicKey) -> Self {
         Self {
@@ -122,6 +125,7 @@ impl From<jwa::rsa::PublicKey> for Jwk {
 }
 
 #[cfg(all(feature = "rsa", feature = "private-keys"))]
+#[cfg_attr(docsrs, doc(cfg(all(feature = "hmac", feature = "private-keys"))))]
 impl From<jwa::rsa::PrivateKey> for Jwk {
     fn from(key: jwa::rsa::PrivateKey) -> Self {
         Self {
@@ -134,6 +138,7 @@ impl From<jwa::rsa::PrivateKey> for Jwk {
 }
 
 #[cfg(feature = "ec")]
+#[cfg_attr(docsrs, doc(cfg(feature = "ec")))]
 impl From<jwa::EllipticCurve> for Jwk {
     fn from(key: jwa::EllipticCurve) -> Self {
         Self {
@@ -146,6 +151,7 @@ impl From<jwa::EllipticCurve> for Jwk {
 }
 
 #[cfg(feature = "ec")]
+#[cfg_attr(docsrs, doc(cfg(feature = "ec")))]
 impl From<jwa::ec::PublicKey> for Jwk {
     fn from(key: jwa::ec::PublicKey) -> Self {
         Self {
@@ -158,6 +164,7 @@ impl From<jwa::ec::PublicKey> for Jwk {
 }
 
 #[cfg(all(feature = "ec", feature = "private-keys"))]
+#[cfg_attr(docsrs, doc(cfg(all(feature = "hmac", feature = "private-keys"))))]
 impl From<jwa::ec::PrivateKey> for Jwk {
     fn from(key: jwa::ec::PrivateKey) -> Self {
         Self {
@@ -317,16 +324,19 @@ impl Serialize for Jwk {
 enum Key {
     /// RSA
     #[cfg(feature = "rsa")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "rsa")))]
     #[serde(rename = "RSA")]
     Rsa(jwa::rsa::Rsa),
 
     /// Elliptic curve cryptography
     #[cfg(feature = "ec")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "ec")))]
     #[serde(rename = "EC")]
     EllipticCurve(jwa::ec::EllipticCurve),
 
     /// HMAC symmetric
     #[cfg(feature = "hmac")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "hmac")))]
     #[serde(rename = "oct")]
     Hmac(jwa::Hmac),
 }
@@ -353,6 +363,7 @@ impl Key {
 }
 
 #[cfg(feature = "hmac")]
+#[cfg_attr(docsrs, doc(cfg(feature = "hmac")))]
 impl From<jwa::Hmac> for Key {
     fn from(key: jwa::Hmac) -> Self {
         Self::Hmac(key)
@@ -360,6 +371,7 @@ impl From<jwa::Hmac> for Key {
 }
 
 #[cfg(feature = "rsa")]
+#[cfg_attr(docsrs, doc(cfg(feature = "rsa")))]
 impl From<jwa::Rsa> for Key {
     fn from(key: jwa::Rsa) -> Self {
         Self::Rsa(key)
@@ -367,6 +379,7 @@ impl From<jwa::Rsa> for Key {
 }
 
 #[cfg(feature = "rsa")]
+#[cfg_attr(docsrs, doc(cfg(feature = "rsa")))]
 impl From<jwa::rsa::PublicKey> for Key {
     fn from(key: jwa::rsa::PublicKey) -> Self {
         Self::Rsa(key.into())
@@ -374,6 +387,7 @@ impl From<jwa::rsa::PublicKey> for Key {
 }
 
 #[cfg(all(feature = "rsa", feature = "private-keys"))]
+#[cfg_attr(docsrs, doc(cfg(all(feature = "rsa", feature = "private-keys"))))]
 impl From<jwa::rsa::PrivateKey> for Key {
     fn from(key: jwa::rsa::PrivateKey) -> Self {
         Self::Rsa(key.into())
@@ -381,6 +395,7 @@ impl From<jwa::rsa::PrivateKey> for Key {
 }
 
 #[cfg(feature = "ec")]
+#[cfg_attr(docsrs, doc(cfg(feature = "ec")))]
 impl From<jwa::EllipticCurve> for Key {
     fn from(key: jwa::EllipticCurve) -> Self {
         Self::EllipticCurve(key)
@@ -388,6 +403,7 @@ impl From<jwa::EllipticCurve> for Key {
 }
 
 #[cfg(feature = "ec")]
+#[cfg_attr(docsrs, doc(cfg(feature = "ec")))]
 impl From<jwa::ec::PublicKey> for Key {
     fn from(key: jwa::ec::PublicKey) -> Self {
         Self::EllipticCurve(key.into())
@@ -395,6 +411,7 @@ impl From<jwa::ec::PublicKey> for Key {
 }
 
 #[cfg(all(feature = "ec", feature = "private-keys"))]
+#[cfg_attr(docsrs, doc(cfg(all(feature = "ec", feature = "private-keys"))))]
 impl From<jwa::ec::PrivateKey> for Key {
     fn from(key: jwa::ec::PrivateKey) -> Self {
         Self::EllipticCurve(key.into())
@@ -431,6 +448,9 @@ impl Verifier for Key {
                     false
                 }
             }
+
+            #[cfg(not(any(feature = "hmac", feature = "rsa", feature = "ec")))]
+            _ => unreachable!(),
         }
     }
 
@@ -449,6 +469,9 @@ impl Verifier for Key {
 
             #[cfg(feature = "ec")]
             Self::EllipticCurve(p) => p.verify(alg.try_into()?, data, signature)?,
+
+            #[cfg(not(any(feature = "hmac", feature = "rsa", feature = "ec")))]
+            _ => unreachable!(),
         }
 
         Ok(())
@@ -485,6 +508,9 @@ impl Signer for Key {
                     false
                 }
             }
+
+            #[cfg(not(any(feature = "hmac", feature = "rsa", feature = "ec")))]
+            _ => unreachable!(),
         }
     }
 
@@ -498,6 +524,9 @@ impl Signer for Key {
 
             #[cfg(feature = "ec")]
             Self::EllipticCurve(p) => p.sign(alg.try_into()?, data)?,
+
+            #[cfg(not(any(feature = "hmac", feature = "rsa", feature = "ec")))]
+            _ => unreachable!(),
         };
 
         Ok(signature)
