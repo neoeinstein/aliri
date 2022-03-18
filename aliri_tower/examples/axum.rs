@@ -7,7 +7,6 @@ use aliri_tower::{DefaultErrorHandler, VerifyJwt};
 use axum::extract::Path;
 use axum::routing::{get, post};
 use axum::Router;
-use std::ops::Add;
 use tower_http::auth::RequireAuthorizationLayer;
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
@@ -43,10 +42,10 @@ impl oauth2::HasScope for CustomClaims {
     }
 }
 
-const ISSUER: &'static str = "authority";
-const AUDIENCE: &'static str = "my_api";
-const KEY_ID: &'static str = "test key";
-const SHARED_SECRET: &'static [u8] = b"test";
+const ISSUER: &str = "authority";
+const AUDIENCE: &str = "my_api";
+const KEY_ID: &str = "test key";
+const SHARED_SECRET: &[u8] = b"test";
 
 fn construct_authority() -> Authority {
     // This authority might otherwise come from a well-known JWKS endpoint
@@ -118,7 +117,7 @@ fn print_example_token(key: &Jwk) {
         sub: jwt::Subject::new("test"),
         iss: jwt::Issuer::new(ISSUER),
         aud: jwt::Audience::new(AUDIENCE).into(),
-        exp: aliri_clock::System.now().add(DurationSecs(300)),
+        exp: aliri_clock::System.now() + DurationSecs(300),
         scope: "get_user post_user".parse().unwrap(),
     };
 
