@@ -143,7 +143,7 @@ impl Scope {
     /// Produces an iterator of the scope tokens in this set
     #[inline]
     pub fn iter(&self) -> impl Iterator<Item = &ScopeTokenRef> {
-        (&self).into_iter()
+        self.into_iter()
     }
 
     /// Checks to see whether this scope contains all of

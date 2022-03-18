@@ -181,7 +181,7 @@ async fn request_token<R: CredentialsSource, C: Clock>(
     let resp: dto::TokenResponse = serde_json::from_slice(&body)?;
 
     let access_token = (*resp.access_token).to_owned();
-    let id_token = resp.id_token.as_deref().map(|x| (*x).to_owned());
+    let id_token = resp.id_token.map(|x| (*x).to_owned());
     let lifetime = resp.expires_in;
 
     let token = lifetime_config.create_token(access_token, id_token, lifetime);
