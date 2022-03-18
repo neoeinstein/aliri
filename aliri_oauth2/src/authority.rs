@@ -7,9 +7,6 @@ use aliri::{
 use aliri_traits::Policy;
 use arc_swap::ArcSwap;
 #[cfg(feature = "reqwest")]
-use color_eyre::eyre::bail;
-use color_eyre::Result;
-#[cfg(feature = "reqwest")]
 use reqwest::{
     header::{self, HeaderValue},
     Client, StatusCode,
@@ -92,15 +89,13 @@ impl Authority {
 
     /// Constructs a new JWKS authority from a URL
     #[cfg(feature = "reqwest")]
-    pub async fn new_from_url(jwks_url: String, validator: jwt::CoreValidator) -> Result<Self> {
+    pub async fn new_from_url(jwks_url: String, validator: jwt::CoreValidator) -> Result<Self, reqwest::Error> {
         let client = Client::builder()
             .user_agent(concat!("aliri_oauth2/", env!("CARGO_PKG_VERSION")))
             .build()?;
 
         let response = client.get(&jwks_url).send().await?;
-        if !response.status().is_success() {
-            bail!("remote JWKS authority returned an error");
-        }
+        response.error_for_status_ref()?;
 
         let etag = response.headers().get(header::ETAG).map(ToOwned::to_owned);
         let jwks = response.json::<Jwks>().await?;
@@ -120,34 +115,42 @@ impl Authority {
     ///
     /// No retries are attempted. If the attempt to refresh the JWKS from
     /// the remote URL fails, no change is made to the internal JWKS.
+    #[cfg(feature = "reqwest")]
     #[tracing::instrument]
-    pub async fn refresh(&self) -> Result<()> {
-        #[cfg(feature = "reqwest")]
-        {
-            if let Some(remote) = &self.inner.remote {
-                let mut request = remote.client.get(&remote.jwks_url);
+    pub async fn refresh(&self) -> Result<(), reqwest::Error> {
+        if let Some(remote) = &self.inner.remote {
+            let mut request = remote.client.get(&remote.jwks_url);
 
-                if let Some(etag) = &self.inner.data.load().etag {
-                    request = request.header(header::IF_NONE_MATCH, etag)
-                }
-
-                let response = request.send().await?;
-
-                if response.status() == StatusCode::NOT_MODIFIED {
-                    return Ok(());
-                } else if !response.status().is_success() {
-                    bail!("remote JWKS authority returned an error");
-                }
-
-                let etag = response.headers().get("etag").map(ToOwned::to_owned);
-                let jwks = response.json::<Jwks>().await?;
-
-                let data = Arc::new(VolatileData { jwks, etag });
-
-                self.inner.data.store(data);
+            if let Some(etag) = &self.inner.data.load().etag {
+                request = request.header(header::IF_NONE_MATCH, etag)
             }
+
+            let response = request.send().await?;
+
+            if response.status() == StatusCode::NOT_MODIFIED {
+                return Ok(());
+            } else {
+                response.error_for_status_ref()?;
+            }
+
+            let etag = response.headers().get("etag").map(ToOwned::to_owned);
+            let jwks = response.json::<Jwks>().await?;
+
+            let data = Arc::new(VolatileData { jwks, etag });
+
+            self.inner.data.store(data);
         }
 
+        Ok(())
+    }
+
+    /// Refreshes the JWKS from the remote URL
+    ///
+    /// No retries are attempted. If the attempt to refresh the JWKS from
+    /// the remote URL fails, no change is made to the internal JWKS.
+    #[cfg(not(feature = "reqwest"))]
+    #[tracing::instrument]
+    pub async fn refresh(&self) -> Result<(), std::convert::Infallible> {
         Ok(())
     }
 

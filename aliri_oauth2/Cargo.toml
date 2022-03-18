@@ -3,7 +3,7 @@ name = "aliri_oauth2"
 description = "JWT authorization based on validating OAuth2 scopes"
 keywords = [ "jose", "jwk", "jwt", "oauth2", "auth" ]
 categories = [ "authentication" ]
-version = "0.6.2"
+version = "0.7.0"
 authors = ["Marcus Griep <marcus@griep.us>"]
 edition = "2018"
 readme = "../README.md"
@@ -24,7 +24,6 @@ aliri_clock = { version = "0.1.0", path = "../aliri_clock" }
 aliri_traits = { version = "0.1.0", path = "../aliri_traits" }
 aliri_braid = { version = "0.1.5" }
 arc-swap = "1.2"
-color-eyre = "0.5"
 lazy_static = "1"
 reqwest = { version = "0.11", optional = true, features = [ "json" ] }
 serde = { version = "1", features = [ "derive" ] }
