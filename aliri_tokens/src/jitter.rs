@@ -20,6 +20,7 @@ impl JitterSource for NullJitter {
 }
 
 #[cfg(feature = "rand")]
+#[cfg_attr(docsrs, doc(cfg(feature = "rand")))]
 mod random {
     use aliri_clock::{DurationSecs, UnixTime};
     use rand::{Rng, SeedableRng};
@@ -53,4 +54,5 @@ mod random {
 }
 
 #[cfg(feature = "rand")]
+#[cfg_attr(docsrs, doc(cfg(feature = "rand")))]
 pub use random::RandomEarlyJitter;

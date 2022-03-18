@@ -6,8 +6,10 @@ use std::error;
 
 pub mod cache;
 #[cfg(feature = "file")]
+#[cfg_attr(docsrs, doc(cfg(feature = "file")))]
 pub mod file;
 #[cfg(feature = "oauth2")]
+#[cfg_attr(docsrs, doc(cfg(feature = "oauth2")))]
 pub mod oauth2;
 
 pub use file::FileTokenSource;
