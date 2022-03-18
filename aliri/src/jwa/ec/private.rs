@@ -61,7 +61,7 @@ impl PrivateKey {
         let pkcs8_str = pkcs8_pem
             .replace("-----BEGIN PRIVATE KEY-----", "")
             .replace("-----END PRIVATE KEY-----", "")
-            .replace("\n", "");
+            .replace('\n', "");
 
         let pkcs8 = Base64::from_encoded(&pkcs8_str).map_err(error::key_rejected)?;
 
@@ -167,7 +167,7 @@ impl TryFrom<PrivateKeyDto> for PrivateKey {
     fn try_from(dto: PrivateKeyDto) -> Result<Self, Self::Error> {
         let group = dto.public_key.curve.to_group();
         let public = EcKey::from_public_key_affine_coordinates(
-            &group,
+            group,
             &*BigNum::from_slice(dto.public_key.x.as_slice()).map_err(error::key_rejected)?,
             &*BigNum::from_slice(dto.public_key.y.as_slice()).map_err(error::key_rejected)?,
         )
@@ -176,7 +176,7 @@ impl TryFrom<PrivateKeyDto> for PrivateKey {
         let public_key = public.public_key();
         let private_number = BigNum::from_slice(dto.key.as_slice()).map_err(error::key_rejected)?;
 
-        let key = EcKey::from_private_components(&group, &private_number, public_key)
+        let key = EcKey::from_private_components(group, &private_number, public_key)
             .map_err(error::key_rejected)?;
 
         Self::from_openssl_eckey(key)

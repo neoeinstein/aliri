@@ -84,7 +84,7 @@ impl TryFrom<PublicKeyDto> for PublicKey {
     fn try_from(dto: PublicKeyDto) -> Result<Self, Self::Error> {
         let group = dto.curve.to_group();
         let public = EcKey::from_public_key_affine_coordinates(
-            &group,
+            group,
             &*BigNum::from_slice(dto.x.as_slice()).map_err(error::key_rejected)?,
             &*BigNum::from_slice(dto.y.as_slice()).map_err(error::key_rejected)?,
         )
@@ -92,7 +92,7 @@ impl TryFrom<PublicKeyDto> for PublicKey {
         let mut ctx = BigNumContext::new().map_err(error::key_rejected)?;
         let public_key = public
             .public_key()
-            .to_bytes(&group, PointConversionForm::UNCOMPRESSED, &mut ctx)
+            .to_bytes(group, PointConversionForm::UNCOMPRESSED, &mut ctx)
             .map_err(error::key_rejected)?;
 
         Ok(Self {
@@ -106,12 +106,12 @@ impl From<PublicKey> for PublicKeyDto {
     fn from(p: PublicKey) -> Self {
         let group = p.curve.to_group();
         let mut ctx = BigNumContext::new().unwrap();
-        let point = EcPoint::from_bytes(&group, p.public_key.as_slice(), &mut ctx).unwrap();
+        let point = EcPoint::from_bytes(group, p.public_key.as_slice(), &mut ctx).unwrap();
         let mut x = BigNum::new().unwrap();
         let mut y = BigNum::new().unwrap();
 
         point
-            .affine_coordinates_gfp(&group, &mut x, &mut y, &mut ctx)
+            .affine_coordinates_gfp(group, &mut x, &mut y, &mut ctx)
             .unwrap();
 
         Self {
