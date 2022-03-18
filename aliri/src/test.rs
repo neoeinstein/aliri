@@ -66,7 +66,10 @@ pub mod hmac {
 }
 
 #[cfg(all(feature = "hmac", feature = "rsa", feature = "ec"))]
-#[cfg_attr(docsrs, doc(cfg(all(feature = "hmac", feature = "rsa", feature = "ec"))))]
+#[cfg_attr(
+    docsrs,
+    doc(cfg(all(feature = "hmac", feature = "rsa", feature = "ec")))
+)]
 pub mod mixed {
     pub const JWKS: &str = include_str!("../data/jwks.json");
 }

@@ -290,7 +290,6 @@ impl From<PublicKey> for EllipticCurve {
     fn from(key: PublicKey) -> Self {
         Self { key }
     }
-
 }
 
 #[cfg(feature = "private-keys")]
