@@ -9,7 +9,7 @@
 //! the time that the middleware executes, the existing value will be left
 //! in place, allowing overrides to be specified as required.
 //!
-//! ```no_run
+//! ```
 //! use aliri_reqwest::AccessTokenMiddleware;
 //! use aliri_tokens::TokenWatcher;
 //! use reqwest::Client;
@@ -20,14 +20,7 @@
 //! #
 //! # #[tokio::main(flavor = "current_thread")] async fn main() {
 //! # let (token_source, jitter, backoff)  = (ConstTokenSource::new("token"), NullJitter, ErrorBackoffConfig::default());
-//!
-//! let token_watcher = TokenWatcher::spawn_from_token_source(
-//!     token_source,
-//!     jitter,
-//!     backoff,
-//! )
-//! .await
-//! .unwrap();
+//! # let token_watcher = TokenWatcher::spawn_from_token_source(token_source, jitter, backoff).await.unwrap();
 //!
 //! let client = ClientBuilder::new(Client::default())
 //!     .with(AccessTokenMiddleware::new(token_watcher))
@@ -51,14 +44,24 @@
 //! These predicates can be composed together to evaluate more complex
 //! requirements prior to attaching a token to a request.
 //!
-//! ```no_run
+//! ```
 //! use aliri_reqwest::{
-//!     AccessTokenMiddleware, AccessTokenPredicate, ExactHostMatch, HttpsOnly
+//!     AccessTokenMiddleware, ExactHostMatch, HttpsOnly
 //! };
-//! # let watcher = todo!();
+//! use predicates::prelude::PredicateBooleanExt;
+//! # use aliri_tokens::{
+//! #    backoff::ErrorBackoffConfig,
+//! #    jitter::NullJitter,
+//! #    sources::ConstTokenSource,
+//! #    TokenWatcher,
+//! # };
+//! # #[tokio::main(flavor = "current_thread")] async fn main() {
+//! # let (token_source, jitter, backoff)  = (ConstTokenSource::new("token"), NullJitter, ErrorBackoffConfig::default());
+//! # let token_watcher = TokenWatcher::spawn_from_token_source(token_source, jitter, backoff).await.unwrap();
 //!
-//! AccessTokenMiddleware::new(watcher)
+//! AccessTokenMiddleware::new(token_watcher)
 //!     .with_predicate(HttpsOnly.and(ExactHostMatch::new("example.com")));
+//! # }
 //! ```
 
 #![warn(
@@ -76,11 +79,15 @@
     unused_must_use
 )]
 
+use crate::reflection::Case;
 use aliri_clock::Clock;
 use aliri_tokens::TokenWatcher;
 use bytes::{BufMut, BytesMut};
+use predicates::prelude::*;
+use predicates::reflection;
 use reqwest::{header, Request, Response};
 use reqwest_middleware::{Middleware, Next, Result};
+use std::fmt;
 use task_local_extensions::Extensions;
 
 /// A middleware that injects an access token into outgoing requests
@@ -144,7 +151,7 @@ impl<P> AccessTokenMiddleware<P> {
 #[async_trait::async_trait]
 impl<P> Middleware for AccessTokenMiddleware<P>
 where
-    P: AccessTokenPredicate + Send + Sync + 'static,
+    P: Predicate<Request> + Send + Sync + 'static,
 {
     async fn handle(
         &self,
@@ -152,7 +159,7 @@ where
         extensions: &mut Extensions,
         next: Next<'_>,
     ) -> Result<Response> {
-        if self.predicate.evaluate(&req) == PredicateResult::Attach {
+        if self.predicate.eval(&req) {
             req.headers_mut()
                 .entry(header::AUTHORIZATION)
                 .or_insert_with(|| self.get_token_from_source());
@@ -162,87 +169,35 @@ where
     }
 }
 
-/// The result of evaluating a predicate
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-#[must_use]
-pub enum PredicateResult {
-    /// Ignore the request
-    Ignore,
-
-    /// Attach an access token to the request
-    Attach,
-}
-
-/// A predicate that decides whether or not an access token should be
-/// attached to a request.
-pub trait AccessTokenPredicate {
-    /// Evaluate the predicate
-    fn evaluate(&self, request: &Request) -> PredicateResult;
-
-    /// Compose two predicates together using a logical and
-    ///
-    /// An access token will only be attached if both predicates return
-    /// [`PredicateResult::Attach`]. This predicate will short circuit
-    /// if the first predicate indicates ther request should be ignored..
-    #[inline]
-    fn and<P>(self, other: P) -> AndPredicate<Self, P>
-    where
-        Self: Sized,
-    {
-        AndPredicate {
-            first: self,
-            second: other,
-        }
-    }
-
-    /// Compose two predicates together using a logical or
-    ///
-    /// An access token will be attached if either predicates return
-    /// [`PredicateResult::Attach`]. This predicate will short circuit
-    /// if the first predicate requests attachment.
-    #[inline]
-    fn or<P>(self, other: P) -> OrPredicate<Self, P>
-    where
-        Self: Sized,
-    {
-        OrPredicate {
-            first: self,
-            second: other,
-        }
-    }
-
-    /// Invert the decision of a predicate using a logical not
-    ///
-    /// An access token will be attached if either predicates return
-    /// [`PredicateResult::Ignore`].
-    #[inline]
-    fn not(self) -> NotPredicate<Self>
-    where
-        Self: Sized,
-    {
-        NotPredicate { inner: self }
-    }
-}
-
-impl AccessTokenPredicate for PredicateResult {
-    #[inline]
-    fn evaluate(&self, _: &Request) -> PredicateResult {
-        *self
-    }
-}
-
 /// Only attach an access token if the request is being sent over HTTPS
 #[derive(Clone, Copy, Debug)]
 pub struct HttpsOnly;
 
-impl AccessTokenPredicate for HttpsOnly {
+impl Predicate<Request> for HttpsOnly {
     #[inline]
-    fn evaluate(&self, req: &Request) -> PredicateResult {
-        if req.url().scheme() == "https" {
-            PredicateResult::Attach
+    fn eval(&self, req: &Request) -> bool {
+        req.url().scheme() == "https"
+    }
+
+    fn find_case(&self, expected: bool, req: &Request) -> Option<Case> {
+        let result = self.eval(req);
+        if result != expected {
+            Some(
+                reflection::Case::new(Some(self), result).add_product(reflection::Product::new(
+                    "scheme",
+                    req.url().scheme().to_owned(),
+                )),
+            )
         } else {
-            PredicateResult::Ignore
+            None
         }
+    }
+}
+
+impl reflection::PredicateReflection for HttpsOnly {}
+impl fmt::Display for HttpsOnly {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("scheme is https")
     }
 }
 
@@ -264,104 +219,36 @@ impl ExactHostMatch {
     }
 }
 
-impl AccessTokenPredicate for ExactHostMatch {
+impl Predicate<Request> for ExactHostMatch {
     #[inline]
-    fn evaluate(&self, req: &Request) -> PredicateResult {
-        if req.url().host_str() == Some(&self.host) {
-            PredicateResult::Attach
+    fn eval(&self, req: &Request) -> bool {
+        req.url().host_str() == Some(&self.host)
+    }
+
+    fn find_case(&self, expected: bool, req: &Request) -> Option<Case> {
+        let result = self.eval(req);
+        if result != expected {
+            Some(
+                reflection::Case::new(Some(self), result).add_product(reflection::Product::new(
+                    "host",
+                    req.url()
+                        .host_str()
+                        .unwrap_or("<value not valid utf-8>")
+                        .to_owned(),
+                )),
+            )
         } else {
-            PredicateResult::Ignore
+            None
         }
     }
 }
 
-/// Logical and of two predicates
-///
-/// See [`AccessTokenPredicate::and()`]
-#[derive(Clone, Copy, Debug)]
-pub struct AndPredicate<P1, P2> {
-    first: P1,
-    second: P2,
-}
-
-impl<P1, P2> AccessTokenPredicate for AndPredicate<P1, P2>
-where
-    P1: AccessTokenPredicate,
-    P2: AccessTokenPredicate,
-{
-    #[inline]
-    fn evaluate(&self, request: &Request) -> PredicateResult {
-        if self.first.evaluate(request) == PredicateResult::Attach {
-            self.second.evaluate(request)
-        } else {
-            PredicateResult::Ignore
-        }
+impl reflection::PredicateReflection for ExactHostMatch {}
+impl fmt::Display for ExactHostMatch {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("host == ")?;
+        f.write_str(&self.host)
     }
-}
-
-/// Logical or of two predicates
-///
-/// See [`AccessTokenPredicate::or()`]
-#[derive(Clone, Copy, Debug)]
-pub struct OrPredicate<P1, P2> {
-    first: P1,
-    second: P2,
-}
-
-impl<P1, P2> AccessTokenPredicate for OrPredicate<P1, P2>
-where
-    P1: AccessTokenPredicate,
-    P2: AccessTokenPredicate,
-{
-    #[inline]
-    fn evaluate(&self, request: &Request) -> PredicateResult {
-        if self.first.evaluate(request) == PredicateResult::Ignore {
-            self.second.evaluate(request)
-        } else {
-            PredicateResult::Attach
-        }
-    }
-}
-
-/// Logical or of two predicates
-///
-/// See [`AccessTokenPredicate::not()`]
-#[derive(Clone, Copy, Debug)]
-pub struct NotPredicate<P> {
-    inner: P,
-}
-
-impl<P> AccessTokenPredicate for NotPredicate<P>
-where
-    P: AccessTokenPredicate,
-{
-    #[inline]
-    fn evaluate(&self, request: &Request) -> PredicateResult {
-        if self.inner.evaluate(request) == PredicateResult::Ignore {
-            PredicateResult::Attach
-        } else {
-            PredicateResult::Ignore
-        }
-    }
-}
-
-impl<F> AccessTokenPredicate for F
-where
-    F: Fn(&Request) -> PredicateResult,
-{
-    #[inline]
-    fn evaluate(&self, request: &Request) -> PredicateResult {
-        self(request)
-    }
-}
-
-/// Convenience function for typing a predicate as an access token predicate
-#[inline]
-pub fn fn_predicate<F>(predicate: F) -> F
-where
-    F: Fn(&Request) -> PredicateResult,
-{
-    predicate
 }
 
 #[cfg(test)]
@@ -463,7 +350,7 @@ mod tests {
             async fn middleware_attaches_access_token() {
                 let middleware = prepare_middleware()
                     .await
-                    .with_predicate(PredicateResult::Attach);
+                    .with_predicate(predicate::always());
                 let auth_checker = Arc::new(AuthChecker::new(BEARER_TEST_TOKEN));
 
                 let client = ClientBuilder::new(Client::default())
@@ -485,7 +372,7 @@ mod tests {
             async fn middleware_does_not_attach_access_token() {
                 let middleware = prepare_middleware()
                     .await
-                    .with_predicate(PredicateResult::Ignore);
+                    .with_predicate(predicate::never());
                 let auth_checker = Arc::new(NoAuthChecker::default());
 
                 let client = ClientBuilder::new(Client::default())
@@ -527,126 +414,6 @@ mod tests {
 
             assert_eq!(resp.status(), StatusCode::OK);
             assert!(auth_checker.checked.load(Ordering::Acquire));
-        }
-    }
-
-    mod predicate_and_predicate {
-        use super::*;
-
-        #[test]
-        fn both_attach_results_in_attach() {
-            let predicate = HttpsOnly.and(ExactHostMatch::new("example.com"));
-            let request =
-                reqwest::Request::new(reqwest::Method::GET, "https://example.com".parse().unwrap());
-
-            assert_eq!(predicate.evaluate(&request), PredicateResult::Attach);
-        }
-
-        #[test]
-        fn only_first_attach_results_in_ignore() {
-            let predicate = HttpsOnly.and(ExactHostMatch::new("definitely-not.com"));
-            let request =
-                reqwest::Request::new(reqwest::Method::GET, "https://example.com".parse().unwrap());
-
-            assert_eq!(predicate.evaluate(&request), PredicateResult::Ignore);
-        }
-
-        #[test]
-        fn only_second_attach_results_in_ignore() {
-            let predicate = HttpsOnly.and(ExactHostMatch::new("example.com"));
-            let request =
-                reqwest::Request::new(reqwest::Method::GET, "http://example.com".parse().unwrap());
-
-            assert_eq!(predicate.evaluate(&request), PredicateResult::Ignore);
-        }
-
-        #[test]
-        fn both_ignore_results_in_ignore() {
-            let predicate = HttpsOnly.and(ExactHostMatch::new("definitely-not.com"));
-            let request =
-                reqwest::Request::new(reqwest::Method::GET, "http://example.com".parse().unwrap());
-
-            assert_eq!(predicate.evaluate(&request), PredicateResult::Ignore);
-        }
-
-        #[test]
-        fn short_circuits_on_first_ignore() {
-            let predicate = HttpsOnly.and(fn_predicate(|_| panic!("evaluated second predicate")));
-            let request =
-                reqwest::Request::new(reqwest::Method::GET, "http://example.com".parse().unwrap());
-
-            assert_eq!(predicate.evaluate(&request), PredicateResult::Ignore);
-        }
-    }
-
-    mod predicate_or_predicate {
-        use super::*;
-
-        #[test]
-        fn both_attach_results_in_attach() {
-            let predicate = HttpsOnly.or(ExactHostMatch::new("example.com"));
-            let request =
-                reqwest::Request::new(reqwest::Method::GET, "https://example.com".parse().unwrap());
-
-            assert_eq!(predicate.evaluate(&request), PredicateResult::Attach);
-        }
-
-        #[test]
-        fn only_first_attach_results_in_attach() {
-            let predicate = HttpsOnly.or(ExactHostMatch::new("definitely-not.com"));
-            let request =
-                reqwest::Request::new(reqwest::Method::GET, "https://example.com".parse().unwrap());
-
-            assert_eq!(predicate.evaluate(&request), PredicateResult::Attach);
-        }
-
-        #[test]
-        fn only_second_attach_results_in_attach() {
-            let predicate = HttpsOnly.or(ExactHostMatch::new("example.com"));
-            let request =
-                reqwest::Request::new(reqwest::Method::GET, "http://example.com".parse().unwrap());
-
-            assert_eq!(predicate.evaluate(&request), PredicateResult::Attach);
-        }
-
-        #[test]
-        fn both_ignore_results_in_ignore() {
-            let predicate = HttpsOnly.or(ExactHostMatch::new("definitely-not.com"));
-            let request =
-                reqwest::Request::new(reqwest::Method::GET, "http://example.com".parse().unwrap());
-
-            assert_eq!(predicate.evaluate(&request), PredicateResult::Ignore);
-        }
-
-        #[test]
-        fn short_circuits_on_first_attach() {
-            let predicate = HttpsOnly.or(fn_predicate(|_| panic!("evaluated second predicate")));
-            let request =
-                reqwest::Request::new(reqwest::Method::GET, "https://example.com".parse().unwrap());
-
-            assert_eq!(predicate.evaluate(&request), PredicateResult::Attach);
-        }
-    }
-
-    mod predicate_not {
-        use super::*;
-
-        #[test]
-        fn attach_results_in_ignore() {
-            let predicate = HttpsOnly.not();
-            let request =
-                reqwest::Request::new(reqwest::Method::GET, "https://example.com".parse().unwrap());
-
-            assert_eq!(predicate.evaluate(&request), PredicateResult::Ignore);
-        }
-
-        #[test]
-        fn ignore_results_in_attach() {
-            let predicate = HttpsOnly.not();
-            let request =
-                reqwest::Request::new(reqwest::Method::GET, "http://example.com".parse().unwrap());
-
-            assert_eq!(predicate.evaluate(&request), PredicateResult::Attach);
         }
     }
 }

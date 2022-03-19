@@ -17,6 +17,7 @@ aliri_tokens = { version = "0.1.3", path = "../aliri_tokens" }
 aliri_clock = { version = "0.1.4", path = "../aliri_clock" }
 async-trait = "0.1.52"
 bytes = "1.1.0"
+predicates = { version = "2.1.1", default-features = false }
 reqwest = { version = "0.11.10", default-features = false }
 reqwest-middleware = "0.1.5"
 task-local-extensions = "0.1.1"
