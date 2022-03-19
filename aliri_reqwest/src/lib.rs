@@ -212,6 +212,13 @@ pub trait AccessTokenPredicate {
     }
 }
 
+impl AccessTokenPredicate for PredicateResult {
+    #[inline]
+    fn evaluate(&self, _: &Request) -> PredicateResult {
+        *self
+    }
+}
+
 /// Only attach an access token if the request is being sent over HTTPS
 #[derive(Clone, Copy, Debug)]
 pub struct HttpsOnly;
@@ -314,6 +321,15 @@ where
     }
 }
 
+/// Convenience function for typing a predicate as an access token predicate
+#[inline]
+pub fn fn_predicate<F>(predicate: F) -> F
+where
+    F: Fn(&Request) -> PredicateResult,
+{
+    predicate
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -375,8 +391,7 @@ mod tests {
         }
     }
 
-    #[tokio::test]
-    async fn basic_test() {
+    async fn prepare_middleware() -> AccessTokenMiddleware<HttpsOnly> {
         let token_watcher = TokenWatcher::spawn_from_token_source(
             ConstTokenSource::new(TEST_TOKEN),
             NullJitter,
@@ -385,256 +400,197 @@ mod tests {
         .await
         .unwrap();
 
-        let auth_checker = Arc::new(AuthChecker::new(BEARER_TEST_TOKEN));
-
-        let client = ClientBuilder::new(Client::default())
-            .with(AccessTokenMiddleware::new(token_watcher))
-            .with_arc(auth_checker.clone())
-            .build();
-
-        let resp = client.get("https://example.com").send().await.unwrap();
-
-        assert_eq!(resp.status(), StatusCode::OK);
-        assert!(auth_checker.checked.load(Ordering::Acquire));
+        AccessTokenMiddleware::new(token_watcher)
     }
 
-    #[tokio::test]
-    async fn override_test() {
-        const OVERRIDE_TOKEN: &str = "overriden!";
-        // Reqwest uses a capital `B` bearer
-        const BEARER_OVERRIDE_TOKEN: &str = "Bearer overriden!";
+    mod when_request_does_not_have_an_authorization_header {
+        use super::*;
 
-        let token_watcher = TokenWatcher::spawn_from_token_source(
-            ConstTokenSource::new(TEST_TOKEN),
-            NullJitter,
-            ErrorBackoffConfig::default(),
-        )
-        .await
-        .unwrap();
+        #[tokio::test]
+        async fn middleware_with_defaults_attaches_token_on_https_request() {
+            let middleware = prepare_middleware().await;
+            let auth_checker = Arc::new(AuthChecker::new(BEARER_TEST_TOKEN));
 
-        let auth_checker = Arc::new(AuthChecker::new(BEARER_OVERRIDE_TOKEN));
+            let client = ClientBuilder::new(Client::default())
+                .with(middleware)
+                .with_arc(auth_checker.clone())
+                .build();
 
-        let client = ClientBuilder::new(Client::default())
-            .with(AccessTokenMiddleware::new(token_watcher))
-            .with_arc(auth_checker.clone())
-            .build();
+            let resp = client.get("https://example.com").send().await.unwrap();
 
-        let resp = client
-            .get("https://example.com")
-            .bearer_auth(OVERRIDE_TOKEN)
-            .send()
-            .await
-            .unwrap();
+            assert_eq!(resp.status(), StatusCode::OK);
+            assert!(auth_checker.checked.load(Ordering::Acquire));
+        }
 
-        assert_eq!(resp.status(), StatusCode::OK);
-        assert!(auth_checker.checked.load(Ordering::Acquire));
+        mod and_predicate_evaluates_to_attach {
+            use super::*;
+
+            #[tokio::test]
+            async fn middleware_attaches_access_token() {
+                let middleware = prepare_middleware()
+                    .await
+                    .with_predicate(PredicateResult::Attach);
+                let auth_checker = Arc::new(AuthChecker::new(BEARER_TEST_TOKEN));
+
+                let client = ClientBuilder::new(Client::default())
+                    .with(middleware)
+                    .with_arc(auth_checker.clone())
+                    .build();
+
+                let resp = client.get("https://example.com").send().await.unwrap();
+
+                assert_eq!(resp.status(), StatusCode::OK);
+                assert!(auth_checker.checked.load(Ordering::Acquire));
+            }
+        }
+
+        mod and_predicate_evaluates_to_ignore {
+            use super::*;
+
+            #[tokio::test]
+            async fn middleware_does_not_attach_access_token() {
+                let middleware = prepare_middleware()
+                    .await
+                    .with_predicate(PredicateResult::Ignore);
+                let auth_checker = Arc::new(NoAuthChecker::default());
+
+                let client = ClientBuilder::new(Client::default())
+                    .with(middleware)
+                    .with_arc(auth_checker.clone())
+                    .build();
+
+                let resp = client.get("https://example.com").send().await.unwrap();
+
+                assert_eq!(resp.status(), StatusCode::OK);
+                assert!(auth_checker.checked.load(Ordering::Acquire));
+            }
+        }
     }
 
-    #[tokio::test]
-    async fn and_test_both() {
-        let token_watcher = TokenWatcher::spawn_from_token_source(
-            ConstTokenSource::new(TEST_TOKEN),
-            NullJitter,
-            ErrorBackoffConfig::default(),
-        )
-        .await
-        .unwrap();
+    mod when_request_already_contains_an_authorization_header {
+        use super::*;
 
-        let auth_checker = Arc::new(AuthChecker::new(BEARER_TEST_TOKEN));
+        #[tokio::test]
+        async fn middleware_does_not_attach_access_token() {
+            const OVERRIDE_TOKEN: &str = "overriden!";
+            // Reqwest uses a capital `B` bearer
+            const BEARER_OVERRIDE_TOKEN: &str = "Bearer overriden!";
 
-        let middleware = AccessTokenMiddleware::new(token_watcher)
-            .with_predicate(HttpsOnly.and(ExactHostMatch::new("example.com")));
+            let middleware = prepare_middleware().await;
+            let auth_checker = Arc::new(AuthChecker::new(BEARER_OVERRIDE_TOKEN));
 
-        let client = ClientBuilder::new(Client::default())
-            .with(middleware)
-            .with_arc(auth_checker.clone())
-            .build();
+            let client = ClientBuilder::new(Client::default())
+                .with(middleware)
+                .with_arc(auth_checker.clone())
+                .build();
 
-        let resp = client.get("https://example.com").send().await.unwrap();
+            let resp = client
+                .get("https://example.com")
+                .bearer_auth(OVERRIDE_TOKEN)
+                .send()
+                .await
+                .unwrap();
 
-        assert_eq!(resp.status(), StatusCode::OK);
-        assert!(auth_checker.checked.load(Ordering::Acquire));
+            assert_eq!(resp.status(), StatusCode::OK);
+            assert!(auth_checker.checked.load(Ordering::Acquire));
+        }
     }
 
-    #[tokio::test]
-    async fn and_test_first() {
-        let token_watcher = TokenWatcher::spawn_from_token_source(
-            ConstTokenSource::new(TEST_TOKEN),
-            NullJitter,
-            ErrorBackoffConfig::default(),
-        )
-        .await
-        .unwrap();
+    mod predicate_and_predicate {
+        use super::*;
 
-        let auth_checker = Arc::new(NoAuthChecker::default());
+        #[test]
+        fn both_attach_results_in_attach() {
+            let predicate = HttpsOnly.and(ExactHostMatch::new("example.com"));
+            let request =
+                reqwest::Request::new(reqwest::Method::GET, "https://example.com".parse().unwrap());
 
-        let middleware = AccessTokenMiddleware::new(token_watcher)
-            .with_predicate(HttpsOnly.and(ExactHostMatch::new("example.com")));
+            assert_eq!(predicate.evaluate(&request), PredicateResult::Attach);
+        }
 
-        let client = ClientBuilder::new(Client::default())
-            .with(middleware)
-            .with_arc(auth_checker.clone())
-            .build();
+        #[test]
+        fn only_first_attach_results_in_ignore() {
+            let predicate = HttpsOnly.and(ExactHostMatch::new("definitely-not.com"));
+            let request =
+                reqwest::Request::new(reqwest::Method::GET, "https://example.com".parse().unwrap());
 
-        let resp = client.get("https://not.example.com").send().await.unwrap();
+            assert_eq!(predicate.evaluate(&request), PredicateResult::Ignore);
+        }
 
-        assert_eq!(resp.status(), StatusCode::OK);
-        assert!(auth_checker.checked.load(Ordering::Acquire));
+        #[test]
+        fn only_second_attach_results_in_ignore() {
+            let predicate = HttpsOnly.and(ExactHostMatch::new("example.com"));
+            let request =
+                reqwest::Request::new(reqwest::Method::GET, "http://example.com".parse().unwrap());
+
+            assert_eq!(predicate.evaluate(&request), PredicateResult::Ignore);
+        }
+
+        #[test]
+        fn both_ignore_results_in_ignore() {
+            let predicate = HttpsOnly.and(ExactHostMatch::new("definitely-not.com"));
+            let request =
+                reqwest::Request::new(reqwest::Method::GET, "http://example.com".parse().unwrap());
+
+            assert_eq!(predicate.evaluate(&request), PredicateResult::Ignore);
+        }
+
+        #[test]
+        fn short_circuits_on_first_ignore() {
+            let predicate = HttpsOnly.and(fn_predicate(|_| panic!("evaluated second predicate")));
+            let request =
+                reqwest::Request::new(reqwest::Method::GET, "http://example.com".parse().unwrap());
+
+            assert_eq!(predicate.evaluate(&request), PredicateResult::Ignore);
+        }
     }
 
-    #[tokio::test]
-    async fn and_test_second() {
-        let token_watcher = TokenWatcher::spawn_from_token_source(
-            ConstTokenSource::new(TEST_TOKEN),
-            NullJitter,
-            ErrorBackoffConfig::default(),
-        )
-        .await
-        .unwrap();
+    mod predicate_or_predicate {
+        use super::*;
 
-        let auth_checker = Arc::new(NoAuthChecker::default());
+        #[test]
+        fn both_attach_results_in_attach() {
+            let predicate = HttpsOnly.or(ExactHostMatch::new("example.com"));
+            let request =
+                reqwest::Request::new(reqwest::Method::GET, "https://example.com".parse().unwrap());
 
-        let middleware = AccessTokenMiddleware::new(token_watcher)
-            .with_predicate(HttpsOnly.and(ExactHostMatch::new("example.com")));
+            assert_eq!(predicate.evaluate(&request), PredicateResult::Attach);
+        }
 
-        let client = ClientBuilder::new(Client::default())
-            .with(middleware)
-            .with_arc(auth_checker.clone())
-            .build();
+        #[test]
+        fn only_first_attach_results_in_attach() {
+            let predicate = HttpsOnly.or(ExactHostMatch::new("definitely-not.com"));
+            let request =
+                reqwest::Request::new(reqwest::Method::GET, "https://example.com".parse().unwrap());
 
-        let resp = client.get("http://example.com").send().await.unwrap();
+            assert_eq!(predicate.evaluate(&request), PredicateResult::Attach);
+        }
 
-        assert_eq!(resp.status(), StatusCode::OK);
-        assert!(auth_checker.checked.load(Ordering::Acquire));
-    }
+        #[test]
+        fn only_second_attach_results_in_attach() {
+            let predicate = HttpsOnly.or(ExactHostMatch::new("example.com"));
+            let request =
+                reqwest::Request::new(reqwest::Method::GET, "http://example.com".parse().unwrap());
 
-    #[tokio::test]
-    async fn and_test_none() {
-        let token_watcher = TokenWatcher::spawn_from_token_source(
-            ConstTokenSource::new(TEST_TOKEN),
-            NullJitter,
-            ErrorBackoffConfig::default(),
-        )
-        .await
-        .unwrap();
+            assert_eq!(predicate.evaluate(&request), PredicateResult::Attach);
+        }
 
-        let auth_checker = Arc::new(NoAuthChecker::default());
+        #[test]
+        fn both_ignore_results_in_ignore() {
+            let predicate = HttpsOnly.or(ExactHostMatch::new("definitely-not.com"));
+            let request =
+                reqwest::Request::new(reqwest::Method::GET, "http://example.com".parse().unwrap());
 
-        let middleware = AccessTokenMiddleware::new(token_watcher)
-            .with_predicate(HttpsOnly.and(ExactHostMatch::new("example.com")));
+            assert_eq!(predicate.evaluate(&request), PredicateResult::Ignore);
+        }
 
-        let client = ClientBuilder::new(Client::default())
-            .with(middleware)
-            .with_arc(auth_checker.clone())
-            .build();
+        #[test]
+        fn short_circuits_on_first_attach() {
+            let predicate = HttpsOnly.or(fn_predicate(|_| panic!("evaluated second predicate")));
+            let request =
+                reqwest::Request::new(reqwest::Method::GET, "https://example.com".parse().unwrap());
 
-        let resp = client.get("http://not.example.com").send().await.unwrap();
-
-        assert_eq!(resp.status(), StatusCode::OK);
-        assert!(auth_checker.checked.load(Ordering::Acquire));
-    }
-
-    #[tokio::test]
-    async fn or_test_both() {
-        let token_watcher = TokenWatcher::spawn_from_token_source(
-            ConstTokenSource::new(TEST_TOKEN),
-            NullJitter,
-            ErrorBackoffConfig::default(),
-        )
-        .await
-        .unwrap();
-
-        let auth_checker = Arc::new(AuthChecker::new(BEARER_TEST_TOKEN));
-
-        let middleware = AccessTokenMiddleware::new(token_watcher)
-            .with_predicate(HttpsOnly.or(ExactHostMatch::new("example.com")));
-
-        let client = ClientBuilder::new(Client::default())
-            .with(middleware)
-            .with_arc(auth_checker.clone())
-            .build();
-
-        let resp = client.get("https://example.com").send().await.unwrap();
-
-        assert_eq!(resp.status(), StatusCode::OK);
-        assert!(auth_checker.checked.load(Ordering::Acquire));
-    }
-
-    #[tokio::test]
-    async fn or_test_first() {
-        let token_watcher = TokenWatcher::spawn_from_token_source(
-            ConstTokenSource::new(TEST_TOKEN),
-            NullJitter,
-            ErrorBackoffConfig::default(),
-        )
-        .await
-        .unwrap();
-
-        let auth_checker = Arc::new(AuthChecker::new(BEARER_TEST_TOKEN));
-
-        let middleware = AccessTokenMiddleware::new(token_watcher)
-            .with_predicate(HttpsOnly.or(ExactHostMatch::new("example.com")));
-
-        let client = ClientBuilder::new(Client::default())
-            .with(middleware)
-            .with_arc(auth_checker.clone())
-            .build();
-
-        let resp = client.get("https://not.example.com").send().await.unwrap();
-
-        assert_eq!(resp.status(), StatusCode::OK);
-        assert!(auth_checker.checked.load(Ordering::Acquire));
-    }
-
-    #[tokio::test]
-    async fn or_test_second() {
-        let token_watcher = TokenWatcher::spawn_from_token_source(
-            ConstTokenSource::new(TEST_TOKEN),
-            NullJitter,
-            ErrorBackoffConfig::default(),
-        )
-        .await
-        .unwrap();
-
-        let auth_checker = Arc::new(AuthChecker::new(BEARER_TEST_TOKEN));
-
-        let middleware = AccessTokenMiddleware::new(token_watcher)
-            .with_predicate(HttpsOnly.or(ExactHostMatch::new("example.com")));
-
-        let client = ClientBuilder::new(Client::default())
-            .with(middleware)
-            .with_arc(auth_checker.clone())
-            .build();
-
-        let resp = client.get("http://example.com").send().await.unwrap();
-
-        assert_eq!(resp.status(), StatusCode::OK);
-        assert!(auth_checker.checked.load(Ordering::Acquire));
-    }
-
-    #[tokio::test]
-    async fn or_test_none() {
-        let token_watcher = TokenWatcher::spawn_from_token_source(
-            ConstTokenSource::new(TEST_TOKEN),
-            NullJitter,
-            ErrorBackoffConfig::default(),
-        )
-        .await
-        .unwrap();
-
-        let auth_checker = Arc::new(NoAuthChecker::default());
-
-        let middleware = AccessTokenMiddleware::new(token_watcher)
-            .with_predicate(HttpsOnly.or(ExactHostMatch::new("example.com")));
-
-        let client = ClientBuilder::new(Client::default())
-            .with(middleware)
-            .with_arc(auth_checker.clone())
-            .build();
-
-        let resp = client.get("http://not.example.com").send().await.unwrap();
-
-        assert_eq!(resp.status(), StatusCode::OK);
-        assert!(auth_checker.checked.load(Ordering::Acquire));
+            assert_eq!(predicate.evaluate(&request), PredicateResult::Attach);
+        }
     }
 }
