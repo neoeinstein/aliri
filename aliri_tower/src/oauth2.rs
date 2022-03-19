@@ -14,7 +14,7 @@ use tower_http::auth::AuthorizeRequest;
 /// The `Claims` object is expected to have already been processed by the
 /// [`VerifyJwt`](crate::jwt::VerifyJwt) or been otherwise added to
 /// the extensions on the [`Request`] object.
-pub struct VerifyScopes<Claims, OnError = DefaultErrorHandler> {
+pub struct VerifyScopes<Claims, OnError> {
     policy: ScopePolicy,
     on_error: OnError,
     _claim: PhantomData<fn() -> Claims>,
@@ -45,13 +45,13 @@ where
     }
 }
 
-impl<Claims> VerifyScopes<Claims, DefaultErrorHandler> {
+impl<Claims, ResBody> VerifyScopes<Claims, DefaultErrorHandler<ResBody>> {
     /// Constructs a new scopes verifier from a scope policy
     #[inline]
     pub fn new(policy: ScopePolicy) -> Self {
         Self {
             policy,
-            on_error: DefaultErrorHandler::new(),
+            on_error: DefaultErrorHandler::<ResBody>::new(),
             _claim: PhantomData,
         }
     }

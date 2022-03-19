@@ -17,7 +17,7 @@ use tower_http::auth::AuthorizeRequest;
 ///
 /// The extracted `Claims` in the JWT payload will be made available through
 /// request extensions.
-pub struct VerifyJwt<Claims, OnError = DefaultErrorHandler> {
+pub struct VerifyJwt<Claims, OnError> {
     authority: Authority,
     on_error: OnError,
     _claim: PhantomData<fn() -> Claims>,
@@ -49,13 +49,13 @@ where
     }
 }
 
-impl<Claims> VerifyJwt<Claims, DefaultErrorHandler> {
+impl<Claims, ResBody> VerifyJwt<Claims, DefaultErrorHandler<ResBody>> {
     /// Constructs a new JWT verifier from an authority
     #[inline]
     pub fn new(authority: Authority) -> Self {
         Self {
             authority,
-            on_error: DefaultErrorHandler::new(),
+            on_error: DefaultErrorHandler::<ResBody>::new(),
             _claim: PhantomData,
         }
     }
@@ -78,7 +78,10 @@ impl<Claims, OnError> VerifyJwt<Claims, OnError> {
     /// This function is a convenience which helps ensure the `Claims`
     /// object extracted by the JWT verifier is what will be expected
     /// by the scopes verifier
-    pub fn scopes_verifier(&self, policy: ScopePolicy) -> VerifyScopes<Claims> {
+    pub fn scopes_verifier<ResBody>(
+        &self,
+        policy: ScopePolicy,
+    ) -> VerifyScopes<Claims, DefaultErrorHandler<ResBody>> {
         VerifyScopes::new(policy)
     }
 }

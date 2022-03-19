@@ -12,7 +12,7 @@
 //! # use aliri_base64::Base64UrlRef;
 //! # use aliri_clock::UnixTime;
 //! use aliri_oauth2::{Scope, ScopePolicy};
-//! use aliri_tower::{DefaultErrorHandler, VerifyJwt, VerifyScopes};
+//! use aliri_tower::{VerifyJwt, VerifyScopes};
 //!
 //! # #[derive(Clone, Debug, serde::Deserialize)]
 //! pub struct CustomClaims {
@@ -57,12 +57,10 @@
 //!
 //! let authority = construct_authority();
 //!
-//! let verify_jwt = VerifyJwt::<CustomClaims>::new(authority)
-//!     .with_error_handler(DefaultErrorHandler::<_>::new());
+//! let verify_jwt = VerifyJwt::<CustomClaims, _>::new(authority);
 //!
 //! let require_scope = |scope: Scope| {
-//!     let verify_scope = verify_jwt.scopes_verifier(ScopePolicy::allow_one(scope))
-//!         .with_error_handler(DefaultErrorHandler::<_>::new());
+//!     let verify_scope = verify_jwt.scopes_verifier(ScopePolicy::allow_one(scope));
 //!     RequireAuthorizationLayer::custom(verify_scope)
 //! };
 //!
@@ -115,7 +113,7 @@ pub use crate::jwt::*;
 pub use crate::oauth2::*;
 
 /// Default responders for authentication and authorization failures
-pub struct DefaultErrorHandler<ResBody = http_body::Empty<bytes::Bytes>> {
+pub struct DefaultErrorHandler<ResBody> {
     _ty: PhantomData<fn() -> ResBody>,
 }
 

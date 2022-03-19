@@ -3,7 +3,7 @@ use aliri::{jwa, jwk, jwt, Jwk, Jwks, Jwt};
 use aliri_base64::Base64UrlRef;
 use aliri_clock::{Clock, DurationSecs, UnixTime};
 use aliri_oauth2::{oauth2, Authority, Scope, ScopePolicy};
-use aliri_tower::{DefaultErrorHandler, VerifyJwt};
+use aliri_tower::VerifyJwt;
 use axum::extract::Path;
 use axum::routing::{get, post};
 use axum::Router;
@@ -13,13 +13,10 @@ use tower_http::auth::RequireAuthorizationLayer;
 async fn main() {
     let authority = construct_authority();
 
-    let verify_jwt = VerifyJwt::<CustomClaims>::new(authority)
-        .with_error_handler(DefaultErrorHandler::<_>::new());
+    let verify_jwt = VerifyJwt::<CustomClaims, _>::new(authority);
 
     let require_scope = |scope: Scope| {
-        let verify_scope = verify_jwt
-            .scopes_verifier(ScopePolicy::allow_one(scope))
-            .with_error_handler(DefaultErrorHandler::<_>::new());
+        let verify_scope = verify_jwt.scopes_verifier(ScopePolicy::allow_one(scope));
         RequireAuthorizationLayer::custom(verify_scope)
     };
 
