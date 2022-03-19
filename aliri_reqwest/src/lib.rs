@@ -416,4 +416,49 @@ mod tests {
             assert!(auth_checker.checked.load(Ordering::Acquire));
         }
     }
+
+    mod https_only_predicate {
+        use super::*;
+
+        #[test]
+        fn matches_when_request_has_https_scheme() {
+            let request =
+                Request::new(reqwest::Method::GET, "https://example.com".parse().unwrap());
+            let predicate = HttpsOnly;
+            let result = dbg!(predicate.find_case(true, &request));
+            assert!(matches!(result, None))
+        }
+
+        #[test]
+        fn does_not_match_when_request_has_http_scheme() {
+            let request = Request::new(reqwest::Method::GET, "http://example.com".parse().unwrap());
+            let predicate = HttpsOnly;
+            let result = dbg!(predicate.find_case(false, &request));
+            assert!(matches!(result, None))
+        }
+    }
+
+    mod exact_host_match_predicate {
+        use super::*;
+
+        #[test]
+        fn matches_when_request_has_same_host() {
+            let request =
+                Request::new(reqwest::Method::GET, "https://example.com".parse().unwrap());
+            let predicate = ExactHostMatch::new("example.com");
+            let result = dbg!(predicate.find_case(true, &request));
+            assert!(matches!(result, None))
+        }
+
+        #[test]
+        fn does_not_match_when_request_has_different_host() {
+            let request = Request::new(
+                reqwest::Method::GET,
+                "http://does-not-match.com".parse().unwrap(),
+            );
+            let predicate = ExactHostMatch::new("example.com");
+            let result = dbg!(predicate.find_case(false, &request));
+            assert!(matches!(result, None))
+        }
+    }
 }
