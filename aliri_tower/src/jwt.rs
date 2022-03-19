@@ -150,6 +150,7 @@ where
 
 /// Handler for responding to failures while verifying a JWT
 pub trait OnJwtError {
+    /// The body type returned on an error
     type Body;
 
     /// Response when the JWT was not found or was otherwise malformed

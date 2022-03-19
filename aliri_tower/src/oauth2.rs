@@ -98,6 +98,7 @@ where
 
 /// Handler for responding to failures while verifying scope claims
 pub trait OnScopesError {
+    /// The body type returned on an error
     type Body;
 
     /// Response when the scope claim is missing
