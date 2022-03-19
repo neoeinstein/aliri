@@ -210,6 +210,18 @@ pub trait AccessTokenPredicate {
             second: other,
         }
     }
+
+    /// Invert the decision of a predicate using a logical not
+    ///
+    /// An access token will be attached if either predicates return
+    /// [`PredicateResult::Ignore`].
+    #[inline]
+    fn not(self) -> NotPredicate<Self>
+    where
+        Self: Sized,
+    {
+        NotPredicate { inner: self }
+    }
 }
 
 impl AccessTokenPredicate for PredicateResult {
@@ -307,6 +319,28 @@ where
             self.second.evaluate(request)
         } else {
             PredicateResult::Attach
+        }
+    }
+}
+
+/// Logical or of two predicates
+///
+/// See [`AccessTokenPredicate::not()`]
+#[derive(Clone, Copy, Debug)]
+pub struct NotPredicate<P> {
+    inner: P,
+}
+
+impl<P> AccessTokenPredicate for NotPredicate<P>
+where
+    P: AccessTokenPredicate,
+{
+    #[inline]
+    fn evaluate(&self, request: &Request) -> PredicateResult {
+        if self.inner.evaluate(request) == PredicateResult::Ignore {
+            PredicateResult::Attach
+        } else {
+            PredicateResult::Ignore
         }
     }
 }
@@ -589,6 +623,28 @@ mod tests {
             let predicate = HttpsOnly.or(fn_predicate(|_| panic!("evaluated second predicate")));
             let request =
                 reqwest::Request::new(reqwest::Method::GET, "https://example.com".parse().unwrap());
+
+            assert_eq!(predicate.evaluate(&request), PredicateResult::Attach);
+        }
+    }
+
+    mod predicate_not {
+        use super::*;
+
+        #[test]
+        fn attach_results_in_ignore() {
+            let predicate = HttpsOnly.not();
+            let request =
+                reqwest::Request::new(reqwest::Method::GET, "https://example.com".parse().unwrap());
+
+            assert_eq!(predicate.evaluate(&request), PredicateResult::Ignore);
+        }
+
+        #[test]
+        fn ignore_results_in_attach() {
+            let predicate = HttpsOnly.not();
+            let request =
+                reqwest::Request::new(reqwest::Method::GET, "http://example.com".parse().unwrap());
 
             assert_eq!(predicate.evaluate(&request), PredicateResult::Attach);
         }
