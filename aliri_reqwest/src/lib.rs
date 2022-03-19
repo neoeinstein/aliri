@@ -14,28 +14,12 @@
 //! use aliri_tokens::TokenWatcher;
 //! use reqwest::Client;
 //! use reqwest_middleware::ClientBuilder;
-//! # use aliri_clock::DurationSecs;
-//! # use aliri_tokens::{AccessToken, TokenLifetimeConfig, TokenWithLifetime};
 //! # use aliri_tokens::backoff::ErrorBackoffConfig;
 //! # use aliri_tokens::jitter::NullJitter;
-//! # use aliri_tokens::sources::AsyncTokenSource;
+//! # use aliri_tokens::sources::ConstTokenSource;
 //! #
-//! # struct ConstTokenSource;
-//! #
-//! # #[async_trait::async_trait]
-//! # impl AsyncTokenSource for ConstTokenSource {
-//! #     type Error = core::convert::Infallible;
-//! #
-//! #     async fn request_token(&mut self) -> std::result::Result<TokenWithLifetime, Self::Error> {
-//! #         Ok(TokenLifetimeConfig::default().create_token(
-//! #             AccessToken::new("token"),
-//! #             None,
-//! #             DurationSecs(600),
-//! #         ))
-//! #     }
-//! # }
 //! # #[tokio::main(flavor = "current_thread")] async fn main() {
-//! # let (token_source, jitter, backoff)  = (ConstTokenSource, NullJitter, ErrorBackoffConfig::default());
+//! # let (token_source, jitter, backoff)  = (ConstTokenSource::new("token"), NullJitter, ErrorBackoffConfig::default());
 //!
 //! let token_watcher = TokenWatcher::spawn_from_token_source(
 //!     token_source,
@@ -333,34 +317,14 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use aliri_clock::DurationSecs;
     use aliri_tokens::backoff::ErrorBackoffConfig;
     use aliri_tokens::jitter::NullJitter;
-    use aliri_tokens::sources::AsyncTokenSource;
-    use aliri_tokens::{AccessToken, TokenLifetimeConfig, TokenWithLifetime};
+    use aliri_tokens::sources::ConstTokenSource;
     use http::StatusCode;
     use reqwest::Client;
     use reqwest_middleware::ClientBuilder;
-    use std::convert::Infallible;
     use std::sync::atomic::{AtomicBool, Ordering};
     use std::sync::Arc;
-
-    struct ConstTokenSource {
-        token: &'static str,
-    }
-
-    #[async_trait::async_trait]
-    impl AsyncTokenSource for ConstTokenSource {
-        type Error = Infallible;
-
-        async fn request_token(&mut self) -> std::result::Result<TokenWithLifetime, Self::Error> {
-            Ok(TokenLifetimeConfig::default().create_token(
-                AccessToken::new(self.token),
-                None,
-                DurationSecs(600),
-            ))
-        }
-    }
 
     const TEST_TOKEN: &str = "this-is-a-test-token";
     const BEARER_TEST_TOKEN: &str = "bearer this-is-a-test-token";
@@ -414,7 +378,7 @@ mod tests {
     #[tokio::test]
     async fn basic_test() {
         let token_watcher = TokenWatcher::spawn_from_token_source(
-            ConstTokenSource { token: TEST_TOKEN },
+            ConstTokenSource::new(TEST_TOKEN),
             NullJitter,
             ErrorBackoffConfig::default(),
         )
@@ -441,7 +405,7 @@ mod tests {
         const BEARER_OVERRIDE_TOKEN: &str = "Bearer overriden!";
 
         let token_watcher = TokenWatcher::spawn_from_token_source(
-            ConstTokenSource { token: TEST_TOKEN },
+            ConstTokenSource::new(TEST_TOKEN),
             NullJitter,
             ErrorBackoffConfig::default(),
         )
@@ -469,7 +433,7 @@ mod tests {
     #[tokio::test]
     async fn and_test_both() {
         let token_watcher = TokenWatcher::spawn_from_token_source(
-            ConstTokenSource { token: TEST_TOKEN },
+            ConstTokenSource::new(TEST_TOKEN),
             NullJitter,
             ErrorBackoffConfig::default(),
         )
@@ -495,7 +459,7 @@ mod tests {
     #[tokio::test]
     async fn and_test_first() {
         let token_watcher = TokenWatcher::spawn_from_token_source(
-            ConstTokenSource { token: TEST_TOKEN },
+            ConstTokenSource::new(TEST_TOKEN),
             NullJitter,
             ErrorBackoffConfig::default(),
         )
@@ -521,7 +485,7 @@ mod tests {
     #[tokio::test]
     async fn and_test_second() {
         let token_watcher = TokenWatcher::spawn_from_token_source(
-            ConstTokenSource { token: TEST_TOKEN },
+            ConstTokenSource::new(TEST_TOKEN),
             NullJitter,
             ErrorBackoffConfig::default(),
         )
@@ -547,7 +511,7 @@ mod tests {
     #[tokio::test]
     async fn and_test_none() {
         let token_watcher = TokenWatcher::spawn_from_token_source(
-            ConstTokenSource { token: TEST_TOKEN },
+            ConstTokenSource::new(TEST_TOKEN),
             NullJitter,
             ErrorBackoffConfig::default(),
         )
@@ -573,7 +537,7 @@ mod tests {
     #[tokio::test]
     async fn or_test_both() {
         let token_watcher = TokenWatcher::spawn_from_token_source(
-            ConstTokenSource { token: TEST_TOKEN },
+            ConstTokenSource::new(TEST_TOKEN),
             NullJitter,
             ErrorBackoffConfig::default(),
         )
@@ -599,7 +563,7 @@ mod tests {
     #[tokio::test]
     async fn or_test_first() {
         let token_watcher = TokenWatcher::spawn_from_token_source(
-            ConstTokenSource { token: TEST_TOKEN },
+            ConstTokenSource::new(TEST_TOKEN),
             NullJitter,
             ErrorBackoffConfig::default(),
         )
@@ -625,7 +589,7 @@ mod tests {
     #[tokio::test]
     async fn or_test_second() {
         let token_watcher = TokenWatcher::spawn_from_token_source(
-            ConstTokenSource { token: TEST_TOKEN },
+            ConstTokenSource::new(TEST_TOKEN),
             NullJitter,
             ErrorBackoffConfig::default(),
         )
@@ -651,7 +615,7 @@ mod tests {
     #[tokio::test]
     async fn or_test_none() {
         let token_watcher = TokenWatcher::spawn_from_token_source(
-            ConstTokenSource { token: TEST_TOKEN },
+            ConstTokenSource::new(TEST_TOKEN),
             NullJitter,
             ErrorBackoffConfig::default(),
         )

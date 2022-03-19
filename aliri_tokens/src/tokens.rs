@@ -1,4 +1,4 @@
-use super::{AccessToken, AccessTokenRef, IdToken, IdTokenRef};
+use super::{AccessTokenRef, IdTokenRef};
 use aliri_clock::{Clock, DurationSecs, System, UnixTime};
 use serde::{Deserialize, Serialize};
 
@@ -164,7 +164,7 @@ impl TokenWithLifetime {
 }
 
 /// Configuration for determining how long a token should be considered fresh
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct TokenLifetimeConfig<C = System> {
     freshness_period: f64,
     min_staleness_period: DurationSecs,
@@ -201,28 +201,32 @@ impl TokenLifetimeConfig {
 }
 
 impl<C> TokenLifetimeConfig<C> {
-    fn time_to_stale(&self, issued: UnixTime, lifetime: DurationSecs) -> UnixTime {
-        let delay = (lifetime * self.freshness_period).max(self.min_staleness_period);
+    fn time_to_stale(&self, issued: UnixTime, valid_duration: DurationSecs) -> UnixTime {
+        let delay = (valid_duration * self.freshness_period).max(self.min_staleness_period);
         issued + delay
     }
 }
 
 impl<C: Clock> TokenLifetimeConfig<C> {
     /// Given an access token, id token, and token lifetime, constructs a token with a lifetime
-    pub fn create_token(
+    pub fn create_token<A, I>(
         &self,
-        access_token: AccessToken,
-        id_token: Option<IdToken>,
-        lifetime: DurationSecs,
-    ) -> TokenWithLifetime {
+        access_token: A,
+        id_token: Option<I>,
+        valid_duration: DurationSecs,
+    ) -> TokenWithLifetime
+    where
+        A: AsRef<AccessTokenRef>,
+        I: AsRef<IdTokenRef>,
+    {
         let issued = self.clock.now();
         TokenWithLifetime {
-            access_token: access_token.into_boxed_ref(),
-            id_token: id_token.map(|i| i.into_boxed_ref()),
-            lifetime,
+            access_token: access_token.as_ref().to_owned().into_boxed_ref(),
+            id_token: id_token.map(|i| i.as_ref().to_owned().into_boxed_ref()),
+            lifetime: valid_duration,
             issued,
-            stale: self.time_to_stale(issued, lifetime),
-            expiry: issued + lifetime,
+            stale: self.time_to_stale(issued, valid_duration),
+            expiry: issued + valid_duration,
         }
     }
 }
