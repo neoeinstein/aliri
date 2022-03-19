@@ -193,7 +193,7 @@ fn extract_jwt(auth: &str) -> Option<Jwt> {
     Some(Jwt::new(auth[7..].trim()))
 }
 
-fn unauthorized<T: Body + Default>() -> http::Response<T> {
+fn unauthorized<T: Body + Default>() -> Response<T> {
     Response::builder()
         .status(StatusCode::UNAUTHORIZED)
         .body(T::default())

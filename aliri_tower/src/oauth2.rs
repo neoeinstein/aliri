@@ -129,7 +129,7 @@ where
     }
 }
 
-fn forbidden<T: Body + Default>() -> http::Response<T> {
+fn forbidden<T: Body + Default>() -> Response<T> {
     Response::builder()
         .status(StatusCode::FORBIDDEN)
         .body(T::default())
