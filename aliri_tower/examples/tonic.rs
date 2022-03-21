@@ -3,13 +3,39 @@ use aliri_base64::Base64UrlRef;
 use aliri_clock::{Clock, DurationSecs, UnixTime};
 use aliri_oauth2::{oauth2, Authority, Scope, ScopePolicy};
 use aliri_tower::VerifyJwt;
-use axum::extract::Path;
-use axum::routing::{get, post};
-use axum::Router;
+use std::sync::atomic::{AtomicI32, Ordering};
+use tonic::{transport::Server, Request, Response, Status};
+use tower::ServiceBuilder;
 use tower_http::auth::RequireAuthorizationLayer;
 
+use counter::counter_service_server::{CounterService, CounterServiceServer};
+use counter::{CounterRequest, CounterResponse};
+
+pub mod counter {
+    include!("proto/aliri.example.rs");
+}
+
+#[derive(Default)]
+pub struct MyCounter {
+    count: AtomicI32,
+}
+
+#[tonic::async_trait]
+impl CounterService for MyCounter {
+    async fn update(
+        &self,
+        request: Request<CounterRequest>,
+    ) -> Result<Response<CounterResponse>, Status> {
+        let change = request.get_ref().change;
+        let previous = self.count.fetch_add(change, Ordering::AcqRel);
+        Ok(Response::new(CounterResponse {
+            current_value: previous + change,
+        }))
+    }
+}
+
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let authority = construct_authority();
 
     let verify_jwt = VerifyJwt::<CustomClaims, _>::new(authority);
@@ -21,23 +47,22 @@ async fn main() {
 
     let check_jwt = RequireAuthorizationLayer::custom(verify_jwt.clone());
 
-    let app = Router::new()
-        .route(
-            "/users",
-            post(handle_post).layer(require_scope("post_user".parse().unwrap())),
-        )
-        .route(
-            "/users/:id",
-            get(handle_get).layer(require_scope("get_user".parse().unwrap())),
-        )
-        .layer(&check_jwt);
+    let addr = "[::1]:50051".parse().unwrap();
+    let counter = MyCounter::default();
 
-    println!("Press Ctrl+C to exit");
+    println!("CounterServiceServer listening on {}", addr);
 
-    axum::Server::bind(&"127.0.0.1:8080".parse().unwrap())
-        .serve(app.into_make_service())
-        .await
-        .unwrap();
+    let layer = ServiceBuilder::new()
+        .layer(check_jwt)
+        .layer(require_scope("update_count".parse().unwrap()));
+
+    Server::builder()
+        .layer(layer)
+        .add_service(CounterServiceServer::new(counter))
+        .serve(addr)
+        .await?;
+
+    Ok(())
 }
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
@@ -98,14 +123,6 @@ fn construct_authority() -> Authority {
     Authority::new(jwks, validator)
 }
 
-async fn handle_post() -> &'static str {
-    "Handled POST /users"
-}
-
-async fn handle_get(Path(id): Path<u64>) -> String {
-    format!("Handled GET /users/{}", id)
-}
-
 fn print_example_token(key: &Jwk) {
     let headers = jwt::BasicHeaders::with_key_id(jwa::Algorithm::HS256, jwk::KeyId::new(KEY_ID));
 
@@ -114,7 +131,7 @@ fn print_example_token(key: &Jwk) {
         iss: jwt::Issuer::new(ISSUER),
         aud: jwt::Audience::new(AUDIENCE).into(),
         exp: aliri_clock::System.now() + DurationSecs(300),
-        scope: "get_user post_user".parse().unwrap(),
+        scope: "update_count".parse().unwrap(),
     };
 
     let jwt = Jwt::try_from_parts_with_signature(&headers, &payload, key).unwrap();

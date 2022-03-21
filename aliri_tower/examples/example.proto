@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package aliri.example;
+
+message CounterRequest {
+    sint32 change = 1;
+}
+
+message CounterResponse {
+    sint32 current_value = 1;
+}
+
+service CounterService {
+    rpc Update(CounterRequest) returns (CounterResponse);
+}
