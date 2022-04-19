@@ -36,7 +36,7 @@ pub enum TokenStatus {
     Fresh,
     /// The token is valid, but should be refreshed
     Stale,
-    /// The token is no longer valud
+    /// The token is no longer valid
     Expired,
 }
 

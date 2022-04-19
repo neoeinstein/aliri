@@ -213,7 +213,7 @@ pub enum JwtVerifyError {
     #[error("token rejected by JWK")]
     JwkVerifyError(#[from] JwkVerifyError),
 
-    /// The JWT is malformed, without a discernable header, payload, and signature
+    /// The JWT is malformed, without a discernible header, payload, and signature
     #[error(transparent)]
     MalformedToken(#[from] MalformedJwt),
 

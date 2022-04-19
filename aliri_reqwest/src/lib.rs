@@ -393,9 +393,9 @@ mod tests {
 
         #[tokio::test]
         async fn middleware_does_not_attach_access_token() {
-            const OVERRIDE_TOKEN: &str = "overriden!";
+            const OVERRIDE_TOKEN: &str = "overridden!";
             // Reqwest uses a capital `B` bearer
-            const BEARER_OVERRIDE_TOKEN: &str = "Bearer overriden!";
+            const BEARER_OVERRIDE_TOKEN: &str = "Bearer overridden!";
 
             let middleware = prepare_middleware().await;
             let auth_checker = Arc::new(AuthChecker::new(BEARER_OVERRIDE_TOKEN));

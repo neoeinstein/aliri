@@ -58,7 +58,7 @@ limited_reveal!(ClientSecretRef: "CLIENT SECRET", 5);
 // #[braid(serde)]
 // pub struct AuthorizationCode;
 //
-// /// An OAuth2 proof key, used for the authorizaiton code with PKCE flow
+// /// An OAuth2 proof key, used for the authorization code with PKCE flow
 // #[braid(serde, debug_impl = "owned", display_impl = "owned")]
 // pub struct ProofKey;
 //

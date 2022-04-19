@@ -108,7 +108,7 @@ as `&Base64Ref`. This reinterpretation is safe because the wrappers around `str`
 use `#[repr(transparent)]`, which means that the wrappers share the exact same
 representation as the underlying slice.
 
-For the above reason, some of the included crates use `#![deny(unsafe_code)]`
+For the above reason, some included crates use `#![deny(unsafe_code)]`
 rather than `#![forbid(unsafe_code)]`. The only `#![allow(unsafe_code)]` in
 the code base can be found in the `typed_string!` and `b64_builder!` macros.
 

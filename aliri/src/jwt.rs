@@ -481,7 +481,7 @@ impl fmt::Debug for JwtRef {
 /// unintentional disclosure of this value, this type will not print out its
 /// contents without explicitly specifying the alternate format,
 /// i.e. `{:#}`. When specified in this form, it will print out the entire token by default.
-/// However, if it is preferrable to elide some of the characters in the signature, then that
+/// However, if it is preferable to elide some of the characters in the signature, then that
 /// can be modified by specify the quantity as a width in the format string, i.e. `{:#10}`.
 ///
 /// If not specified, a placeholder value will be printed out instead to indicate
@@ -757,7 +757,7 @@ impl CoreValidator {
         slf
     }
 
-    /// Adds mutliple audiences to the set of allowed audiences
+    /// Adds multiple audiences to the set of allowed audiences
     #[inline]
     pub fn extend_allowed_audiences<I: IntoIterator<Item = Audience>>(self, alg: I) -> Self {
         let mut slf = self;
@@ -947,6 +947,14 @@ impl BasicClaims {
 }
 
 impl CoreClaims for BasicClaims {
+    fn nbf(&self) -> Option<UnixTime> {
+        self.nbf
+    }
+
+    fn exp(&self) -> Option<UnixTime> {
+        self.exp
+    }
+
     fn aud(&self) -> &Audiences {
         &self.aud
     }
@@ -957,14 +965,6 @@ impl CoreClaims for BasicClaims {
 
     fn sub(&self) -> Option<&SubjectRef> {
         self.sub.as_deref()
-    }
-
-    fn exp(&self) -> Option<UnixTime> {
-        self.exp
-    }
-
-    fn nbf(&self) -> Option<UnixTime> {
-        self.nbf
     }
 }
 

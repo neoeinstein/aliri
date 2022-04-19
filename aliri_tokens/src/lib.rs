@@ -96,7 +96,7 @@
 //!# */
 //! ```
 //!
-//! This crate includes an example of doing a periodic refresh using a file cace in
+//! This crate includes an example of doing a periodic refresh using a file cache in
 //! the examples folder. Refer to that example for more details on usage.
 //!
 //! # Features

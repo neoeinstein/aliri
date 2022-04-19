@@ -90,7 +90,7 @@ impl Algorithm {
 
 /// A JWS signer
 pub trait Signer {
-    /// The useable signature algorithms
+    /// The usable signature algorithms
     type Algorithm;
 
     /// The error returned on failure to sign
