@@ -6,13 +6,13 @@
 //!
 //! ```
 //! # use axum::extract::Path;
+//! use axum::handler::Handler;
 //! # use axum::routing::{get, post};
-//! use tower_http::auth::RequireAuthorizationLayer;
 //! # use aliri::{jwa, jwk, jwt, Jwk, Jwks};
 //! # use aliri_base64::Base64UrlRef;
 //! # use aliri_clock::UnixTime;
-//! use aliri_oauth2::{Scope, ScopePolicy};
-//! use aliri_tower::{VerifyJwt, VerifyScopes};
+//! use aliri_oauth2::{scope, policy, ScopePolicy};
+//! use aliri_tower::Oauth2Authorizer;
 //!
 //! # #[derive(Clone, Debug, serde::Deserialize)]
 //! pub struct CustomClaims {
@@ -54,30 +54,24 @@
 //! #
 //! #     aliri_oauth2::Authority::new(jwks, validator)
 //! # }
-//!
+//! #
 //! let authority = construct_authority();
-//!
-//! let verify_jwt = VerifyJwt::<CustomClaims, _>::new(authority);
-//!
-//! let require_scope = |scope: Scope| {
-//!     let verify_scope = verify_jwt.scopes_verifier(ScopePolicy::allow_one(scope));
-//!     RequireAuthorizationLayer::custom(verify_scope)
-//! };
-//!
-//! let check_jwt = RequireAuthorizationLayer::custom(verify_jwt.clone());
+//! let authorizer = Oauth2Authorizer::new()
+//!     .with_claims::<CustomClaims>()
+//!     .with_default_error_handler();
 //!
 //! let app = axum::Router::new()
 //!     .route(
 //!         "/users",
-//!         post(handle_post)
-//!             .layer(require_scope("post_user".parse().unwrap())),
+//!         post(handle_post
+//!             .layer(authorizer.scope_layer(policy![scope!["post_user"].unwrap()]))),
 //!     )
 //!     .route(
 //!         "/users/:id",
-//!         get(handle_get)
-//!             .layer(require_scope("get_user".parse().unwrap())),
+//!         get(handle_get
+//!             .layer(authorizer.scope_layer(ScopePolicy::allow_one_from_static("get_user")))),
 //!     )
-//!     .layer(&check_jwt);
+//!     .layer(authorizer.jwt_layer(authority));
 //! #
 //! # async fn handle_post() {}
 //! #
@@ -106,13 +100,19 @@
 use std::fmt;
 use std::marker::PhantomData;
 
+mod authorizer;
 mod jwt;
 mod oauth2;
+pub mod util;
 
-pub use crate::jwt::*;
-pub use crate::oauth2::*;
+pub use crate::authorizer::Oauth2Authorizer;
+pub use crate::jwt::OnJwtError;
+pub use crate::oauth2::OnScopeError;
 
 /// Default responders for authentication and authorization failures
+///
+/// This handler will generate a default error response containing the
+/// relevant status code and an empty body.
 pub struct DefaultErrorHandler<ResBody> {
     _ty: PhantomData<fn() -> ResBody>,
 }

@@ -1,23 +1,17 @@
-use crate::oauth2::VerifyScopes;
+use crate::util::unauthorized;
 use crate::DefaultErrorHandler;
 use aliri::error::JwtVerifyError;
+use aliri::jwt::CoreClaims;
 use aliri::Jwt;
 use aliri_oauth2::oauth2::HasScope;
 use aliri_oauth2::{Authority, AuthorityError, ScopePolicy};
-use http::{Request, Response, StatusCode};
+use http::{Request, Response};
 use http_body::Body;
 use std::fmt;
 use std::marker::PhantomData;
 use tower_http::auth::AuthorizeRequest;
 
-/// Authorizer that verifies the validity of a JWT
-///
-/// The JWT will be parsed from the request `Authorization` header and
-/// checked for validity by an [`Authority`].
-///
-/// The extracted `Claims` in the JWT payload will be made available through
-/// request extensions.
-pub struct VerifyJwt<Claims, OnError> {
+pub(crate) struct VerifyJwt<Claims, OnError> {
     authority: Authority,
     on_error: OnError,
     _claim: PhantomData<fn() -> Claims>,
@@ -49,40 +43,14 @@ where
     }
 }
 
-impl<Claims, ResBody> VerifyJwt<Claims, DefaultErrorHandler<ResBody>> {
-    /// Constructs a new JWT verifier from an authority
+impl<Claims, OnError> VerifyJwt<Claims, OnError> {
     #[inline]
-    pub fn new(authority: Authority) -> Self {
+    pub(crate) fn new(authority: Authority, on_error: OnError) -> Self {
         Self {
             authority,
-            on_error: DefaultErrorHandler::<ResBody>::new(),
+            on_error,
             _claim: PhantomData,
         }
-    }
-
-    /// Attaches a custom error handler to generate responses
-    /// in the event of a verification failure
-    #[inline]
-    pub fn with_error_handler<OnError>(self, on_error: OnError) -> VerifyJwt<Claims, OnError> {
-        VerifyJwt {
-            authority: self.authority,
-            on_error,
-            _claim: self._claim,
-        }
-    }
-}
-
-impl<Claims, OnError> VerifyJwt<Claims, OnError> {
-    /// Generate a scopes verifier with the given scope policy
-    ///
-    /// This function is a convenience which helps ensure the `Claims`
-    /// object extracted by the JWT verifier is what will be expected
-    /// by the scopes verifier
-    pub fn scopes_verifier<ResBody>(
-        &self,
-        policy: ScopePolicy,
-    ) -> VerifyScopes<Claims, DefaultErrorHandler<ResBody>> {
-        VerifyScopes::new(policy)
     }
 }
 
@@ -106,12 +74,7 @@ impl<Claims, OnError, ReqBody> AuthorizeRequest<ReqBody> for VerifyJwt<Claims, O
 where
     OnError: OnJwtError,
     OnError::Body: Body + Default,
-    Claims: for<'de> serde::Deserialize<'de>
-        + HasScope
-        + aliri::jwt::CoreClaims
-        + Send
-        + Sync
-        + 'static,
+    Claims: for<'de> serde::Deserialize<'de> + HasScope + CoreClaims + Send + Sync + 'static,
 {
     type ResponseBody = OnError::Body;
 
@@ -166,26 +129,64 @@ pub trait OnJwtError {
     fn on_jwt_invalid(&self, error: JwtVerifyError) -> Response<Self::Body>;
 }
 
+macro_rules! delegate_impls {
+    ($($ty:ty)*) => {
+        $(
+            impl<T> OnJwtError for $ty
+            where
+                T: OnJwtError,
+            {
+                type Body = T::Body;
+
+                fn on_missing_or_malformed(&self) -> Response<Self::Body> {
+                    T::on_missing_or_malformed(self)
+                }
+
+                fn on_no_matching_jwk(&self) -> Response<Self::Body> {
+                    T::on_no_matching_jwk(self)
+                }
+
+                fn on_jwt_invalid(&self, error: JwtVerifyError) -> Response<Self::Body> {
+                    T::on_jwt_invalid(self, error)
+                }
+            }
+        )*
+    }
+}
+
+delegate_impls!(
+    &'_ T
+    Box<T>
+    std::rc::Rc<T>
+    std::sync::Arc<T>
+);
+
 /// Returns a 401 Unauthorized response with an empty body in all cases
 impl<ResBody> OnJwtError for DefaultErrorHandler<ResBody>
 where
-    ResBody: Body + Default,
+    ResBody: Default,
 {
     type Body = ResBody;
 
     #[inline]
     fn on_missing_or_malformed(&self) -> Response<Self::Body> {
-        unauthorized()
+        unauthorized("authorization token is missing or malformed")
+            .body(ResBody::default())
+            .expect("all header values are valid")
     }
 
     #[inline]
     fn on_no_matching_jwk(&self) -> Response<Self::Body> {
-        unauthorized()
+        unauthorized("token signing key (kid) is not trusted")
+            .body(ResBody::default())
+            .expect("all header values are valid")
     }
 
     #[inline]
     fn on_jwt_invalid(&self, _: JwtVerifyError) -> Response<Self::Body> {
-        unauthorized()
+        unauthorized("token is not valid")
+            .body(ResBody::default())
+            .expect("all header values are valid")
     }
 }
 
@@ -195,11 +196,4 @@ fn extract_jwt(auth: &str) -> Option<Jwt> {
     }
 
     Some(Jwt::new(auth[7..].trim()))
-}
-
-fn unauthorized<T: Body + Default>() -> Response<T> {
-    Response::builder()
-        .status(StatusCode::UNAUTHORIZED)
-        .body(T::default())
-        .expect("response to build successfully")
 }

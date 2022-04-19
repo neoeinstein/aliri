@@ -1,13 +1,11 @@
 //! OAuth2-specific
 
-use std::{collections::hash_set, iter::FromIterator, str::FromStr};
-
-use ahash::AHashSet;
 use aliri::jwt;
 use aliri_braid::braid;
 use aliri_clock::UnixTime;
 use serde::{Deserialize, Serialize};
-use std::convert::TryFrom;
+use std::collections::BTreeSet;
+use std::{cmp, collections::btree_set, convert::TryFrom, fmt, iter::FromIterator, str::FromStr};
 use thiserror::Error;
 
 /// An invalid scope token
@@ -62,6 +60,18 @@ impl aliri_braid::Validator for ScopeToken {
     }
 }
 
+impl Ord for ScopeToken {
+    fn cmp(&self, other: &Self) -> cmp::Ordering {
+        Ord::cmp(self.as_str(), other.as_str())
+    }
+}
+
+impl PartialOrd for ScopeToken {
+    fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
+        PartialOrd::partial_cmp(self.as_str(), other.as_str())
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(untagged)]
 enum ScopeDto {
@@ -86,27 +96,20 @@ impl TryFrom<Option<ScopeDto>> for Scope {
 
 impl From<Scope> for ScopeDto {
     fn from(s: Scope) -> Self {
-        let x: Vec<_> = s.0.into_iter().map(ScopeToken::into_string).collect();
-        let y = x.join(" ");
-        ScopeDto::String(y)
+        ScopeDto::String(s.to_string())
     }
 }
 
 /// An OAuth2 Scope defining a set of access permissions
 #[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(try_from = "Option<ScopeDto>", into = "ScopeDto")]
-pub struct Scope(AHashSet<ScopeToken>);
-
-lazy_static::lazy_static! {
-    /// An empty, static scopes with no access permissions
-    static ref EMPTY_SCOPE: Scope = Scope::empty();
-}
+pub struct Scope(BTreeSet<ScopeToken>);
 
 impl Scope {
     /// Produces an empty scope
     #[inline]
     pub fn empty() -> Self {
-        Self(AHashSet::new())
+        Self(BTreeSet::new())
     }
 
     /// Constructs a new scope from a single scope token
@@ -152,11 +155,42 @@ impl Scope {
     pub fn contains_all(&self, subset: &Scope) -> bool {
         self.0.is_superset(&subset.0)
     }
+
+    /// The number of scope tokens
+    #[inline]
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    /// Whether this scope has any scope tokens at all
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+}
+
+impl fmt::Display for Scope {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use std::fmt::Write;
+
+        let mut iter = self.iter();
+        let first = iter.next();
+        if let Some(first) = first {
+            fmt::Display::fmt(first, &mut *f)?;
+        }
+
+        for token in iter {
+            f.write_char(' ')?;
+            fmt::Display::fmt(token, &mut *f)?;
+        }
+
+        Ok(())
+    }
 }
 
 impl IntoIterator for Scope {
     type Item = ScopeToken;
-    type IntoIter = <AHashSet<ScopeToken> as IntoIterator>::IntoIter;
+    type IntoIter = <BTreeSet<ScopeToken> as IntoIterator>::IntoIter;
 
     #[inline]
     fn into_iter(self) -> Self::IntoIter {
@@ -167,7 +201,7 @@ impl IntoIterator for Scope {
 /// An iterator over a set of borrowed scope tokens
 #[derive(Clone, Debug)]
 pub struct Iter<'a> {
-    iter: hash_set::Iter<'a, ScopeToken>,
+    iter: btree_set::Iter<'a, ScopeToken>,
 }
 
 impl<'a> Iterator for Iter<'a> {
@@ -216,6 +250,13 @@ where
         let mut set = Self::empty();
         set.extend(iter);
         set
+    }
+}
+
+impl From<ScopeToken> for Scope {
+    #[inline]
+    fn from(t: ScopeToken) -> Self {
+        Self::single(t)
     }
 }
 
@@ -306,6 +347,53 @@ impl HasScope for Scope {
     fn scope(&self) -> &Scope {
         self
     }
+}
+
+/// Construct a scope from a list of tokens.
+///
+/// This macro will attempt to convert all the passed in expressions into tokens.
+/// If any conversion fails, the error will be bubbled up.
+///
+/// ```
+/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+/// use aliri_oauth2::scope;
+///
+/// let scope = scope!["users.read", "users.update", "users.list"]?;
+/// # Ok(()) }
+/// ```
+///
+/// This is equivalent to the following:
+///
+/// ```
+/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+/// # use core::convert::TryInto;
+/// use aliri_oauth2::Scope;
+///
+/// let scope = Scope::empty()
+///     .and("users.read".try_into()?)
+///     .and("users.update".try_into()?)
+///     .and("users.list".try_into()?);
+/// # Ok(()) }
+/// ```
+#[macro_export]
+macro_rules! scope {
+    ($($token:literal),* $(,)?) => {
+        $crate::scope![$(($token)),*]
+    };
+    ($($token:expr),* $(,)?) => {
+        {
+            let __f = || -> Result<$crate::Scope, $crate::oauth2::InvalidScopeToken> {
+                ::core::result::Result::Ok(
+                    $crate::Scope::empty()
+                    $(
+                        .and(::core::convert::TryFrom::try_from($token)?)
+                    )*
+                )
+            };
+
+            __f()
+        }
+    };
 }
 
 #[cfg(test)]
@@ -406,5 +494,16 @@ mod tests {
     fn ref_rejects_invalid_emoji() {
         let x = ScopeTokenRef::from_str("https://crates.io/scopes/🪤publish:crate");
         assert!(matches!(x, Err(InvalidScopeToken::InvalidByte { .. })));
+    }
+
+    #[test]
+    fn scope_to_string() {
+        let scope: String = scope!("test1", "test2", "test3").unwrap().to_string();
+        assert_eq!(scope.len(), 17);
+        assert!(scope.contains("test1"));
+        assert!(scope.contains("test2"));
+        assert!(scope.contains("test3"));
+        assert_eq!(&scope[5..6], " ");
+        assert_eq!(&scope[11..12], " ");
     }
 }

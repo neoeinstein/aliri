@@ -1,5 +1,4 @@
-use std::sync::Arc;
-
+use crate::{oauth2::HasScope, ScopePolicy};
 use aliri::{
     jwt::{self, CoreHeaders, HasAlgorithm},
     Jwks, JwtRef,
@@ -12,11 +11,10 @@ use reqwest::{
     Client, StatusCode,
 };
 use serde::Deserialize;
+use std::sync::Arc;
 use thiserror::Error;
 
-use crate::{oauth2::HasScope, ScopePolicy};
-
-/// Indicates the requestor held insufficient scopes to be granted access
+/// Indicates the requester held insufficient scopes to be granted access
 /// to a controlled resource
 #[derive(Debug, Error)]
 pub enum AuthorityError {

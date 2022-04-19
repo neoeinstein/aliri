@@ -1,36 +1,31 @@
 use aliri::{jwa, jwk, jwt, Jwk, Jwks, Jwt};
 use aliri_base64::Base64UrlRef;
 use aliri_clock::{Clock, DurationSecs, UnixTime};
-use aliri_oauth2::{oauth2, Authority, Scope, ScopePolicy};
-use aliri_tower::VerifyJwt;
+use aliri_oauth2::{oauth2, policy, scope, Authority};
+use aliri_tower::Oauth2Authorizer;
 use axum::extract::Path;
+use axum::handler::Handler;
 use axum::routing::{get, post};
 use axum::Router;
-use tower_http::auth::RequireAuthorizationLayer;
 
 #[tokio::main]
 async fn main() {
     let authority = construct_authority();
 
-    let verify_jwt = VerifyJwt::<CustomClaims, _>::new(authority);
-
-    let require_scope = |scope: Scope| {
-        let verify_scope = verify_jwt.scopes_verifier(ScopePolicy::allow_one(scope));
-        RequireAuthorizationLayer::custom(verify_scope)
-    };
-
-    let check_jwt = RequireAuthorizationLayer::custom(verify_jwt.clone());
+    let authorizer = Oauth2Authorizer::new()
+        .with_claims::<CustomClaims>()
+        .with_default_error_handler();
 
     let app = Router::new()
         .route(
             "/users",
-            post(handle_post).layer(require_scope("post_user".parse().unwrap())),
+            post(handle_post.layer(authorizer.scope_layer(policy![scope!["post_user"].unwrap()]))),
         )
         .route(
             "/users/:id",
-            get(handle_get).layer(require_scope("get_user".parse().unwrap())),
+            get(handle_get.layer(authorizer.scope_layer(policy![scope!["get_user"].unwrap()]))),
         )
-        .layer(&check_jwt);
+        .layer(authorizer.jwt_layer(authority));
 
     println!("Press Ctrl+C to exit");
 
@@ -114,7 +109,7 @@ fn print_example_token(key: &Jwk) {
         iss: jwt::Issuer::new(ISSUER),
         aud: jwt::Audience::new(AUDIENCE).into(),
         exp: aliri_clock::System.now() + DurationSecs(300),
-        scope: "get_user post_user".parse().unwrap(),
+        scope: scope!["get_user", "post_user"].unwrap(),
     };
 
     let jwt = Jwt::try_from_parts_with_signature(&headers, &payload, key).unwrap();

@@ -1,10 +1,8 @@
+use crate::Scope;
 use std::iter::FromIterator;
-
 use thiserror::Error;
 
-use crate::Scope;
-
-/// Indicates the requestor held insufficient scope to be granted access
+/// Indicates the requester held insufficient scope to be granted access
 /// to a controlled resource
 #[derive(Copy, Clone, Debug, Hash, Eq, PartialEq, Error)]
 #[error("insufficient scope")]
@@ -126,24 +124,72 @@ impl ScopePolicy {
 
     /// Constructs a policy that requires this set of scopes
     #[inline]
-    pub fn allow_one(scopes: Scope) -> Self {
+    pub fn allow_one(scope: Scope) -> Self {
         Self {
-            alternatives: vec![scopes],
+            alternatives: vec![scope],
         }
     }
 
-    /// Add an alternate set of required scopes
+    /// Add an alternate allowable scope
     #[inline]
-    pub fn or_allow(self, scopes: Scope) -> Self {
+    pub fn or_allow(self, scope: Scope) -> Self {
         let mut s = self;
-        s.alternatives.push(scopes);
+        s.allow(scope);
         s
     }
 
-    /// Add an alternative set of required scopes
+    /// Add an alternate allowable scope
     #[inline]
-    pub fn allow(&mut self, scopes: Scope) {
-        self.alternatives.push(scopes);
+    pub fn allow(&mut self, scope: Scope) {
+        if !self.is_allow_all() {
+            if scope.is_empty() {
+                self.alternatives.clear();
+            }
+            self.alternatives.push(scope);
+        }
+    }
+
+    /// Constructs a policy that requires this set of scopes from a string
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if the provided string is not a valid [`Scope`].
+    pub fn allow_one_from_static(scope: &'static str) -> Self {
+        match scope.parse::<Scope>() {
+            Ok(scope) => Self::allow_one(scope),
+            Err(err) => panic!("{}: scope = {}", err, scope),
+        }
+    }
+
+    /// Add an alternate allowable scope from a string
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if the provided string is not a valid [`Scope`].
+    pub fn or_allow_from_static(self, scope: &'static str) -> Self {
+        match scope.parse::<Scope>() {
+            Ok(scope) => self.or_allow(scope),
+            Err(err) => panic!("{}: scope = {}", err, scope),
+        }
+    }
+
+    /// Add an alternate allowable scope from a string
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if the provided string is not a valid [`Scope`].
+    pub fn allow_from_static(&mut self, scope: &'static str) {
+        match scope.parse::<Scope>() {
+            Ok(scope) => self.allow(scope),
+            Err(err) => panic!("{}: scope = {}", err, scope),
+        }
+    }
+
+    fn is_allow_all(&self) -> bool {
+        self.alternatives
+            .first()
+            .map(|s| s.is_empty())
+            .unwrap_or(false)
     }
 }
 
@@ -205,7 +251,11 @@ impl Extend<Scope> for ScopePolicy {
     where
         I: IntoIterator<Item = Scope>,
     {
-        self.alternatives.extend(iter)
+        self.alternatives.extend(iter);
+        if self.alternatives.iter().any(|s| s.is_empty()) {
+            self.alternatives.clear();
+            self.alternatives.push(Scope::empty());
+        }
     }
 }
 
@@ -219,4 +269,47 @@ impl FromIterator<Scope> for ScopePolicy {
         set.extend(iter);
         set
     }
+}
+
+impl From<Scope> for ScopePolicy {
+    #[inline]
+    fn from(scope: Scope) -> Self {
+        Self::allow_one(scope)
+    }
+}
+
+/// Construct a policy from a list of scope alternatives.
+///
+/// For more information about how the alternatives are evaluated, see [`ScopePolicy`].
+///
+/// ```
+/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+/// use aliri_oauth2::{scope, policy};
+///
+/// let policy = policy![
+///     scope!["admin"]?,
+///     scope!["special", "user"]?,
+/// ];
+/// # Ok(()) }
+/// ```
+///
+/// This is equivalent to the following:
+///
+/// ```
+/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+/// use aliri_oauth2::{ScopePolicy, scope};
+///
+/// let policy = ScopePolicy::deny_all()
+///     .or_allow(scope!["admin"]?)
+///     .or_allow(scope!["special", "user"]?);
+/// # Ok(()) }
+/// ```
+#[macro_export]
+macro_rules! policy {
+    ($($scope:expr),* $(,)?) => {
+        $crate::ScopePolicy::deny_all()
+        $(
+            .or_allow($scope)
+        )*
+    };
 }

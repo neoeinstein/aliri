@@ -1,26 +1,21 @@
+use crate::util::forbidden;
 use crate::DefaultErrorHandler;
 use aliri_oauth2::oauth2::HasScope;
-use aliri_oauth2::{InsufficientScope, ScopePolicy};
+use aliri_oauth2::{Scope, ScopePolicy};
 use aliri_traits::Policy;
-use http::{Request, Response, StatusCode};
+use http::{Request, Response};
 use http_body::Body;
 use std::fmt;
 use std::marker::PhantomData;
 use tower_http::auth::AuthorizeRequest;
 
-/// Authorizer that checks the access granted by a scopes claim against
-/// a scopes policy
-///
-/// The `Claims` object is expected to have already been processed by the
-/// [`VerifyJwt`](crate::jwt::VerifyJwt) or been otherwise added to
-/// the extensions on the [`Request`] object.
-pub struct VerifyScopes<Claims, OnError> {
+pub(crate) struct VerifyScope<Claims, OnError> {
     policy: ScopePolicy,
     on_error: OnError,
     _claim: PhantomData<fn() -> Claims>,
 }
 
-impl<Claims, OnError> Clone for VerifyScopes<Claims, OnError>
+impl<Claims, OnError> Clone for VerifyScope<Claims, OnError>
 where
     OnError: Clone,
 {
@@ -33,44 +28,32 @@ where
     }
 }
 
-impl<Claims, OnError> fmt::Debug for VerifyScopes<Claims, OnError>
+impl<Claims, OnError> fmt::Debug for VerifyScope<Claims, OnError>
 where
     OnError: fmt::Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("VerifyScopes")
+        f.debug_struct("VerifyScope")
             .field("policy", &self.policy)
             .field("on_error", &self.on_error)
             .finish()
     }
 }
 
-impl<Claims, ResBody> VerifyScopes<Claims, DefaultErrorHandler<ResBody>> {
-    /// Constructs a new scopes verifier from a scope policy
-    #[inline]
-    pub fn new(policy: ScopePolicy) -> Self {
+impl<Claims, OnError> VerifyScope<Claims, OnError> {
+    /// Constructs a new scopes verifier with the default deny all scopes policy
+    pub(crate) fn new(policy: ScopePolicy, on_error: OnError) -> Self {
         Self {
             policy,
-            on_error: DefaultErrorHandler::<ResBody>::new(),
-            _claim: PhantomData,
-        }
-    }
-
-    /// Attaches a custom error handler to generate responses
-    /// in the event of a verification failure
-    #[inline]
-    pub fn with_error_handler<OnError>(self, on_error: OnError) -> VerifyScopes<Claims, OnError> {
-        VerifyScopes {
-            policy: self.policy,
             on_error,
-            _claim: self._claim,
+            _claim: PhantomData,
         }
     }
 }
 
-impl<Claims, OnError, ReqBody> AuthorizeRequest<ReqBody> for VerifyScopes<Claims, OnError>
+impl<Claims, OnError, ReqBody> AuthorizeRequest<ReqBody> for VerifyScope<Claims, OnError>
 where
-    OnError: OnScopesError,
+    OnError: OnScopeError,
     OnError::Body: Body + Default,
     Claims: HasScope + Send + Sync + 'static,
 {
@@ -90,14 +73,14 @@ where
 
         self.policy
             .evaluate(scope)
-            .map_err(|err| self.on_error.on_scope_policy_failure(err))?;
+            .map_err(|_| self.on_error.on_scope_policy_failure(scope, &self.policy))?;
 
         Ok(())
     }
 }
 
 /// Handler for responding to failures while verifying scope claims
-pub trait OnScopesError {
+pub trait OnScopeError {
     /// The body type returned on an error
     type Body;
 
@@ -109,30 +92,61 @@ pub trait OnScopesError {
     fn on_missing_scope_claim(&self) -> Response<Self::Body>;
 
     /// Response when access is rejected due to insufficient permissions
-    fn on_scope_policy_failure(&self, error: InsufficientScope) -> Response<Self::Body>;
+    fn on_scope_policy_failure(&self, held: &Scope, policy: &ScopePolicy) -> Response<Self::Body>;
 }
 
+macro_rules! delegate_impls {
+    ($($ty:ty)*) => {
+        $(
+            impl<T> OnScopeError for $ty
+            where
+                T: OnScopeError,
+            {
+                type Body = T::Body;
+
+                fn on_missing_scope_claim(&self) -> Response<Self::Body> {
+                    T::on_missing_scope_claim(self)
+                }
+
+                fn on_scope_policy_failure(&self, held: &Scope, policy: &ScopePolicy) -> Response<Self::Body> {
+                    T::on_scope_policy_failure(self, held, policy)
+                }
+            }
+        )*
+    }
+}
+
+delegate_impls!(
+    &'_ T
+    Box<T>
+    std::rc::Rc<T>
+    std::sync::Arc<T>
+);
+
 /// Returns a 403 Forbidden response with an empty body in all cases
-impl<ResBody> OnScopesError for DefaultErrorHandler<ResBody>
+impl<ResBody> OnScopeError for DefaultErrorHandler<ResBody>
 where
-    ResBody: Body + Default,
+    ResBody: Default,
 {
     type Body = ResBody;
 
     #[inline]
     fn on_missing_scope_claim(&self) -> Response<Self::Body> {
-        forbidden()
+        forbidden(
+            "authorization token is missing an expected scope claim",
+            None,
+        )
+        .body(ResBody::default())
+        .expect("all header values are valid")
     }
 
     #[inline]
-    fn on_scope_policy_failure(&self, _: InsufficientScope) -> Response<Self::Body> {
-        forbidden()
+    fn on_scope_policy_failure(&self, _: &Scope, policy: &ScopePolicy) -> Response<Self::Body> {
+        forbidden(
+            "authorization token has insufficient scope to access this endpoint",
+            Some(policy),
+        )
+        .body(ResBody::default())
+        .expect("all header values are valid")
     }
-}
-
-fn forbidden<T: Body + Default>() -> Response<T> {
-    Response::builder()
-        .status(StatusCode::FORBIDDEN)
-        .body(T::default())
-        .expect("response to build successfully")
 }

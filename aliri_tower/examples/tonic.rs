@@ -1,12 +1,12 @@
 use aliri::{jwa, jwk, jwt, Jwk, Jwks, Jwt};
 use aliri_base64::Base64UrlRef;
 use aliri_clock::{Clock, DurationSecs, UnixTime};
-use aliri_oauth2::{oauth2, Authority, Scope, ScopePolicy};
-use aliri_tower::VerifyJwt;
+use aliri_oauth2::oauth2::HasScope;
+use aliri_oauth2::{oauth2, policy, scope, Authority};
+use aliri_tower::Oauth2Authorizer;
+use aliri_traits::Policy;
 use std::sync::atomic::{AtomicI32, Ordering};
 use tonic::{transport::Server, Request, Response, Status};
-use tower::ServiceBuilder;
-use tower_http::auth::RequireAuthorizationLayer;
 
 use counter::counter_service_server::{CounterService, CounterServiceServer};
 use counter::{CounterRequest, CounterResponse};
@@ -26,6 +26,27 @@ impl CounterService for MyCounter {
         &self,
         request: Request<CounterRequest>,
     ) -> Result<Response<CounterResponse>, Status> {
+        let policy = policy![scope!["update_count"].unwrap()];
+        policy
+            .evaluate(
+                request
+                    .extensions()
+                    .get::<CustomClaims>()
+                    .ok_or_else(|| Status::permission_denied("missing claims"))?
+                    .scope(),
+            )
+            .map_err(|_| {
+                let message = format!(
+                    "insufficient scopes, requires one of: [\"{}\"]",
+                    (&policy)
+                        .into_iter()
+                        .map(|s| s.iter().map(|t| t.as_str()).collect::<Vec<_>>().join(" "))
+                        .collect::<Vec<_>>()
+                        .join("\" or \"")
+                );
+                Status::permission_denied(message)
+            })?;
+
         let change = request.get_ref().change;
         let previous = self.count.fetch_add(change, Ordering::AcqRel);
         Ok(Response::new(CounterResponse {
@@ -38,26 +59,17 @@ impl CounterService for MyCounter {
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let authority = construct_authority();
 
-    let verify_jwt = VerifyJwt::<CustomClaims, _>::new(authority);
-
-    let require_scope = |scope: Scope| {
-        let verify_scope = verify_jwt.scopes_verifier(ScopePolicy::allow_one(scope));
-        RequireAuthorizationLayer::custom(verify_scope)
-    };
-
-    let check_jwt = RequireAuthorizationLayer::custom(verify_jwt.clone());
+    let authorizer = Oauth2Authorizer::new()
+        .with_claims::<CustomClaims>()
+        .with_default_error_handler();
 
     let addr = "[::1]:50051".parse().unwrap();
     let counter = MyCounter::default();
 
     println!("CounterServiceServer listening on {}", addr);
 
-    let layer = ServiceBuilder::new()
-        .layer(check_jwt)
-        .layer(require_scope("update_count".parse().unwrap()));
-
     Server::builder()
-        .layer(layer)
+        .layer(authorizer.jwt_layer(authority))
         .add_service(CounterServiceServer::new(counter))
         .serve(addr)
         .await?;
