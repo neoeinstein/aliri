@@ -3,7 +3,7 @@ use aliri::{jwa, jwt};
 use aliri_clock::UnixTime;
 use aliri_oauth2::{oauth2, Authority, ScopePolicy};
 use aliri_tower::{DefaultErrorHandler, Oauth2Authorizer};
-use axum::extract::{Extension, Path};
+use axum::extract::{Extension, Path, RequestParts};
 use axum::handler::Handler;
 use axum::response::IntoResponse;
 use axum::routing::{get, post};
@@ -80,7 +80,10 @@ async fn handle_delete(Path(id): Path<u64>) -> String {
     format!("Handled DELETE /users/{}", id)
 }
 
-async fn handle_get_info(Extension(claims): Extension<CustomClaims>) -> String {
+async fn handle_get_info(
+    Extension(claims): Extension<CustomClaims>,
+    LoginCount(login_count): LoginCount,
+) -> String {
     format!("\
             Token data:\n\
             User with ID `{}` has authorized client `{}` to access the following APIs: [{}]\n\
@@ -92,8 +95,8 @@ async fn handle_get_info(Extension(claims): Extension<CustomClaims>) -> String {
         claims.azp,
         claims.aud.iter().map(|i| i.as_str()).collect::<Vec<_>>().join(", "),
         claims.iss,
-        claims.login_count,
-        if claims.login_count == 1 { "" } else { "s" },
+        login_count,
+        if login_count == 1 { "" } else { "s" },
         claims.permissions,
         claims.scope,
         time::OffsetDateTime::from_unix_timestamp(i64::try_from(claims.iat.0).unwrap()).unwrap().format(&Rfc3339).unwrap(),
@@ -154,7 +157,7 @@ impl aliri_tower::OnJwtError for MyErrorHandler {
     type Body = axum::body::BoxBody;
 
     fn on_missing_or_malformed(&self) -> Response<Self::Body> {
-        let (parts, _) = DefaultErrorHandler::<()>::new()
+        let (parts, ()) = DefaultErrorHandler::new()
             .on_missing_or_malformed()
             .into_parts();
 
@@ -167,9 +170,7 @@ impl aliri_tower::OnJwtError for MyErrorHandler {
     }
 
     fn on_no_matching_jwk(&self) -> Response<Self::Body> {
-        let (parts, _) = DefaultErrorHandler::<()>::new()
-            .on_no_matching_jwk()
-            .into_parts();
+        let (parts, ()) = DefaultErrorHandler::new().on_no_matching_jwk().into_parts();
 
         (
             parts.status,
@@ -190,10 +191,7 @@ impl aliri_tower::OnJwtError for MyErrorHandler {
             err = next;
         }
 
-        let (parts, _) = aliri_tower::util::unauthorized(&header_description)
-            .body(())
-            .expect("valid headers")
-            .into_parts();
+        let (parts, ()) = aliri_tower::util::unauthorized(&header_description).into_parts();
 
         let mut message = String::new();
         write!(&mut message, "token is not valid\nDetails:\n").unwrap();
@@ -211,7 +209,7 @@ impl aliri_tower::OnScopeError for MyErrorHandler {
     type Body = axum::body::BoxBody;
 
     fn on_missing_scope_claim(&self) -> Response<Self::Body> {
-        let (parts, _) = DefaultErrorHandler::<()>::new()
+        let (parts, ()) = DefaultErrorHandler::new()
             .on_missing_scope_claim()
             .into_parts();
 
@@ -230,7 +228,7 @@ impl aliri_tower::OnScopeError for MyErrorHandler {
     ) -> Response<Self::Body> {
         use std::fmt::Write;
 
-        let (parts, _) = DefaultErrorHandler::<()>::new()
+        let (parts, ()) = DefaultErrorHandler::new()
             .on_scope_policy_failure(held, required)
             .into_parts();
 
@@ -245,5 +243,26 @@ impl aliri_tower::OnScopeError for MyErrorHandler {
         }
 
         (parts.status, parts.headers, message).into_response()
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct LoginCount(pub u32);
+
+#[axum::async_trait]
+impl<B: Send> axum::extract::FromRequest<B> for LoginCount {
+    type Rejection = (http::StatusCode, &'static str);
+
+    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+        let inner = || -> Option<LoginCount> {
+            Some(LoginCount(
+                req.extensions()?.get::<CustomClaims>()?.login_count,
+            ))
+        };
+
+        inner().ok_or((
+            http::StatusCode::INTERNAL_SERVER_ERROR,
+            "unable to access login count",
+        ))
     }
 }

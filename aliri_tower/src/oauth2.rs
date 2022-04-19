@@ -136,8 +136,6 @@ where
             "authorization token is missing an expected scope claim",
             None,
         )
-        .body(ResBody::default())
-        .expect("all header values are valid")
     }
 
     #[inline]
@@ -146,7 +144,5 @@ where
             "authorization token has insufficient scope to access this endpoint",
             Some(policy),
         )
-        .body(ResBody::default())
-        .expect("all header values are valid")
     }
 }

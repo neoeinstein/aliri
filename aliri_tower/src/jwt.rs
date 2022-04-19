@@ -171,22 +171,16 @@ where
     #[inline]
     fn on_missing_or_malformed(&self) -> Response<Self::Body> {
         unauthorized("authorization token is missing or malformed")
-            .body(ResBody::default())
-            .expect("all header values are valid")
     }
 
     #[inline]
     fn on_no_matching_jwk(&self) -> Response<Self::Body> {
         unauthorized("token signing key (kid) is not trusted")
-            .body(ResBody::default())
-            .expect("all header values are valid")
     }
 
     #[inline]
     fn on_jwt_invalid(&self, _: JwtVerifyError) -> Response<Self::Body> {
         unauthorized("token is not valid")
-            .body(ResBody::default())
-            .expect("all header values are valid")
     }
 }
 
