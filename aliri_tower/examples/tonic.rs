@@ -61,7 +61,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let authorizer = Oauth2Authorizer::new()
         .with_claims::<CustomClaims>()
-        .with_default_error_handler();
+        .with_terse_error_handler();
 
     let addr = "[::1]:50051".parse().unwrap();
     let counter = MyCounter::default();

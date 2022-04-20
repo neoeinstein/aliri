@@ -1,5 +1,5 @@
 use crate::util::forbidden;
-use crate::DefaultErrorHandler;
+use crate::{TerseErrorHandler, VerboseErrorHandler};
 use aliri_oauth2::oauth2::HasScope;
 use aliri_oauth2::{Scope, ScopePolicy};
 use aliri_traits::Policy;
@@ -123,8 +123,24 @@ delegate_impls!(
     std::sync::Arc<T>
 );
 
-/// Returns a 403 Forbidden response with an empty body in all cases
-impl<ResBody> OnScopeError for DefaultErrorHandler<ResBody>
+impl<ResBody> OnScopeError for TerseErrorHandler<ResBody>
+where
+    ResBody: Default,
+{
+    type Body = ResBody;
+
+    #[inline]
+    fn on_missing_scope_claim(&self) -> Response<Self::Body> {
+        forbidden("", None)
+    }
+
+    #[inline]
+    fn on_scope_policy_failure(&self, _: &Scope, policy: &ScopePolicy) -> Response<Self::Body> {
+        forbidden("", Some(policy))
+    }
+}
+
+impl<ResBody> OnScopeError for VerboseErrorHandler<ResBody>
 where
     ResBody: Default,
 {

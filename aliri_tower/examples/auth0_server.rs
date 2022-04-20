@@ -2,7 +2,7 @@ use aliri::error::JwtVerifyError;
 use aliri::{jwa, jwt};
 use aliri_clock::UnixTime;
 use aliri_oauth2::{oauth2, Authority, ScopePolicy};
-use aliri_tower::{DefaultErrorHandler, Oauth2Authorizer};
+use aliri_tower::Oauth2Authorizer;
 use axum::extract::{Extension, Path, RequestParts};
 use axum::handler::Handler;
 use axum::response::IntoResponse;
@@ -16,8 +16,9 @@ async fn main() -> color_eyre::Result<()> {
     let authority = construct_authority().await?;
     let authorizer = Oauth2Authorizer::new()
         .with_claims::<CustomClaims>()
-        // .with_error_handler(MyErrorHandler);
-        .with_default_error_handler();
+        .with_error_handler(MyErrorHandler);
+    //.with_terse_error_handler();
+    //.with_verbose_error_handler();
 
     let app =
         Router::new()
@@ -157,9 +158,9 @@ impl aliri_tower::OnJwtError for MyErrorHandler {
     type Body = axum::body::BoxBody;
 
     fn on_missing_or_malformed(&self) -> Response<Self::Body> {
-        let (parts, ()) = DefaultErrorHandler::new()
-            .on_missing_or_malformed()
-            .into_parts();
+        let (parts, ()) =
+            aliri_tower::util::unauthorized("authorization token is missing or malformed")
+                .into_parts();
 
         (
             parts.status,
@@ -170,7 +171,8 @@ impl aliri_tower::OnJwtError for MyErrorHandler {
     }
 
     fn on_no_matching_jwk(&self) -> Response<Self::Body> {
-        let (parts, ()) = DefaultErrorHandler::new().on_no_matching_jwk().into_parts();
+        let (parts, ()) =
+            aliri_tower::util::unauthorized("token signing key (kid) is not trusted").into_parts();
 
         (
             parts.status,
@@ -184,8 +186,8 @@ impl aliri_tower::OnJwtError for MyErrorHandler {
         use std::fmt::Write;
 
         let mut header_description = String::new();
-        write!(&mut header_description, "token is not valid").unwrap();
         let mut err: &dyn std::error::Error = &error;
+        write!(&mut header_description, "{err}").unwrap();
         while let Some(next) = err.source() {
             write!(&mut header_description, ": {next}").unwrap();
             err = next;
@@ -194,8 +196,8 @@ impl aliri_tower::OnJwtError for MyErrorHandler {
         let (parts, ()) = aliri_tower::util::unauthorized(&header_description).into_parts();
 
         let mut message = String::new();
-        write!(&mut message, "token is not valid\nDetails:\n").unwrap();
         let mut err: &dyn std::error::Error = &error;
+        write!(&mut message, "{err}\nDetails:\n").unwrap();
         while let Some(next) = err.source() {
             writeln!(&mut message, "\t{next}").unwrap();
             err = next;
@@ -209,9 +211,11 @@ impl aliri_tower::OnScopeError for MyErrorHandler {
     type Body = axum::body::BoxBody;
 
     fn on_missing_scope_claim(&self) -> Response<Self::Body> {
-        let (parts, ()) = DefaultErrorHandler::new()
-            .on_missing_scope_claim()
-            .into_parts();
+        let (parts, ()) = aliri_tower::util::forbidden(
+            "authorization token is missing an expected scope claim",
+            None,
+        )
+        .into_parts();
 
         (
             parts.status,
@@ -228,9 +232,11 @@ impl aliri_tower::OnScopeError for MyErrorHandler {
     ) -> Response<Self::Body> {
         use std::fmt::Write;
 
-        let (parts, ()) = DefaultErrorHandler::new()
-            .on_scope_policy_failure(held, required)
-            .into_parts();
+        let (parts, ()) = aliri_tower::util::forbidden(
+            "authorization token has insufficient scope to access this endpoint",
+            Some(required),
+        )
+        .into_parts();
 
         let mut message = String::new();
         write!(&mut message, "authorization token has insufficient scope to access this endpoint\nGrant: {held}\nAcceptable scopes:\n").unwrap();

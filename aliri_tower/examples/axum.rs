@@ -14,7 +14,7 @@ async fn main() {
 
     let authorizer = Oauth2Authorizer::new()
         .with_claims::<CustomClaims>()
-        .with_default_error_handler();
+        .with_terse_error_handler();
 
     let app = Router::new()
         .route(

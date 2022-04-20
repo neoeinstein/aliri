@@ -1,4 +1,4 @@
-use crate::{DefaultErrorHandler, OnJwtError, OnScopeError};
+use crate::{OnJwtError, OnScopeError, TerseErrorHandler, VerboseErrorHandler};
 use aliri::jwt::CoreClaims;
 use aliri_oauth2::oauth2::{BasicClaimsWithScope, HasScope};
 use aliri_oauth2::{Authority, ScopePolicy};
@@ -75,16 +75,30 @@ impl<Claims> Oauth2Authorizer<Claims, ()> {
         }
     }
 
-    /// Attaches the default error handler: [`DefaultErrorHandler`]
+    /// Attaches the default terse error handler: [`TerseErrorHandler`]
     ///
     /// This error handler generates responses containing the relevant
     /// status code with an empty body
     #[inline]
-    pub fn with_default_error_handler<ResBody: Body + Default>(
+    pub fn with_terse_error_handler<ResBody: Body + Default>(
         self,
-    ) -> Oauth2Authorizer<Claims, DefaultErrorHandler<ResBody>> {
+    ) -> Oauth2Authorizer<Claims, TerseErrorHandler<ResBody>> {
         Oauth2Authorizer {
-            on_error: DefaultErrorHandler::new(),
+            on_error: TerseErrorHandler::new(),
+            _claim: self._claim,
+        }
+    }
+
+    /// Attaches the default verbose error handler: [`VerboseErrorHandler`]
+    ///
+    /// This error handler generates responses containing the relevant
+    /// status code with an empty body
+    #[inline]
+    pub fn with_verbose_error_handler<ResBody: Body + Default>(
+        self,
+    ) -> Oauth2Authorizer<Claims, VerboseErrorHandler<ResBody>> {
+        Oauth2Authorizer {
+            on_error: VerboseErrorHandler::new(),
             _claim: self._claim,
         }
     }

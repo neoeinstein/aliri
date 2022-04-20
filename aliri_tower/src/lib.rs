@@ -58,7 +58,7 @@
 //! let authority = construct_authority();
 //! let authorizer = Oauth2Authorizer::new()
 //!     .with_claims::<CustomClaims>()
-//!     .with_default_error_handler();
+//!     .with_terse_error_handler();
 //!
 //! let app = axum::Router::new()
 //!     .route(
@@ -109,15 +109,19 @@ pub use crate::authorizer::Oauth2Authorizer;
 pub use crate::jwt::OnJwtError;
 pub use crate::oauth2::OnScopeError;
 
-/// Default responders for authentication and authorization failures
+/// Terse responders for authentication and authorization failures
 ///
 /// This handler will generate a default error response containing the
-/// relevant status code and an empty body.
-pub struct DefaultErrorHandler<ResBody> {
+/// relevant status code and `www-authenticate` header with an empty body.
+///
+/// This type _does not_ provide `error_description` data to avoid leaking
+/// internal error information, but does provide `scope` information in
+/// when an otherwise valid token lacks sufficient permissions.
+pub struct TerseErrorHandler<ResBody> {
     _ty: PhantomData<fn() -> ResBody>,
 }
 
-impl<ResBody> DefaultErrorHandler<ResBody> {
+impl<ResBody> TerseErrorHandler<ResBody> {
     /// Instantiates a new instance over a given body type
     #[inline]
     pub fn new() -> Self {
@@ -125,24 +129,85 @@ impl<ResBody> DefaultErrorHandler<ResBody> {
     }
 }
 
-impl<ResBody> fmt::Debug for DefaultErrorHandler<ResBody> {
+impl<ResBody> fmt::Debug for TerseErrorHandler<ResBody> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("DefaultErrorHandler")
+        f.write_str("TerseErrorHandler")
     }
 }
 
-impl<ResBody> Default for DefaultErrorHandler<ResBody> {
+impl<ResBody> Default for TerseErrorHandler<ResBody> {
     #[inline]
     fn default() -> Self {
         Self { _ty: PhantomData }
     }
 }
 
-impl<ResBody> Clone for DefaultErrorHandler<ResBody> {
+impl<ResBody> Clone for TerseErrorHandler<ResBody> {
     #[inline]
     fn clone(&self) -> Self {
         Self { _ty: PhantomData }
     }
 }
 
-impl<ResBody> Copy for DefaultErrorHandler<ResBody> {}
+impl<ResBody> Copy for TerseErrorHandler<ResBody> {}
+
+/// Verbose responders for authentication and authorization failures
+///
+/// This handler will generate a default error response containing the
+/// relevant status code and `www-authenticate` header with an empty body.
+///
+/// This type provides `error_description` data in the `www-authenticate`
+/// header.
+pub struct VerboseErrorHandler<ResBody> {
+    _ty: PhantomData<fn() -> ResBody>,
+}
+
+impl<ResBody> VerboseErrorHandler<ResBody> {
+    /// Instantiates a new instance over a given body type
+    #[inline]
+    pub fn new() -> Self {
+        Self { _ty: PhantomData }
+    }
+}
+
+impl<ResBody> fmt::Debug for VerboseErrorHandler<ResBody> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str("VerboseErrorHandler")
+    }
+}
+
+impl<ResBody> Default for VerboseErrorHandler<ResBody> {
+    #[inline]
+    fn default() -> Self {
+        Self { _ty: PhantomData }
+    }
+}
+
+impl<ResBody> Clone for VerboseErrorHandler<ResBody> {
+    #[inline]
+    fn clone(&self) -> Self {
+        Self { _ty: PhantomData }
+    }
+}
+
+impl<ResBody> Copy for VerboseErrorHandler<ResBody> {}
+
+/// ```
+/// use aliri_tower::VerboseErrorHandler;
+/// fn is_send_sync<T: Send + Sync>(_: T) {}
+/// fn verbose_error_handler_is_send_sync<B>(v: VerboseErrorHandler<B>) {
+///     is_send_sync(v)
+/// }
+/// ```
+#[cfg(doctest)]
+fn verbose_error_handler_is_send_sync() {}
+
+/// ```
+/// use aliri_tower::TerseErrorHandler;
+/// fn is_send_sync<T: Send + Sync>(_: T) {}
+/// fn terse_error_handler_is_send_sync<B>(v: TerseErrorHandler<B>) {
+///     is_send_sync(v)
+/// }
+/// ```
+#[cfg(doctest)]
+fn terse_error_handler_is_send_sync() {}

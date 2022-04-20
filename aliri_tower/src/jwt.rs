@@ -1,5 +1,5 @@
 use crate::util::unauthorized;
-use crate::DefaultErrorHandler;
+use crate::{TerseErrorHandler, VerboseErrorHandler};
 use aliri::error::JwtVerifyError;
 use aliri::jwt::CoreClaims;
 use aliri::Jwt;
@@ -161,8 +161,29 @@ delegate_impls!(
     std::sync::Arc<T>
 );
 
-/// Returns a 401 Unauthorized response with an empty body in all cases
-impl<ResBody> OnJwtError for DefaultErrorHandler<ResBody>
+impl<ResBody> OnJwtError for TerseErrorHandler<ResBody>
+where
+    ResBody: Default,
+{
+    type Body = ResBody;
+
+    #[inline]
+    fn on_missing_or_malformed(&self) -> Response<Self::Body> {
+        unauthorized("")
+    }
+
+    #[inline]
+    fn on_no_matching_jwk(&self) -> Response<Self::Body> {
+        unauthorized("")
+    }
+
+    #[inline]
+    fn on_jwt_invalid(&self, _: JwtVerifyError) -> Response<Self::Body> {
+        unauthorized("")
+    }
+}
+
+impl<ResBody> OnJwtError for VerboseErrorHandler<ResBody>
 where
     ResBody: Default,
 {
@@ -179,8 +200,18 @@ where
     }
 
     #[inline]
-    fn on_jwt_invalid(&self, _: JwtVerifyError) -> Response<Self::Body> {
-        unauthorized("token is not valid")
+    fn on_jwt_invalid(&self, error: JwtVerifyError) -> Response<Self::Body> {
+        use std::fmt::Write;
+
+        let mut description = String::new();
+        let mut err: &dyn std::error::Error = &error;
+        write!(&mut description, "{err}").unwrap();
+        while let Some(next) = err.source() {
+            write!(&mut description, ": {next}").unwrap();
+            err = next;
+        }
+
+        unauthorized(&description)
     }
 }
 
