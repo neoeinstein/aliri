@@ -108,6 +108,7 @@ pub struct KeyRejected {
     source: Box<dyn StdError + Send + Sync + 'static>,
 }
 
+#[cfg(any(feature = "rsa", feature = "ec"))]
 pub(crate) fn key_rejected(
     source: impl Into<Box<dyn StdError + Send + Sync + 'static>>,
 ) -> KeyRejected {
@@ -123,6 +124,7 @@ pub struct MissingPrivateKey {
     _p: (),
 }
 
+#[cfg(any(feature = "rsa", feature = "ec"))]
 pub(crate) const fn missing_private_key() -> MissingPrivateKey {
     MissingPrivateKey { _p: () }
 }
@@ -135,6 +137,10 @@ pub struct Unexpected {
     source: Box<dyn StdError + Send + Sync + 'static>,
 }
 
+#[cfg(any(
+    feature = "hmac",
+    all(feature = "private-keys", any(feature = "ec", feature = "rsa"))
+))]
 pub(crate) fn unexpected(
     source: impl Into<Box<dyn StdError + Send + Sync + 'static>>,
 ) -> Unexpected {

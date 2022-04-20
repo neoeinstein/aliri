@@ -106,7 +106,7 @@ impl ops::Sub for UnixTime {
     }
 }
 
-#[cfg(any(feature = "serde", doc))]
+#[cfg(feature = "serde")]
 #[cfg_attr(docsrs, doc(cfg(feature = "serde")))]
 impl Serialize for UnixTime {
     #[inline]
@@ -115,7 +115,7 @@ impl Serialize for UnixTime {
     }
 }
 
-#[cfg(any(feature = "serde", doc))]
+#[cfg(feature = "serde")]
 #[cfg_attr(docsrs, doc(cfg(feature = "serde")))]
 impl<'de> Deserialize<'de> for UnixTime {
     #[inline]
@@ -234,7 +234,7 @@ impl ops::DivAssign<u64> for DurationSecs {
     }
 }
 
-#[cfg(any(feature = "serde", doc))]
+#[cfg(feature = "serde")]
 #[cfg_attr(docsrs, doc(cfg(feature = "serde")))]
 impl Serialize for DurationSecs {
     #[inline]
@@ -243,7 +243,7 @@ impl Serialize for DurationSecs {
     }
 }
 
-#[cfg(any(feature = "serde", doc))]
+#[cfg(feature = "serde")]
 #[cfg_attr(docsrs, doc(cfg(feature = "serde")))]
 impl<'de> Deserialize<'de> for DurationSecs {
     #[inline]

@@ -13,12 +13,13 @@ repository = "https://github.com/neoeinstein/aliri"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
-default = ["file", "oauth2", "rand"]
-file = ["serde_json", "tokio/fs"]
-oauth2 = ["reqwest"]
+default = []
+file = ["serde_json", "tokio/fs", "tokio/io-util"]
+oauth2 = ["serde_json", "reqwest"]
 
 [package.metadata.docs.rs]
-rustc-args = ["--cfg", "docsrs"]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
 
 [dependencies]
 aliri = { version = "0.5.0", path = "../aliri" }
@@ -31,7 +32,7 @@ reqwest = { version = "0.11", features = [ "json" ], optional = true }
 serde = { version = "1", features = [ "derive" ] }
 serde_json = { version = "1", optional = true }
 thiserror = "1"
-tokio = { version = "1", features = [ "time" ] }
+tokio = { version = "1", features = [ "time", "sync" ] }
 tracing = "0.1.15"
 tracing-futures = "0.2"
 
@@ -42,3 +43,8 @@ structopt = "0.3.21"
 tracing-subscriber = { version = "0.3", features = [ "fmt", "env-filter" ] }
 test-env-log = { version = "0.2", default-features = false, features = [ "trace" ] }
 tokio = { version = "1", features = [ "rt-multi-thread", "macros" ] }
+
+[[example]]
+name = "periodic_refresh"
+path = "examples/periodic_refresh.rs"
+required-features = ["reqwest", "rand", "file"]

@@ -26,6 +26,7 @@ tracing = "0.1"
 [dev-dependencies]
 actix-rt = "2"
 actix-web = { version = "4", default-features = false, features = ["macros"] }
+aliri = { version = "0.5.0", path = "../aliri", features = ["hmac"] }
 aliri_base64 = { version = "0.1.0", path = "../aliri_base64" }
 aliri_clock = { version = "0.1.0", path = "../aliri_clock" }
 color-eyre = "0.6"

@@ -57,12 +57,11 @@
 //!
 
 #![cfg_attr(docsrs, feature(doc_cfg))]
-#![warn(
-    missing_docs,
-    unused_import_braces,
-    unused_imports,
-    unused_qualifications
+#![cfg_attr(
+    not(any(feature = "ec", feature = "hmac", feature = "rsa")),
+    allow(dead_code, unused)
 )]
+#![warn(missing_docs, unused_import_braces, unused_qualifications)]
 #![deny(
     missing_debug_implementations,
     missing_copy_implementations,

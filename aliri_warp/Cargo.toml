@@ -21,6 +21,7 @@ tracing = "0.1"
 warp = "0.3"
 
 [dev-dependencies]
+aliri = { version = "0.5.0", path = "../aliri", features = ["hmac"] }
 color-eyre = "0.6"
 tokio = { version = "1", features = [ "rt-multi-thread", "macros", "time" ] }
 regex = "1"

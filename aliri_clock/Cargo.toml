@@ -16,7 +16,7 @@ repository = "https://github.com/neoeinstein/aliri"
 serde = { version = "1", features = [ "derive" ], optional = true }
 
 [package.metadata.docs.rs]
-features = ["serde"]
+all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
 [package.metadata.playground]

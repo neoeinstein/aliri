@@ -19,11 +19,11 @@ hmac = []
 private-keys = [ "openssl" ]
 unstable = []
 no-unstable = []
-default = [ "hmac", "rsa" ]
+default = []
 
 [package.metadata.docs.rs]
-rustc-args = ["--cfg", "docsrs"]
-features = [ "rsa", "ec", "hmac", "private-keys" ]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
 
 [dependencies]
 aliri_base64 = { version = "0.1.0", path = "../aliri_base64", features = [ "serde" ] }

@@ -10,20 +10,13 @@ readme = "../README.md"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/neoeinstein/aliri"
 
-[features]
-ec = [ "aliri/ec" ]
-rsa = [ "aliri/rsa" ]
-hmac = [ "aliri/hmac" ]
-private-keys = [ "aliri/private-keys" ]
-default = [ "rsa" ]
-
 [package.metadata.docs.rs]
-rustc-args = ["--cfg", "docsrs"]
-features = [ "rsa", "ec", "hmac", "private-keys", "reqwest" ]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
 
 [dependencies]
 ahash = "0.7"
-aliri = { version = "0.5.0", path = "../aliri", default-features = false }
+aliri = { version = "0.5.0", path = "../aliri" }
 aliri_clock = { version = "0.1.0", path = "../aliri_clock" }
 aliri_traits = { version = "0.1.0", path = "../aliri_traits" }
 aliri_braid = { version = "0.1.5" }

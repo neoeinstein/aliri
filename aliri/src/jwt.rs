@@ -1044,8 +1044,6 @@ pub enum OneOrMany<T> {
 mod tests {
     use color_eyre::Result;
 
-    use aliri_clock::TestClock;
-
     use super::*;
 
     #[test]
@@ -1078,7 +1076,7 @@ mod tests {
             .with_audiences(audiences)
             .with_issuer(Issuer::new("face"));
 
-        let clock = TestClock::new(UnixTime(7));
+        let clock = aliri_clock::TestClock::new(UnixTime(7));
 
         let header = BasicHeaders::new(jwa::Algorithm::RS256);
 
@@ -1187,6 +1185,10 @@ mod tests {
         round_trip(key.into(), alg.into())
     }
 
+    #[cfg(any(
+        feature = "hmac",
+        all(feature = "private-keys", any(feature = "ec", feature = "rsa"))
+    ))]
     fn round_trip(jwk: Jwk, alg: jwa::Algorithm) -> Result<()> {
         let claims = BasicClaims::new()
             .with_expiration(UnixTime(100))
