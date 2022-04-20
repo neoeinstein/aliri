@@ -2,7 +2,7 @@
 
 use std::collections::HashSet;
 
-use lazy_static::lazy_static;
+use once_cell::sync::Lazy;
 
 use crate::jwt;
 
@@ -74,11 +74,11 @@ pub mod mixed {
     pub const JWKS: &str = include_str!("../data/jwks.json");
 }
 
-lazy_static! {
-    pub static ref TEST_AUD: &'static jwt::AudienceRef =
-        jwt::AudienceRef::from_str("TEST_AUDIENCE");
-    pub static ref VALID_AUD: HashSet<String> = [TEST_AUD.as_str()]
+pub static TEST_AUD: Lazy<&'static jwt::AudienceRef> =
+    Lazy::new(|| jwt::AudienceRef::from_str("TEST_AUDIENCE"));
+pub static VALID_AUD: Lazy<HashSet<String>> = Lazy::new(|| {
+    [TEST_AUD.as_str()]
         .iter()
         .map(|&s| String::from(s))
-        .collect();
-}
+        .collect()
+});

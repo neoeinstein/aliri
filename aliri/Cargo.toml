@@ -29,7 +29,7 @@ rustdoc-args = ["--cfg", "docsrs"]
 aliri_base64 = { version = "0.1.0", path = "../aliri_base64", features = [ "serde" ] }
 aliri_clock = { version = "0.1.0", path = "../aliri_clock", features = [ "serde" ] }
 aliri_braid = { version = "0.1.5" }
-lazy_static = { version = "1" }
+once_cell = { version = "1.10" }
 regex = "1"
 ring = "0.16"
 serde = { version = "1", features = [ "derive" ] }
