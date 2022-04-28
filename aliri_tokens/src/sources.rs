@@ -7,6 +7,7 @@ use std::error;
 pub mod cache;
 #[cfg(feature = "file")]
 pub mod file;
+pub mod in_memory;
 #[cfg(feature = "oauth2")]
 pub mod oauth2;
 
