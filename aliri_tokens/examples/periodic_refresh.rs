@@ -68,9 +68,11 @@ async fn main() -> color_eyre::Result<()> {
     );
 
     let file_source = sources::file::FileTokenSource::new(opts.credentials_file);
+    let in_memory = sources::in_memory::InMemoryTokenCache::new();
 
-    let token_source =
-        sources::cache::CachedTokenSource::new(fallback).with_cache("file", file_source);
+    let token_source = sources::cache::CachedTokenSource::new(fallback)
+        .with_cache("mem", in_memory)
+        .with_cache("file", file_source);
 
     let jitter_source = jitter::RandomEarlyJitter::new(DurationSecs(60));
 
