@@ -13,21 +13,21 @@ pub struct TokenWithLifetime {
     expiry: UnixTime,
 }
 
-// impl TokenWithLifetime {
-//     pub(crate) fn clone_it(&self) -> Self {
-//         Self {
-//             access_token: self.access_token.to_owned().into_boxed_ref(),
-//             id_token: self
-//                 .id_token
-//                 .as_deref()
-//                 .map(|x| (*x).to_owned().into_boxed_ref()),
-//             lifetime: self.lifetime,
-//             issued: self.issued,
-//             stale: self.stale,
-//             expiry: self.expiry,
-//         }
-//     }
-// }
+impl TokenWithLifetime {
+    pub(crate) fn clone_it(&self) -> Self {
+        Self {
+            access_token: self.access_token.to_owned().into_boxed_ref(),
+            id_token: self
+                .id_token
+                .as_deref()
+                .map(|x| (*x).to_owned().into_boxed_ref()),
+            lifetime: self.lifetime,
+            issued: self.issued,
+            stale: self.stale,
+            expiry: self.expiry,
+        }
+    }
+}
 
 /// A token's lifecycle status
 #[derive(Debug)]
