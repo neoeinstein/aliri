@@ -61,7 +61,7 @@ pub mod mixed {
 
 lazy_static! {
     pub static ref TEST_AUD: &'static jwt::AudienceRef =
-        &jwt::AudienceRef::from_str("TEST_AUDIENCE");
+        jwt::AudienceRef::from_str("TEST_AUDIENCE");
     pub static ref VALID_AUD: HashSet<String> = [TEST_AUD.as_str()]
         .iter()
         .map(|&s| String::from(s))

@@ -68,7 +68,7 @@ impl<B, C> CachedTokenSource<B, C> {
         let idx = idx.unwrap_or(self.caches.len() + 1);
         if idx > 0 {
             for (name, cache) in self.caches.iter_mut().take(idx - 1).rev() {
-                match cache.persist_token(&token).await {
+                match cache.persist_token(token).await {
                     Ok(()) => {
                         tracing::trace!(cache = %name, "pushed new token to cache");
                     }
