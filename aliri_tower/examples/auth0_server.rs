@@ -262,7 +262,7 @@ impl<B: Send> axum::extract::FromRequest<B> for LoginCount {
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
         let inner = || -> Option<LoginCount> {
             Some(LoginCount(
-                req.extensions()?.get::<CustomClaims>()?.login_count,
+                req.extensions().get::<CustomClaims>()?.login_count,
             ))
         };
 
