@@ -331,9 +331,9 @@ mod tests {
 
         let validator = jwt::CoreValidator::default()
             .ignore_expiration()
-            .require_issuer(jwt::Issuer::new("https://issuer.example.com/"))
+            .require_issuer(jwt::Issuer::from_static("https://issuer.example.com/"))
             .add_approved_algorithm(jwa::Algorithm::HS512)
-            .add_allowed_audience(jwt::Audience::new("https://api.resource.com/"));
+            .add_allowed_audience(jwt::Audience::from_static("https://api.resource.com/"));
 
         let authority = Authority::new(jwks, validator);
         let app = test::init_service(App::new().app_data(authority).service(test_endpoint)).await;
@@ -390,9 +390,9 @@ mod tests {
 
         let validator = jwt::CoreValidator::default()
             .ignore_expiration()
-            .require_issuer(jwt::Issuer::new("https://issuer.example.com/"))
+            .require_issuer(jwt::Issuer::from_static("https://issuer.example.com/"))
             .add_approved_algorithm(jwa::Algorithm::HS512)
-            .add_allowed_audience(jwt::Audience::new("https://api.resource.com/"));
+            .add_allowed_audience(jwt::Audience::from_static("https://api.resource.com/"));
 
         let authority = Authority::new(jwks, validator);
         let app = test::init_service(App::new().app_data(authority).service(test_endpoint)).await;
@@ -426,9 +426,9 @@ mod tests {
 
         let validator = jwt::CoreValidator::default()
             .ignore_expiration()
-            .require_issuer(jwt::Issuer::new("https://issuer.example.com/"))
+            .require_issuer(jwt::Issuer::from_static("https://issuer.example.com/"))
             .add_approved_algorithm(jwa::Algorithm::HS512)
-            .add_allowed_audience(jwt::Audience::new("https://api.resource.com/"));
+            .add_allowed_audience(jwt::Audience::from_static("https://api.resource.com/"));
 
         let authority = Authority::new(jwks, validator);
         let app = test::init_service(App::new().app_data(authority).service(test_endpoint)).await;
@@ -462,9 +462,9 @@ mod tests {
 
         let validator = jwt::CoreValidator::default()
             .ignore_expiration()
-            .require_issuer(jwt::Issuer::new("https://issuer.example.com/"))
+            .require_issuer(jwt::Issuer::from_static("https://issuer.example.com/"))
             .add_approved_algorithm(jwa::Algorithm::HS512)
-            .add_allowed_audience(jwt::Audience::new("https://api.resource.com/"));
+            .add_allowed_audience(jwt::Audience::from_static("https://api.resource.com/"));
 
         let authority = Authority::new(jwks, validator);
         let app = test::init_service(App::new().app_data(authority).service(test_endpoint)).await;
@@ -498,9 +498,9 @@ mod tests {
 
         let validator = jwt::CoreValidator::default()
             .ignore_expiration()
-            .require_issuer(jwt::Issuer::new("https://issuer.example.com/"))
+            .require_issuer(jwt::Issuer::from_static("https://issuer.example.com/"))
             .add_approved_algorithm(jwa::Algorithm::HS512)
-            .add_allowed_audience(jwt::Audience::new("https://api.resource.com/"));
+            .add_allowed_audience(jwt::Audience::from_static("https://api.resource.com/"));
 
         let authority = Authority::new(jwks, validator);
         let app = test::init_service(App::new().app_data(authority).service(test_endpoint)).await;
@@ -534,9 +534,9 @@ mod tests {
 
         let validator = jwt::CoreValidator::default()
             .ignore_expiration()
-            .require_issuer(jwt::Issuer::new("https://issuer.example.com/"))
+            .require_issuer(jwt::Issuer::from_static("https://issuer.example.com/"))
             .add_approved_algorithm(jwa::Algorithm::HS512)
-            .add_allowed_audience(jwt::Audience::new("https://api.resource.com/"));
+            .add_allowed_audience(jwt::Audience::from_static("https://api.resource.com/"));
 
         let authority = Authority::new(jwks, validator);
         let app = test::init_service(App::new().app_data(authority).service(test_endpoint)).await;
@@ -570,9 +570,9 @@ mod tests {
 
         let validator = jwt::CoreValidator::default()
             .ignore_expiration()
-            .require_issuer(jwt::Issuer::new("https://issuer.example.com/"))
+            .require_issuer(jwt::Issuer::from_static("https://issuer.example.com/"))
             .add_approved_algorithm(jwa::Algorithm::HS512)
-            .add_allowed_audience(jwt::Audience::new("https://api.resource.com/"));
+            .add_allowed_audience(jwt::Audience::from_static("https://api.resource.com/"));
 
         let authority = Authority::new(jwks, validator);
         let app = test::init_service(App::new().app_data(authority).service(test_endpoint)).await;
@@ -606,9 +606,9 @@ mod tests {
 
         let validator = jwt::CoreValidator::default()
             .ignore_expiration()
-            .require_issuer(jwt::Issuer::new("https://issuer.example.com/"))
+            .require_issuer(jwt::Issuer::from_static("https://issuer.example.com/"))
             .add_approved_algorithm(jwa::Algorithm::HS512)
-            .add_allowed_audience(jwt::Audience::new("https://api.resource.com/"));
+            .add_allowed_audience(jwt::Audience::from_static("https://api.resource.com/"));
 
         let authority = Authority::new(jwks, validator);
         let app = test::init_service(App::new().app_data(authority).service(test_endpoint)).await;
@@ -642,9 +642,9 @@ mod tests {
 
         let validator = jwt::CoreValidator::default()
             .ignore_expiration()
-            .require_issuer(jwt::Issuer::new("https://issuer.example.com/"))
+            .require_issuer(jwt::Issuer::from_static("https://issuer.example.com/"))
             .add_approved_algorithm(jwa::Algorithm::HS512)
-            .add_allowed_audience(jwt::Audience::new("https://api.resource.com/"));
+            .add_allowed_audience(jwt::Audience::from_static("https://api.resource.com/"));
 
         let authority = Authority::new(jwks, validator);
         let app = test::init_service(App::new().app_data(authority).service(test_endpoint)).await;

@@ -5,7 +5,7 @@ use aliri_braid::braid;
 use aliri_clock::UnixTime;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
-use std::{cmp, collections::btree_set, convert::TryFrom, fmt, iter::FromIterator, str::FromStr};
+use std::{collections::btree_set, convert::TryFrom, fmt, iter::FromIterator, str::FromStr};
 use thiserror::Error;
 
 /// An invalid scope token
@@ -57,18 +57,6 @@ impl aliri_braid::Validator for ScopeToken {
         } else {
             Ok(())
         }
-    }
-}
-
-impl Ord for ScopeToken {
-    fn cmp(&self, other: &Self) -> cmp::Ordering {
-        Ord::cmp(self.as_str(), other.as_str())
-    }
-}
-
-impl PartialOrd for ScopeToken {
-    fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
-        PartialOrd::partial_cmp(self.as_str(), other.as_str())
     }
 }
 
@@ -265,7 +253,7 @@ impl TryFrom<&'_ str> for Scope {
 
     #[inline]
     fn try_from(s: &str) -> Result<Self, Self::Error> {
-        s.split_whitespace().map(ScopeToken::new).collect()
+        s.split_whitespace().map(ScopeToken::try_from).collect()
     }
 }
 
@@ -402,55 +390,55 @@ mod tests {
 
     #[test]
     fn owned_handles_valid() {
-        let x = ScopeToken::new("https://crates.io/scopes/publish:crate").unwrap();
+        let x = ScopeToken::from_static("https://crates.io/scopes/publish:crate");
         assert_eq!(x.as_str(), "https://crates.io/scopes/publish:crate");
     }
 
     #[test]
     fn owned_rejects_empty() {
-        let x = ScopeToken::new("");
+        let x = ScopeToken::try_from("");
         assert!(matches!(x, Err(InvalidScopeToken::EmptyString)));
     }
 
     #[test]
     fn owned_rejects_invalid_quote() {
-        let x = ScopeToken::new("https://crates.io/scopes/\"publish:crate\"");
+        let x = ScopeToken::try_from("https://crates.io/scopes/\"publish:crate\"");
         assert!(matches!(x, Err(InvalidScopeToken::InvalidByte { .. })));
     }
 
     #[test]
     fn owned_rejects_invalid_control() {
-        let x = ScopeToken::new("https://crates.io/scopes/\tpublish:crate");
+        let x = ScopeToken::try_from("https://crates.io/scopes/\tpublish:crate");
         assert!(matches!(x, Err(InvalidScopeToken::InvalidByte { .. })));
     }
 
     #[test]
     fn owned_rejects_invalid_backslash() {
-        let x = ScopeToken::new("https://crates.io/scopes/\\publish:crate");
+        let x = ScopeToken::try_from("https://crates.io/scopes/\\publish:crate");
         assert!(matches!(x, Err(InvalidScopeToken::InvalidByte { .. })));
     }
 
     #[test]
     fn owned_rejects_invalid_delete() {
-        let x = ScopeToken::new("https://crates.io/scopes/\x7Fpublish:crate");
+        let x = ScopeToken::try_from("https://crates.io/scopes/\x7Fpublish:crate");
         assert!(matches!(x, Err(InvalidScopeToken::InvalidByte { .. })));
     }
 
     #[test]
     fn owned_rejects_invalid_non_ascii() {
-        let x = ScopeToken::new("https://crates.io/scopes/¿publish:crate");
+        let x = ScopeToken::try_from("https://crates.io/scopes/¿publish:crate");
         assert!(matches!(x, Err(InvalidScopeToken::InvalidByte { .. })));
     }
 
     #[test]
     fn owned_rejects_invalid_emoji() {
-        let x = ScopeToken::new("https://crates.io/scopes/🪤publish:crate");
+        let x = ScopeToken::try_from("https://crates.io/scopes/🪤publish:crate");
         assert!(matches!(x, Err(InvalidScopeToken::InvalidByte { .. })));
     }
 
     #[test]
     fn ref_handles_valid() {
-        let x = ScopeTokenRef::from_str("https://crates.io/scopes/publish:crate").unwrap();
+        let x = ScopeTokenRef::from_static("https://crates.io/scopes/publish:crate");
         assert_eq!(x.as_str(), "https://crates.io/scopes/publish:crate");
     }
 

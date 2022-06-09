@@ -359,12 +359,12 @@ pub struct Subject;
 ///
 /// This type provides custom implementations of [`Display`][JwtRef#impl-Display] and
 /// [`Debug`][JwtRef#impl-Debug] to prevent unintentional disclosures of sensitive values.
-/// See teh documentation on those trait implementations on the [`JwtRef`] type for more
+/// See the documentation on those trait implementations on the [`JwtRef`] type for more
 /// information.
 #[braid(
     serde,
-    debug_impl = "owned",
-    display_impl = "owned",
+    debug = "owned",
+    display = "owned",
     ref_doc = "\
     A borrowed reference to a JSON Web Token ([`Jwt`])\n\
     \n\
@@ -1067,16 +1067,16 @@ mod tests {
         let validation = CoreValidator::default()
             .with_leeway(Duration::from_secs(2))
             .check_not_before()
-            .extend_allowed_audiences(vec![Audience::new("marcus"), Audience::new("other")])
-            .require_issuer(Issuer::new("face"));
+            .extend_allowed_audiences(vec![Audience::from_static("marcus"), Audience::from_static("other")])
+            .require_issuer(Issuer::from_static("face"));
 
-        let audiences = Audiences::from(vec![Audience::new("marcus"), Audience::new("other")]);
+        let audiences = Audiences::from(vec![Audience::from_static("marcus"), Audience::from_static("other")]);
 
         let claims = BasicClaims::new()
             .with_not_before(UnixTime(9))
             .with_expiration(UnixTime(5))
             .with_audiences(audiences)
-            .with_issuer(Issuer::new("face"));
+            .with_issuer(Issuer::from_static("face"));
 
         let clock = TestClock::new(UnixTime(7));
 

@@ -49,7 +49,7 @@ fn limited_reveal(unprotected: &str, f: &mut fmt::Formatter, default_len: usize)
 pub struct ClientId;
 
 /// A client secret
-#[braid(serde, debug_impl = "owned", display_impl = "owned")]
+#[braid(serde, debug = "owned", display = "owned")]
 pub struct ClientSecret;
 
 limited_reveal!(ClientSecretRef: "CLIENT SECRET", 5);
@@ -69,7 +69,7 @@ limited_reveal!(ClientSecretRef: "CLIENT SECRET", 5);
 // pub struct DeviceCode;
 //
 /// An access token
-#[braid(serde, debug_impl = "owned", display_impl = "owned")]
+#[braid(serde, debug = "owned", display = "owned")]
 pub struct AccessToken;
 
 limited_reveal!(AccessTokenRef: "ACCESS TOKEN", 15);
@@ -79,7 +79,7 @@ limited_reveal!(AccessTokenRef: "ACCESS TOKEN", 15);
 pub struct IdToken;
 
 /// A refresh token
-#[braid(serde, debug_impl = "owned", display_impl = "owned")]
+#[braid(serde, debug = "owned", display = "owned")]
 pub struct RefreshToken;
 
 limited_reveal!(RefreshTokenRef: "REFRESH TOKEN", 5);

@@ -60,8 +60,8 @@ const AUDIENCE: &str = "https://aliri.example.com/";
 async fn construct_authority() -> color_eyre::Result<Authority> {
     let validator = jwt::CoreValidator::default()
         .add_approved_algorithm(jwa::Algorithm::RS256)
-        .add_allowed_audience(jwt::Audience::new(AUDIENCE))
-        .require_issuer(jwt::Issuer::new(ISSUER));
+        .add_allowed_audience(jwt::Audience::from_static(AUDIENCE))
+        .require_issuer(jwt::Issuer::from_static(ISSUER));
 
     let authority =
         Authority::new_from_url(format!("{}.well-known/jwks.json", ISSUER), validator).await?;

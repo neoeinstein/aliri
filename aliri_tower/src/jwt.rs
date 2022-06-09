@@ -220,5 +220,5 @@ fn extract_jwt(auth: &str) -> Option<Jwt> {
         return None;
     }
 
-    Some(Jwt::new(auth[7..].trim()))
+    Some(Jwt::from(auth[7..].trim()))
 }

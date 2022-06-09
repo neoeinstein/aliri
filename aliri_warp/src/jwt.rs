@@ -31,7 +31,7 @@ async fn extract_jwt(auth: String) -> Result<Jwt, warp::reject::Rejection> {
         return Err(warp::reject::custom(JwtError::IncorrectAuthorizationScheme));
     }
 
-    Ok(Jwt::new(auth[7..].trim()))
+    Ok(Jwt::from(auth[7..].trim()))
 }
 
 /// Extracts a JWT token from the `Authorization` header
