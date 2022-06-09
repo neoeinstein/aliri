@@ -359,7 +359,7 @@ pub struct Subject;
 ///
 /// This type provides custom implementations of [`Display`][JwtRef#impl-Display] and
 /// [`Debug`][JwtRef#impl-Debug] to prevent unintentional disclosures of sensitive values.
-/// See teh documentation on those trait implementations on the [`JwtRef`] type for more
+/// See the documentation on those trait implementations on the [`JwtRef`] type for more
 /// information.
 #[braid(
     serde,
