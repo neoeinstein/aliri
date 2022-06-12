@@ -45,8 +45,8 @@
 //! let validator = jwt::CoreValidator::default()
 //!     .ignore_expiration()
 //!     .add_approved_algorithm(jwa::Algorithm::HS256)
-//!     .add_allowed_audience(jwt::Audience::new("my_api"))
-//!     .require_issuer(jwt::Issuer::new("authority"))
+//!     .add_allowed_audience(jwt::Audience::from_static("my_api"))
+//!     .require_issuer(jwt::Issuer::from_static("authority"))
 //!     .check_subject(Regex::new("^Al.ri$").unwrap());
 //!
 //! let data: jwt::Validated = token.verify(&key, &validator).unwrap();
@@ -363,8 +363,9 @@ pub struct Subject;
 /// information.
 #[braid(
     serde,
-    debug_impl = "owned",
-    display_impl = "owned",
+    debug = "owned",
+    display = "owned",
+    ord = "omit",
     ref_doc = "\
     A borrowed reference to a JSON Web Token ([`Jwt`])\n\
     \n\
@@ -1067,16 +1068,22 @@ mod tests {
         let validation = CoreValidator::default()
             .with_leeway(Duration::from_secs(2))
             .check_not_before()
-            .extend_allowed_audiences(vec![Audience::new("marcus"), Audience::new("other")])
-            .require_issuer(Issuer::new("face"));
+            .extend_allowed_audiences(vec![
+                Audience::from_static("marcus"),
+                Audience::from_static("other"),
+            ])
+            .require_issuer(Issuer::from_static("face"));
 
-        let audiences = Audiences::from(vec![Audience::new("marcus"), Audience::new("other")]);
+        let audiences = Audiences::from(vec![
+            Audience::from_static("marcus"),
+            Audience::from_static("other"),
+        ]);
 
         let claims = BasicClaims::new()
             .with_not_before(UnixTime(9))
             .with_expiration(UnixTime(5))
             .with_audiences(audiences)
-            .with_issuer(Issuer::new("face"));
+            .with_issuer(Issuer::from_static("face"));
 
         let clock = TestClock::new(UnixTime(7));
 

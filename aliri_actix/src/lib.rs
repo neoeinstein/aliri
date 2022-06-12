@@ -51,7 +51,7 @@
 //!     let secret = Base64UrlRef::from_slice(b"test").to_owned();
 //!     let key = Jwk::from(jwa::Hmac::new(secret))
 //!         .with_algorithm(jwa::Algorithm::HS256)
-//!         .with_key_id(jwk::KeyId::new("test key"));
+//!         .with_key_id(jwk::KeyId::from_static("test key"));
 //!
 //!     let mut jwks = Jwks::default();
 //!     jwks.add_key(key);
@@ -59,8 +59,8 @@
 //!     let validator = jwt::CoreValidator::default()
 //!         .ignore_expiration() // Only for demonstration purposes
 //!         .add_approved_algorithm(jwa::Algorithm::HS256)
-//!         .add_allowed_audience(jwt::Audience::new("my_api"))
-//!         .require_issuer(jwt::Issuer::new("authority"));
+//!         .add_allowed_audience(jwt::Audience::from_static("my_api"))
+//!         .require_issuer(jwt::Issuer::from_static("authority"));
 //!
 //!     Authority::new(jwks, validator)
 //! }

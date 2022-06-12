@@ -52,7 +52,7 @@ async fn main() -> Result<()> {
 
     let alg = jwa::hmac::SigningAlgorithm::HS256;
     let jwk = Jwk::from(jwa::Hmac::generate(alg).unwrap())
-        .with_key_id(jwk::KeyId::new("key-id"))
+        .with_key_id(jwk::KeyId::from_static("key-id"))
         .with_algorithm(alg);
 
     jwks.add_key(jwk);
@@ -66,9 +66,9 @@ async fn main() -> Result<()> {
     let validator = jwt::CoreValidator::default()
         .add_approved_algorithm(jwa::Algorithm::HS256)
         .check_not_before()
-        .add_allowed_audience(jwt::Audience::new("aliri_warp"))
+        .add_allowed_audience(jwt::Audience::from_static("aliri_warp"))
         .check_subject(regex::Regex::new(r"^aliri\|.{3,}").unwrap())
-        .require_issuer(jwt::Issuer::new("authority"));
+        .require_issuer(jwt::Issuer::from_static("authority"));
 
     let hi3 = warp::path!("hello3" / String)
         .and(warp::get())

@@ -78,7 +78,7 @@ fn construct_authority() -> Authority {
     let secret = Base64UrlRef::from_slice(SHARED_SECRET).to_owned();
     let key = Jwk::from(jwa::Hmac::new(secret))
         .with_algorithm(jwa::Algorithm::HS256)
-        .with_key_id(jwk::KeyId::new(KEY_ID));
+        .with_key_id(jwk::KeyId::from_static(KEY_ID));
 
     print_example_token(&key);
 
@@ -87,8 +87,8 @@ fn construct_authority() -> Authority {
 
     let validator = jwt::CoreValidator::default()
         .add_approved_algorithm(jwa::Algorithm::HS256)
-        .add_allowed_audience(jwt::Audience::new(AUDIENCE))
-        .require_issuer(jwt::Issuer::new(ISSUER));
+        .add_allowed_audience(jwt::Audience::from_static(AUDIENCE))
+        .require_issuer(jwt::Issuer::from_static(ISSUER));
 
     Authority::new(jwks, validator)
 }
@@ -102,12 +102,13 @@ async fn handle_get(Path(id): Path<u64>) -> String {
 }
 
 fn print_example_token(key: &Jwk) {
-    let headers = jwt::BasicHeaders::with_key_id(jwa::Algorithm::HS256, jwk::KeyId::new(KEY_ID));
+    let headers =
+        jwt::BasicHeaders::with_key_id(jwa::Algorithm::HS256, jwk::KeyId::from_static(KEY_ID));
 
     let payload = CustomClaims {
-        sub: jwt::Subject::new("test"),
-        iss: jwt::Issuer::new(ISSUER),
-        aud: jwt::Audience::new(AUDIENCE).into(),
+        sub: jwt::Subject::from_static("test"),
+        iss: jwt::Issuer::from_static(ISSUER),
+        aud: jwt::Audience::from_static(AUDIENCE).into(),
         exp: aliri_clock::System.now() + DurationSecs(300),
         scope: scope!["get_user", "post_user"].unwrap(),
     };
