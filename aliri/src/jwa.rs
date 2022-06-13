@@ -33,6 +33,5 @@ mod usage;
 pub use algorithm::Algorithm;
 pub use usage::Usage;
 
-lazy_static::lazy_static! {
-    static ref CRATE_RNG: ring::rand::SystemRandom = ring::rand::SystemRandom::new();
-}
+static CRATE_RNG: once_cell::sync::Lazy<ring::rand::SystemRandom> =
+    once_cell::sync::Lazy::new(ring::rand::SystemRandom::new);

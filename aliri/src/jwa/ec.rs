@@ -2,7 +2,7 @@
 
 use std::{convert::TryFrom, fmt};
 
-use lazy_static::lazy_static;
+use once_cell::sync::Lazy;
 use openssl::{
     ec::{EcGroup, EcGroupRef},
     nid::Nid,
@@ -21,11 +21,9 @@ mod public;
 pub use private::PrivateKey;
 pub use public::PublicKey;
 
-lazy_static! {
-    static ref P256: EcGroup = EcGroup::from_curve_name(Nid::X9_62_PRIME256V1).unwrap();
-    static ref P384: EcGroup = EcGroup::from_curve_name(Nid::SECP384R1).unwrap();
-    static ref P521: EcGroup = EcGroup::from_curve_name(Nid::SECP521R1).unwrap();
-}
+static P256: Lazy<EcGroup> = Lazy::new(|| EcGroup::from_curve_name(Nid::X9_62_PRIME256V1).unwrap());
+static P384: Lazy<EcGroup> = Lazy::new(|| EcGroup::from_curve_name(Nid::SECP384R1).unwrap());
+static P521: Lazy<EcGroup> = Lazy::new(|| EcGroup::from_curve_name(Nid::SECP521R1).unwrap());
 
 /// A named ECC curve
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Serialize, Deserialize)]
