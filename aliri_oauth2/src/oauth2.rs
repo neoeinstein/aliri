@@ -391,23 +391,26 @@ impl HasScope for Scope {
 /// ```
 #[macro_export]
 macro_rules! scope {
-    ($($token:literal),* $(,)?) => {
-        $crate::scope![$(($token)),*]
+    ($($token:literal),+ $(,)?) => {
+        $crate::scope![$(($token)),+]
     };
-    ($($token:expr),* $(,)?) => {
+    ($($token:expr),+ $(,)?) => {
         {
             let __f = || -> Result<$crate::Scope, $crate::oauth2::InvalidScopeToken> {
                 ::core::result::Result::Ok(
                     $crate::Scope::empty()
                     $(
                         .and(::core::convert::TryFrom::try_from($token)?)
-                    )*
+                    )+
                 )
             };
 
             __f()
         }
     };
+    () => {
+        Ok::<_, $crate::oauth2::InvalidScopeToken>($crate::Scope::empty())
+    }
 }
 
 #[cfg(test)]
