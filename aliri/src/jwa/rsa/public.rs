@@ -11,6 +11,7 @@ use crate::{error, jws};
 /// RSA public key components
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(try_from = "PublicKeyDto")]
+#[must_use]
 pub struct PublicKey {
     /// The public modulus
     #[serde(rename = "n")]
@@ -23,16 +24,22 @@ pub struct PublicKey {
 
 impl PublicKey {
     /// The public key's modulus
+    #[must_use]
     pub fn modulus(&self) -> &Base64UrlRef {
         &self.modulus
     }
 
     /// The public key's exponent
+    #[must_use]
     pub fn exponent(&self) -> &Base64UrlRef {
         &self.exponent
     }
 
     /// Imports an RSA public key from a PEM file
+    ///
+    /// # Errors
+    ///
+    /// The provided PEM file is not a valid RSA public key.
     #[cfg(feature = "openssl")]
     #[cfg_attr(docsrs, doc(cfg(feature = "openssl")))]
     pub fn from_pem(pem: &str) -> Result<Self, error::KeyRejected> {
@@ -44,6 +51,10 @@ impl PublicKey {
     }
 
     /// Exports an RSA public key to a PEM file
+    ///
+    /// # Errors
+    ///
+    /// There was an error exporting the key.
     #[cfg(feature = "openssl")]
     #[cfg_attr(docsrs, doc(cfg(feature = "openssl")))]
     pub fn to_pem(&self) -> Result<String, error::Unexpected> {
@@ -56,6 +67,10 @@ impl PublicKey {
     }
 
     /// Constructs a public key from the modulus and exponent
+    ///
+    /// # Errors
+    ///
+    /// The modulus or exponent is not valid as an RSA public key.
     pub fn from_components(
         modulus: impl Into<Base64Url>,
         exponent: impl Into<Base64Url>,

@@ -15,6 +15,7 @@ use crate::{error, jwa, jws};
 /// RSA private key components
 #[derive(Clone, Serialize, Deserialize)] // Should we allow serialization here?
 #[serde(try_from = "PrivateKeyDto", into = "PrivateKeyDto")]
+#[must_use]
 pub struct PrivateKey {
     public_key: PublicKey,
     der: Vec<u8>,
@@ -33,18 +34,26 @@ impl Eq for PrivateKey {}
 #[cfg_attr(docsrs, doc(cfg(feature = "private-keys")))]
 impl PrivateKey {
     /// Generates a new 2048-bit RSA key pair
+    ///
+    /// # Errors
+    ///
+    /// Unable to generate a private key.
     pub fn generate() -> Result<Self, error::Unexpected> {
         let rsa = Rsa::generate(2048).map_err(error::unexpected)?;
-        Self::from_openssl_key(rsa).map_err(error::unexpected)
+        Self::from_openssl_key(&rsa).map_err(error::unexpected)
     }
 
     /// Imports an RSA key pair from a PEM file
+    ///
+    /// # Errors
+    ///
+    /// The provided PEM file is not a valid RSA private key.
     pub fn from_pem(pem: &str) -> Result<Self, error::KeyRejected> {
         let rsa = Rsa::private_key_from_pem(pem.as_bytes()).map_err(error::key_rejected)?;
-        Self::from_openssl_key(rsa)
+        Self::from_openssl_key(&rsa)
     }
 
-    fn from_openssl_key(rsa: Rsa<Private>) -> Result<Self, error::KeyRejected> {
+    fn from_openssl_key(rsa: &Rsa<Private>) -> Result<Self, error::KeyRejected> {
         let der = rsa.private_key_to_der().map_err(error::key_rejected)?;
 
         let public_key = PublicKey::from_components(
@@ -63,11 +72,13 @@ impl PrivateKey {
     }
 
     /// The RSA key pair in DER encoding
+    #[must_use]
     pub fn der(&self) -> &[u8] {
         &self.der
     }
 
     /// Exports the RSA key pair as a PEM file
+    #[must_use]
     pub fn to_pem(&self) -> String {
         let key = Rsa::private_key_from_der(&self.der).unwrap();
         let pem = key.private_key_to_pem().unwrap();

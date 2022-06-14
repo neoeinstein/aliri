@@ -22,6 +22,7 @@ pub struct KeyId;
 /// An identified JSON Web Key
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
 #[serde(try_from = "JwkDto")]
+#[must_use]
 pub struct Jwk {
     key_id: Option<KeyId>,
     usage: Option<jwa::Usage>,
@@ -31,21 +32,25 @@ pub struct Jwk {
 
 impl Jwk {
     /// The key ID
+    #[must_use]
     pub fn key_id(&self) -> Option<&KeyIdRef> {
         self.key_id.as_deref()
     }
 
     /// The intended usage of the key
+    #[must_use]
     pub fn usage(&self) -> Option<jwa::Usage> {
         self.usage
     }
 
     /// The algorithm to be used with this JWK
+    #[must_use]
     pub fn algorithm(&self) -> Option<jwa::Algorithm> {
         self.algorithm
     }
 
     /// Whether the key is compatible with the given algorithm
+    #[must_use]
     pub fn is_compatible(&self, alg: jwa::Algorithm) -> bool {
         self.key.is_compatible(alg)
     }

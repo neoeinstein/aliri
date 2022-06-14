@@ -35,6 +35,7 @@ pub enum InvalidScopeToken {
     validator,
     ref_doc = "A borrowed reference to an OAuth2 [`ScopeToken`]"
 )]
+#[must_use]
 pub struct ScopeToken(smartstring::alias::String);
 
 impl aliri_braid::Validator for ScopeToken {
@@ -62,6 +63,10 @@ impl aliri_braid::Validator for ScopeToken {
 
 impl ScopeToken {
     /// Construct a new `ScopeToken` from a string
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if the provided string is not a valid scope token.
     #[inline]
     pub fn from_string(value: String) -> Result<Self, InvalidScopeToken> {
         Self::try_from(value)
@@ -108,6 +113,7 @@ impl From<Scope> for ScopeDto {
 /// An OAuth2 Scope defining a set of access permissions
 #[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(try_from = "Option<ScopeDto>", into = "ScopeDto")]
+#[must_use]
 pub struct Scope(BTreeSet<ScopeToken>);
 
 impl Scope {
@@ -157,18 +163,21 @@ impl Scope {
     /// Checks to see whether this scope contains all of
     /// the scope tokens in `subset`.
     #[inline]
+    #[must_use]
     pub fn contains_all(&self, subset: &Scope) -> bool {
         self.0.is_superset(&subset.0)
     }
 
     /// The number of scope tokens
     #[inline]
+    #[must_use]
     pub fn len(&self) -> usize {
         self.0.len()
     }
 
     /// Whether this scope has any scope tokens at all
     #[inline]
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
@@ -214,7 +223,7 @@ impl<'a> Iterator for Iter<'a> {
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        self.iter.next().map(|x| x.as_ref())
+        self.iter.next().map(AsRef::as_ref)
     }
 }
 
@@ -239,7 +248,7 @@ where
     where
         I: IntoIterator<Item = S>,
     {
-        self.0.extend(iter.into_iter().map(Into::into))
+        self.0.extend(iter.into_iter().map(Into::into));
     }
 }
 

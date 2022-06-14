@@ -10,6 +10,7 @@ use crate::{error, jws};
 
 /// HMAC secret
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[must_use]
 pub struct Hmac {
     #[serde(rename = "k")]
     secret: Base64Url,
@@ -29,11 +30,19 @@ impl Hmac {
     }
 
     /// Generates a new HMAC secret
+    ///
+    /// # Errors
+    ///
+    /// Unable to generate a new HMAC secret.
     pub fn generate(alg: SigningAlgorithm) -> Result<Self, error::Unexpected> {
         Self::generate_with_rng(alg, &*super::CRATE_RNG)
     }
 
     /// Generates a new HMAC secret using the provided source of randomness
+    ///
+    /// # Errors
+    ///
+    /// Unable to generate a new HMAC secret from the provided RNG.
     pub fn generate_with_rng(
         alg: SigningAlgorithm,
         rng: &dyn SecureRandom,
@@ -71,6 +80,7 @@ pub enum SigningAlgorithm {
 
 impl SigningAlgorithm {
     /// Recommended key size in bytes for an HMAC secret
+    #[must_use]
     fn recommended_key_size(self) -> usize {
         match self {
             Self::HS256 => 256 / 8,
@@ -80,6 +90,7 @@ impl SigningAlgorithm {
     }
 
     /// The size in bytes of an HMAC signature
+    #[must_use]
     pub fn signature_size(self) -> usize {
         match self {
             Self::HS256 => 256 / 8,

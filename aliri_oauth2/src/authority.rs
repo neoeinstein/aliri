@@ -66,6 +66,7 @@ struct Inner {
 /// An authority backed by a potentially dynamic JSON Web Key Set (JWKS)
 /// held by a remote source
 #[derive(Debug, Clone)]
+#[must_use]
 pub struct Authority {
     inner: Arc<Inner>,
 }
@@ -163,6 +164,10 @@ impl Authority {
     }
 
     /// Authenticates the token and checks access according to the policy
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the token is invalid or is not authorized by the policy
     pub fn verify_token<T>(&self, token: &JwtRef, policy: &ScopePolicy) -> Result<T, AuthorityError>
     where
         T: for<'de> Deserialize<'de> + HasScope + jwt::CoreClaims,
@@ -179,9 +184,9 @@ impl Authority {
 
                 guard.jwks.get_key_by_opt(kid, alg).ok_or_else(|| {
                     if let Some(kid) = kid {
-                        tracing::debug!(%kid, %alg, "unable to find matching key")
+                        tracing::debug!(%kid, %alg, "unable to find matching key");
                     } else {
-                        tracing::debug!(%alg, "unable to find matching key")
+                        tracing::debug!(%alg, "unable to find matching key");
                     }
                     AuthorityError::UnknownKeyId
                 })?

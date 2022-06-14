@@ -191,16 +191,19 @@ pub enum JwkVerifyError {
 
 impl JwkVerifyError {
     /// Whether the error is due to an incompatible algorithm
+    #[must_use]
     pub fn is_incompatible_alg(&self) -> bool {
         matches!(self, Self::IncompatibleAlgorithm(_))
     }
 
     /// Whether the error is due to a usage mismatch
+    #[must_use]
     pub fn is_usage_mismatch(&self) -> bool {
         matches!(self, Self::JwkUsageMismatch(_))
     }
 
     /// Whether the error is due to a signature mismatch
+    #[must_use]
     pub fn is_signature_mismatch(&self) -> bool {
         matches!(self, Self::SignatureMismatch(_))
     }
@@ -259,7 +262,7 @@ pub enum JwtSigningError {
 }
 
 /// An error occurring when validating the claims of a JWT
-#[derive(Debug, PartialEq, Error)]
+#[derive(Debug, Error)]
 pub enum ClaimsRejected {
     /// The token algorithm is not acceptable
     #[error("invalid algorithm")]
@@ -290,6 +293,6 @@ pub enum ClaimsRejected {
     MissingRequiredClaim(&'static str),
 
     /// Custom validation error
-    #[error("{_0}")]
-    Custom(String),
+    #[error(transparent)]
+    Custom(Box<dyn StdError + Send + Sync>),
 }

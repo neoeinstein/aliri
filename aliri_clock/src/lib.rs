@@ -77,7 +77,7 @@ impl ops::Add<DurationSecs> for UnixTime {
 impl ops::AddAssign<DurationSecs> for UnixTime {
     #[inline]
     fn add_assign(&mut self, other: DurationSecs) {
-        self.0 += other.0
+        self.0 += other.0;
     }
 }
 
@@ -93,7 +93,7 @@ impl ops::Sub<DurationSecs> for UnixTime {
 impl ops::SubAssign<DurationSecs> for UnixTime {
     #[inline]
     fn sub_assign(&mut self, other: DurationSecs) {
-        self.0 -= other.0
+        self.0 -= other.0;
     }
 }
 
@@ -166,7 +166,7 @@ impl ops::Add for DurationSecs {
 impl ops::AddAssign for DurationSecs {
     #[inline]
     fn add_assign(&mut self, other: Self) {
-        self.0 += other.0
+        self.0 += other.0;
     }
 }
 
@@ -182,7 +182,7 @@ impl ops::Sub for DurationSecs {
 impl ops::SubAssign for DurationSecs {
     #[inline]
     fn sub_assign(&mut self, other: Self) {
-        self.0 -= other.0
+        self.0 -= other.0;
     }
 }
 
@@ -198,7 +198,7 @@ impl ops::Mul<u64> for DurationSecs {
 impl ops::MulAssign<u64> for DurationSecs {
     #[inline]
     fn mul_assign(&mut self, other: u64) {
-        self.0 *= other
+        self.0 *= other;
     }
 }
 
@@ -214,7 +214,7 @@ impl ops::Mul<f64> for DurationSecs {
 impl ops::MulAssign<f64> for DurationSecs {
     #[inline]
     fn mul_assign(&mut self, other: f64) {
-        *self = *self * other
+        *self = *self * other;
     }
 }
 
@@ -230,7 +230,7 @@ impl ops::Div<u64> for DurationSecs {
 impl ops::DivAssign<u64> for DurationSecs {
     #[inline]
     fn div_assign(&mut self, other: u64) {
-        self.0 /= other
+        self.0 /= other;
     }
 }
 
@@ -272,6 +272,7 @@ impl Clock for System {
 
 /// A test clock which maintains the current time as internal state
 #[derive(Clone, Debug, Default)]
+#[must_use]
 pub struct TestClock(Arc<AtomicU64>);
 
 impl Clock for TestClock {

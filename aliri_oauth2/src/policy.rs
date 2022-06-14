@@ -108,6 +108,7 @@ impl ScopePolicy {
     ///
     /// By default, this policy will deny all requests
     #[inline]
+    #[must_use]
     pub fn deny_all() -> Self {
         Self {
             alternatives: Vec::new(),
@@ -116,6 +117,7 @@ impl ScopePolicy {
 
     /// Constructs a policy that does not require any scopes (allow)
     #[inline]
+    #[must_use]
     pub fn allow_all() -> Self {
         Self {
             alternatives: vec![Scope::empty()],
@@ -124,6 +126,7 @@ impl ScopePolicy {
 
     /// Constructs a policy that requires this set of scopes
     #[inline]
+    #[must_use]
     pub fn allow_one(scope: Scope) -> Self {
         Self {
             alternatives: vec![scope],
@@ -132,6 +135,7 @@ impl ScopePolicy {
 
     /// Add an alternate allowable scope
     #[inline]
+    #[must_use]
     pub fn or_allow(self, scope: Scope) -> Self {
         let mut s = self;
         s.allow(scope);
@@ -154,6 +158,7 @@ impl ScopePolicy {
     /// # Panics
     ///
     /// This function will panic if the provided string is not a valid [`Scope`].
+    #[must_use]
     pub fn allow_one_from_static(scope: &'static str) -> Self {
         match scope.parse::<Scope>() {
             Ok(scope) => Self::allow_one(scope),
@@ -166,6 +171,7 @@ impl ScopePolicy {
     /// # Panics
     ///
     /// This function will panic if the provided string is not a valid [`Scope`].
+    #[must_use]
     pub fn or_allow_from_static(self, scope: &'static str) -> Self {
         match scope.parse::<Scope>() {
             Ok(scope) => self.or_allow(scope),
@@ -186,10 +192,7 @@ impl ScopePolicy {
     }
 
     fn is_allow_all(&self) -> bool {
-        self.alternatives
-            .first()
-            .map(|s| s.is_empty())
-            .unwrap_or(false)
+        self.alternatives.first().map_or(false, Scope::is_empty)
     }
 }
 
@@ -252,7 +255,7 @@ impl Extend<Scope> for ScopePolicy {
         I: IntoIterator<Item = Scope>,
     {
         self.alternatives.extend(iter);
-        if self.alternatives.iter().any(|s| s.is_empty()) {
+        if self.alternatives.iter().any(Scope::is_empty) {
             self.alternatives.clear();
             self.alternatives.push(Scope::empty());
         }

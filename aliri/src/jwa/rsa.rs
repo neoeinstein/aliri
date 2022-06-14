@@ -20,6 +20,7 @@ pub use public::PublicKey;
 /// RSA key
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(transparent)]
+#[must_use]
 pub struct Rsa {
     #[cfg(feature = "private-keys")]
     key: MaybePrivate,
@@ -39,6 +40,10 @@ enum MaybePrivate {
 
 impl Rsa {
     /// Generates a newly minted RSA public/private key pair
+    ///
+    /// # Errors
+    ///
+    /// Unable to generate a private key.
     #[cfg(feature = "private-keys")]
     #[cfg_attr(docsrs, doc(cfg(feature = "openssl")))]
     pub fn generate() -> Result<Self, error::Unexpected> {
@@ -50,6 +55,10 @@ impl Rsa {
     }
 
     /// Constructs a private key from a PEM file
+    ///
+    /// # Errors
+    ///
+    /// The provided PEM file is not a valid RSA private key.
     #[cfg(feature = "private-keys")]
     #[cfg_attr(docsrs, doc(cfg(feature = "private-keys")))]
     pub fn private_key_from_pem(pem: &str) -> Result<Self, error::KeyRejected> {
@@ -59,6 +68,10 @@ impl Rsa {
     }
 
     /// Constructs a public key from a PEM file
+    ///
+    /// # Errors
+    ///
+    /// The provided PEM file is not a valid RSA public key.
     #[cfg(feature = "openssl")]
     #[cfg_attr(docsrs, doc(cfg(feature = "openssl")))]
     pub fn public_key_from_pem(pem: &str) -> Result<Self, error::KeyRejected> {
@@ -68,6 +81,10 @@ impl Rsa {
     }
 
     /// Constructs a public key from the modulus and exponent
+    ///
+    /// # Errors
+    ///
+    /// The modulus and exponent were not valid as a public key.
     pub fn from_public_components(
         modulus: impl Into<Base64Url>,
         exponent: impl Into<Base64Url>,
@@ -104,7 +121,7 @@ impl Rsa {
     pub fn public_only(self) -> Self {
         match self.key {
             MaybePrivate::PublicAndPrivate(p) => Self::from(p.into_public_key()),
-            _ => self,
+            MaybePrivate::PublicOnly(_) => self,
         }
     }
 
@@ -139,6 +156,7 @@ pub enum SigningAlgorithm {
 
 impl SigningAlgorithm {
     /// The size in bytes of RSA signatures
+    #[must_use]
     pub const fn signature_size(self) -> usize {
         256
     }

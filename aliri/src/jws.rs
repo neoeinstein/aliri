@@ -74,6 +74,7 @@ impl Algorithm {
 
 impl Algorithm {
     /// The expected output size of the algorithm's signature in bytes
+    #[must_use]
     pub fn signature_size(self) -> usize {
         match self {
             #[cfg(feature = "hmac")]
@@ -101,6 +102,10 @@ pub trait Signer {
     fn can_sign(&self, alg: Self::Algorithm) -> bool;
 
     /// Attempts to sign the data provided using the specified algorithm
+    ///
+    /// # Errors
+    ///
+    /// This signer is unable to sign the data using the algorithm requested.
     fn sign(&self, alg: Self::Algorithm, data: &[u8]) -> Result<Vec<u8>, Self::Error>;
 }
 
@@ -118,6 +123,10 @@ pub trait Verifier {
 
     /// Attempts to verify the data against the signature using the
     /// specified algorithm
+    ///
+    /// # Errors
+    ///
+    /// The data could not be verified according to the algorithm and signature provided.
     fn verify(
         &self,
         alg: Self::Algorithm,

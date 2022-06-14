@@ -68,6 +68,7 @@ impl Curve {
 /// Elliptic curve cryptography key
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(transparent)]
+#[must_use]
 pub struct EllipticCurve {
     #[cfg(feature = "private-keys")]
     key: MaybePrivate,

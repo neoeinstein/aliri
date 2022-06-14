@@ -21,6 +21,7 @@ use crate::{
 /// ECC private key parameters
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(try_from = "PrivateKeyDto", into = "PrivateKeyDto")]
+#[must_use]
 pub struct PrivateKey {
     public_key: PublicKey,
     pkcs8: Base64,
@@ -37,6 +38,10 @@ impl Eq for PrivateKey {}
 
 impl PrivateKey {
     /// Generates a new ECC key pair using the specified curve
+    ///
+    /// # Errors
+    ///
+    /// Unable to generate a private key.
     pub fn generate(curve: Curve) -> Result<Self, error::Unexpected> {
         let key = EcKey::generate(curve.to_group()).map_err(error::unexpected)?;
 
@@ -44,6 +49,10 @@ impl PrivateKey {
     }
 
     /// Constructs an ECC key pair from a PEM file
+    ///
+    /// # Errors
+    ///
+    /// The provided PEM file is not a valid ECC private key.
     pub fn from_pem(pem: &str) -> Result<Self, error::KeyRejected> {
         let key = PKey::private_key_from_pem(pem.as_bytes()).map_err(error::key_rejected)?;
         Self::from_openssl_eckey(key.ec_key().map_err(error::key_rejected)?)
