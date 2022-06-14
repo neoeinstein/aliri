@@ -29,6 +29,7 @@ aliri_braid = { version = "0.2.2" }
 arc-swap = "1.2"
 reqwest = { version = "0.11", optional = true, features = [ "json" ] }
 serde = { version = "1", features = [ "derive" ] }
+smartstring = { version = "1", features = [ "serde" ] }
 thiserror = "1"
 tracing = "0.1.15"
 tracing-futures = "0.2"

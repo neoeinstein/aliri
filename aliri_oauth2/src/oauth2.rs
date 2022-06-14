@@ -35,7 +35,7 @@ pub enum InvalidScopeToken {
     validator,
     ref_doc = "A borrowed reference to an OAuth2 [`ScopeToken`]"
 )]
-pub struct ScopeToken;
+pub struct ScopeToken(smartstring::alias::String);
 
 impl aliri_braid::Validator for ScopeToken {
     type Error = InvalidScopeToken;
@@ -57,6 +57,23 @@ impl aliri_braid::Validator for ScopeToken {
         } else {
             Ok(())
         }
+    }
+}
+
+impl ScopeToken {
+    /// Construct a new `ScopeToken` from a string
+    #[inline]
+    pub fn from_string(value: String) -> Result<Self, InvalidScopeToken> {
+        Self::try_from(value)
+    }
+}
+
+impl TryFrom<String> for ScopeToken {
+    type Error = InvalidScopeToken;
+
+    #[inline]
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        Self::new(smartstring::SmartString::from(value))
     }
 }
 

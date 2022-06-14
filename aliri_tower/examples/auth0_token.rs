@@ -71,7 +71,7 @@ async fn perform_device_login_flow(
 
     let scope = scope
         .into_iter()
-        .map(oauth2::ScopeToken::new)
+        .map(oauth2::ScopeToken::try_from)
         .collect::<Result<oauth2::Scope, _>>()?;
 
     let client = reqwest::Client::default();
