@@ -1,12 +1,19 @@
 use aliri::{jwa, jwk, jwt, Jwk, Jwks, Jwt};
+use aliri_axum::scope_guards;
 use aliri_base64::Base64UrlRef;
 use aliri_clock::{Clock, DurationSecs, UnixTime};
-use aliri_oauth2::{oauth2, policy, scope, Authority};
+use aliri_oauth2::{oauth2, scope, Authority};
 use aliri_tower::Oauth2Authorizer;
 use axum::extract::Path;
-use axum::handler::Handler;
 use axum::routing::{get, post};
 use axum::Router;
+
+scope_guards! {
+    type Claims = CustomClaims;
+
+    scope PostUser = "post_user";
+    scope GetUser = "get_user";
+}
 
 #[tokio::main]
 async fn main() {
@@ -17,14 +24,8 @@ async fn main() {
         .with_terse_error_handler();
 
     let app = Router::new()
-        .route(
-            "/users",
-            post(handle_post.layer(authorizer.scope_layer(policy![scope!["post_user"].unwrap()]))),
-        )
-        .route(
-            "/users/:id",
-            get(handle_get.layer(authorizer.scope_layer(policy![scope!["get_user"].unwrap()]))),
-        )
+        .route("/users", post(handle_post))
+        .route("/users/:id", get(handle_get))
         .layer(authorizer.jwt_layer(authority));
 
     println!("Press Ctrl+C to exit");
@@ -93,11 +94,11 @@ fn construct_authority() -> Authority {
     Authority::new(jwks, validator)
 }
 
-async fn handle_post() -> &'static str {
+async fn handle_post(_: PostUser) -> &'static str {
     "Handled POST /users"
 }
 
-async fn handle_get(Path(id): Path<u64>) -> String {
+async fn handle_get(_: GetUser, Path(id): Path<u64>) -> String {
     format!("Handled GET /users/{}", id)
 }
 

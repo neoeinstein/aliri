@@ -2,7 +2,8 @@
 //! ecosystem, including `axum`.
 //!
 //! See the `examples` folder in the repository for a working example using
-//! an `axum` web server.
+//! an `tonic` web server. For a more ergonomic experience in `axum`,
+//! see the [`aliri_axum`](https://docs.rs/aliri_axum) crate.
 //!
 //! ```
 //! # use axum::extract::Path;

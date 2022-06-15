@@ -1,15 +1,25 @@
 use aliri::error::JwtVerifyError;
 use aliri::{jwa, jwt};
+use aliri_axum::scope_guards;
 use aliri_clock::UnixTime;
-use aliri_oauth2::{oauth2, Authority, ScopePolicy};
+use aliri_oauth2::{oauth2, Authority};
 use aliri_tower::Oauth2Authorizer;
-use axum::extract::{Extension, Path, RequestParts};
-use axum::handler::Handler;
+use axum::extract::{Path, RequestParts};
 use axum::response::IntoResponse;
 use axum::routing::{get, post};
 use axum::Router;
 use http::Response;
 use time::format_description::well_known::Rfc3339;
+
+scope_guards! {
+    type Claims = CustomClaims;
+
+    scope PostUser = "post_user";
+    scope GetUser = "get_user";
+    scope DeleteUser = "delete_user";
+    scope AllowAny = *;
+    scope DenyAll = [];
+}
 
 #[tokio::main]
 async fn main() -> color_eyre::Result<()> {
@@ -20,28 +30,12 @@ async fn main() -> color_eyre::Result<()> {
     //.with_terse_error_handler();
     //.with_verbose_error_handler();
 
-    let app =
-        Router::new()
-            .route(
-                "/users",
-                post(handle_post.layer(
-                    authorizer.scope_layer(ScopePolicy::allow_one_from_static("post_user")),
-                )),
-            )
-            .route(
-                "/users/:id",
-                get(handle_get
-                    .layer(authorizer.scope_layer(ScopePolicy::allow_one_from_static("get_user"))))
-                .delete(handle_delete.layer(
-                    authorizer.scope_layer(ScopePolicy::allow_one_from_static("delete_user")),
-                )),
-            )
-            .route("/info", get(handle_get_info))
-            .route(
-                "/deny_all",
-                get(handle_deny_all.layer(authorizer.scope_layer(ScopePolicy::deny_all()))),
-            )
-            .layer(authorizer.jwt_layer(authority));
+    let app = Router::new()
+        .route("/users", post(handle_post))
+        .route("/users/:id", get(handle_get).delete(handle_delete))
+        .route("/info", get(handle_get_info))
+        .route("/deny_all", get(handle_deny_all))
+        .layer(authorizer.jwt_layer(authority));
 
     println!("Run this program with `token` as an argument to generate a token");
     println!("Press Ctrl+C to exit");
@@ -69,21 +63,21 @@ async fn construct_authority() -> color_eyre::Result<Authority> {
     Ok(authority)
 }
 
-async fn handle_post() -> &'static str {
+async fn handle_post(_: PostUser) -> &'static str {
     "Handled POST /users"
 }
 
-async fn handle_get(Path(id): Path<u64>) -> String {
+async fn handle_get(_: GetUser, Path(id): Path<u64>) -> String {
     format!("Handled GET /users/{}", id)
 }
 
-async fn handle_delete(Path(id): Path<u64>) -> String {
+async fn handle_delete(_: DeleteUser, Path(id): Path<u64>) -> String {
     format!("Handled DELETE /users/{}", id)
 }
 
 async fn handle_get_info(
-    Extension(claims): Extension<CustomClaims>,
     LoginCount(login_count): LoginCount,
+    AllowAny(claims): AllowAny,
 ) -> String {
     format!("\
             Token data:\n\
@@ -106,7 +100,7 @@ async fn handle_get_info(
     )
 }
 
-async fn handle_deny_all() -> &'static str {
+async fn handle_deny_all(_: DenyAll) -> &'static str {
     "How did you get here?"
 }
 
@@ -207,51 +201,10 @@ impl aliri_tower::OnJwtError for MyErrorHandler {
     }
 }
 
-impl aliri_tower::OnScopeError for MyErrorHandler {
-    type Body = axum::body::BoxBody;
-
-    fn on_missing_scope_claim(&self) -> Response<Self::Body> {
-        let (parts, ()) = aliri_tower::util::forbidden(
-            "authorization token is missing an expected scope claim",
-            None,
-        )
-        .into_parts();
-
-        (
-            parts.status,
-            parts.headers,
-            "authorization token is missing an expected scope claim\n",
-        )
-            .into_response()
-    }
-
-    fn on_scope_policy_failure(
-        &self,
-        held: &oauth2::Scope,
-        required: &ScopePolicy,
-    ) -> Response<Self::Body> {
-        use std::fmt::Write;
-
-        let (parts, ()) = aliri_tower::util::forbidden(
-            "authorization token has insufficient scope to access this endpoint",
-            Some(required),
-        )
-        .into_parts();
-
-        let mut message = String::new();
-        write!(&mut message, "authorization token has insufficient scope to access this endpoint\nGrant: {held}\nAcceptable scopes:\n").unwrap();
-        if required == &ScopePolicy::deny_all() {
-            message.push_str("\tNONE (deny all)\n")
-        } else {
-            for scope in required {
-                writeln!(&mut message, "\t{scope}").unwrap();
-            }
-        }
-
-        (parts.status, parts.headers, message).into_response()
-    }
-}
-
+/// Extracts the login count from the JWT claims
+///
+/// Note that this extractor needs to appear before any other extractors that
+/// consume the claims from the request extensions.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 struct LoginCount(pub u32);
 

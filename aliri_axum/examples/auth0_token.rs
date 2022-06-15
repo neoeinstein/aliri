@@ -1,4 +1,5 @@
 use aliri::{jwt, JwtRef};
+use aliri_braid::braid;
 use aliri_oauth2::oauth2;
 
 #[tokio::main]
@@ -9,13 +10,13 @@ async fn main() -> color_eyre::Result<()> {
 const ISSUER: &str = "https://aliri-demo.us.auth0.com/";
 const AUDIENCE: &str = "https://aliri.example.com/";
 
-#[aliri_braid::braid(serde)]
+#[braid(serde)]
 struct ClientId;
 
-#[aliri_braid::braid(serde)]
+#[braid(serde)]
 struct DeviceCode;
 
-#[aliri_braid::braid(serde)]
+#[braid(serde)]
 struct UserCode;
 
 #[derive(serde::Serialize)]

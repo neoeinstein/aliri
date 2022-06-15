@@ -202,6 +202,7 @@ pub struct VerboseAuthxErrors;
 pub mod __private {
     use aliri_oauth2::oauth2;
     use aliri_traits::Policy;
+    use axum_core::extract::RequestParts;
 
     pub use aliri_oauth2::ScopePolicy;
     pub use once_cell::sync::OnceCell;
@@ -209,7 +210,7 @@ pub mod __private {
     use crate::{AuthFailed, VerboseAuthxErrors};
 
     pub fn from_request<Claims, Body>(
-        req: &mut ::axum_core::extract::RequestParts<Body>,
+        req: &mut RequestParts<Body>,
         policy: &'static ScopePolicy,
     ) -> Result<Claims, AuthFailed>
     where

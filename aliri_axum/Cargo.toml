@@ -21,8 +21,14 @@ http = "0.2.8"
 once_cell = "1"
 
 [dev-dependencies]
+aliri_base64 = { version = "0.1.5", path = "../aliri_base64" }
+aliri_braid = "0.2.3"
 aliri_clock = { version = "0.1.4", path = "../aliri_clock" }
 aliri_tower = { version = "0.1.1", path = "../aliri_tower" }
-axum = "0.5"
+axum = { version = "0.5", default-features = false }
+color-eyre = "0.6.1"
+reqwest = "0.11.11"
 serde = { version = "1.0.137", features = [ "derive" ] }
-tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+serde_json = "1"
+tokio = { version = "1", features = [ "rt-multi-thread", "macros", "time" ] }
+time = { version = "0.3.9", features = ["formatting"] }
