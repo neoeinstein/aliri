@@ -5,6 +5,7 @@ use aliri_braid::braid;
 use aliri_clock::UnixTime;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
+use std::iter;
 use std::{collections::btree_set, convert::TryFrom, fmt, iter::FromIterator, str::FromStr};
 use thiserror::Error;
 
@@ -111,32 +112,53 @@ impl From<Scope> for ScopeDto {
 }
 
 /// An OAuth2 Scope defining a set of access permissions
-#[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(try_from = "Option<ScopeDto>", into = "ScopeDto")]
 #[must_use]
-pub struct Scope(BTreeSet<ScopeToken>);
+pub struct Scope(ScopeInner);
+
+impl Default for Scope {
+    fn default() -> Self {
+        Self::empty()
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+enum ScopeInner {
+    Empty,
+    Single(ScopeToken),
+    Multiple(BTreeSet<ScopeToken>),
+}
 
 impl Scope {
     /// Produces an empty scope
     #[inline]
-    pub fn empty() -> Self {
-        Self(BTreeSet::new())
+    pub const fn empty() -> Self {
+        Self(ScopeInner::Empty)
     }
 
     /// Constructs a new scope from a single scope token
     #[inline]
-    pub fn single(scope_token: ScopeToken) -> Self {
-        let mut s = Self::empty();
-        s.insert(scope_token);
-        s
+    pub const fn single(scope_token: ScopeToken) -> Self {
+        Self(ScopeInner::Single(scope_token))
     }
 
     /// Adds an additional scope token
     #[inline]
     pub fn and(self, scope_token: ScopeToken) -> Self {
-        let mut s = self;
-        s.insert(scope_token);
-        s
+        match self.0 {
+            ScopeInner::Empty => Self::single(scope_token),
+            ScopeInner::Single(existing) => {
+                let mut set = BTreeSet::new();
+                set.insert(existing);
+                set.insert(scope_token);
+                Self(ScopeInner::Multiple(set))
+            }
+            ScopeInner::Multiple(mut set) => {
+                set.insert(scope_token);
+                Self(ScopeInner::Multiple(set))
+            }
+        }
     }
 
     /// Constructs a scope from an iterator of scope tokens
@@ -151,7 +173,8 @@ impl Scope {
     /// Adds a scope token to the scope
     #[inline]
     pub fn insert(&mut self, scope_token: ScopeToken) {
-        self.0.insert(scope_token);
+        let this = std::mem::replace(self, Self::empty());
+        *self = this.and(scope_token);
     }
 
     /// Produces an iterator of the scope tokens in this set
@@ -165,21 +188,35 @@ impl Scope {
     #[inline]
     #[must_use]
     pub fn contains_all(&self, subset: &Scope) -> bool {
-        self.0.is_superset(&subset.0)
+        match (&self.0, &subset.0) {
+            (ScopeInner::Empty, ScopeInner::Empty) => true,
+            (ScopeInner::Empty, _) => false,
+            (_, ScopeInner::Empty) => true,
+            (ScopeInner::Single(left), ScopeInner::Single(right)) => left == right,
+            (ScopeInner::Single(_), ScopeInner::Multiple(_)) => false,
+            (ScopeInner::Multiple(set), ScopeInner::Single(token)) => set.contains(token),
+            (ScopeInner::Multiple(superset), ScopeInner::Multiple(subset)) => {
+                superset.is_superset(subset)
+            }
+        }
     }
 
     /// The number of scope tokens
     #[inline]
     #[must_use]
     pub fn len(&self) -> usize {
-        self.0.len()
+        match &self.0 {
+            ScopeInner::Empty => 0,
+            ScopeInner::Single(_) => 1,
+            ScopeInner::Multiple(set) => set.len(),
+        }
     }
 
     /// Whether this scope has any scope tokens at all
     #[inline]
     #[must_use]
-    pub fn is_empty(&self) -> bool {
-        self.0.is_empty()
+    pub const fn is_empty(&self) -> bool {
+        matches!(self.0, ScopeInner::Empty)
     }
 }
 
@@ -204,18 +241,61 @@ impl fmt::Display for Scope {
 
 impl IntoIterator for Scope {
     type Item = ScopeToken;
-    type IntoIter = <BTreeSet<ScopeToken> as IntoIterator>::IntoIter;
+    type IntoIter = IntoIter;
 
     #[inline]
     fn into_iter(self) -> Self::IntoIter {
-        self.0.into_iter()
+        match self {
+            Scope(ScopeInner::Empty) => IntoIter {
+                inner: IntoIterInner::Empty,
+            },
+            Scope(ScopeInner::Single(token)) => IntoIter {
+                inner: IntoIterInner::Single(iter::once(token)),
+            },
+            Scope(ScopeInner::Multiple(set)) => IntoIter {
+                inner: IntoIterInner::Multiple(set.into_iter()),
+            },
+        }
+    }
+}
+
+/// An iterator over the tokens in a scope
+#[derive(Debug)]
+pub struct IntoIter {
+    inner: IntoIterInner,
+}
+
+#[derive(Debug)]
+enum IntoIterInner {
+    Empty,
+    Single(iter::Once<ScopeToken>),
+    Multiple(btree_set::IntoIter<ScopeToken>),
+}
+
+impl Iterator for IntoIter {
+    type Item = ScopeToken;
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        match &mut self.inner {
+            IntoIterInner::Empty => None,
+            IntoIterInner::Single(token) => token.next(),
+            IntoIterInner::Multiple(set) => set.next(),
+        }
     }
 }
 
 /// An iterator over a set of borrowed scope tokens
 #[derive(Clone, Debug)]
 pub struct Iter<'a> {
-    iter: btree_set::Iter<'a, ScopeToken>,
+    inner: IterInner<'a>,
+}
+
+#[derive(Clone, Debug)]
+enum IterInner<'a> {
+    Empty,
+    Single(iter::Once<&'a ScopeToken>),
+    Multiple(btree_set::Iter<'a, ScopeToken>),
 }
 
 impl<'a> Iterator for Iter<'a> {
@@ -223,7 +303,11 @@ impl<'a> Iterator for Iter<'a> {
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        self.iter.next().map(AsRef::as_ref)
+        match &mut self.inner {
+            IterInner::Empty => None,
+            IterInner::Single(token) => token.next().map(AsRef::as_ref),
+            IterInner::Multiple(set) => set.next().map(AsRef::as_ref),
+        }
     }
 }
 
@@ -233,8 +317,12 @@ impl<'a> IntoIterator for &'a Scope {
 
     #[inline]
     fn into_iter(self) -> Self::IntoIter {
-        Self::IntoIter {
-            iter: self.0.iter(),
+        Iter {
+            inner: match &self.0 {
+                ScopeInner::Empty => IterInner::Empty,
+                ScopeInner::Single(token) => IterInner::Single(iter::once(token)),
+                ScopeInner::Multiple(set) => IterInner::Multiple(set.iter()),
+            },
         }
     }
 }
@@ -243,12 +331,13 @@ impl<S> Extend<S> for Scope
 where
     S: Into<ScopeToken>,
 {
-    #[inline]
     fn extend<I>(&mut self, iter: I)
     where
         I: IntoIterator<Item = S>,
     {
-        self.0.extend(iter.into_iter().map(Into::into));
+        for token in iter {
+            self.insert(token.into());
+        }
     }
 }
 

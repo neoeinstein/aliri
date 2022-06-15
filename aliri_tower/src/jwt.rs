@@ -103,7 +103,7 @@ where
 
         let claims = self
             .authority
-            .verify_token::<Claims>(jwt, &ScopePolicy::allow_all())
+            .verify_token::<Claims>(jwt, &ScopePolicy::allow_any())
             .map_err(|err| self.handle_jwt_invalid(err))?;
 
         let _ = request.extensions_mut().insert(claims);

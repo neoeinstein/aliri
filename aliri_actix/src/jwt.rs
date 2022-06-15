@@ -281,7 +281,7 @@ where
 
     fn scope_policy() -> &'static ScopePolicy {
         static POLICY: once_cell::sync::OnceCell<ScopePolicy> = once_cell::sync::OnceCell::new();
-        POLICY.get_or_init(ScopePolicy::allow_all)
+        POLICY.get_or_init(ScopePolicy::allow_any)
     }
 }
 

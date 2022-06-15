@@ -1,5 +1,5 @@
 use crate::Scope;
-use std::iter::FromIterator;
+use std::{iter, slice, vec};
 use thiserror::Error;
 
 /// Indicates the requester held insufficient scope to be granted access
@@ -31,12 +31,12 @@ pub struct InsufficientScope;
 /// # }
 /// ```
 ///
-/// ## Allow all requests
+/// ## Allow any request
 /// ```
 /// use aliri_traits::Policy;
 /// use aliri_oauth2::{Scope, ScopePolicy};
 ///
-/// let policy = ScopePolicy::allow_all();
+/// let policy = ScopePolicy::allow_any();
 ///
 /// let request = Scope::empty();
 /// assert!(policy.evaluate(&request).is_ok());
@@ -98,9 +98,25 @@ pub struct InsufficientScope;
 /// # }
 /// ```
 ///
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[must_use]
 pub struct ScopePolicy {
-    alternatives: Vec<Scope>,
+    inner: ScopePolicyInner,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+enum ScopePolicyInner {
+    DenyAll,
+    AllowAny,
+    AllowOne(Scope),
+    AllowMany(Vec<Scope>),
+}
+
+impl Default for ScopePolicy {
+    #[inline]
+    fn default() -> Self {
+        Self::deny_all()
+    }
 }
 
 impl ScopePolicy {
@@ -108,49 +124,56 @@ impl ScopePolicy {
     ///
     /// By default, this policy will deny all requests
     #[inline]
-    #[must_use]
-    pub fn deny_all() -> Self {
+    pub const fn deny_all() -> Self {
         Self {
-            alternatives: Vec::new(),
+            inner: ScopePolicyInner::DenyAll,
         }
     }
 
     /// Constructs a policy that does not require any scopes (allow)
     #[inline]
-    #[must_use]
-    pub fn allow_all() -> Self {
+    pub const fn allow_any() -> Self {
         Self {
-            alternatives: vec![Scope::empty()],
+            inner: ScopePolicyInner::AllowAny,
         }
     }
 
     /// Constructs a policy that requires this set of scopes
     #[inline]
-    #[must_use]
-    pub fn allow_one(scope: Scope) -> Self {
+    pub const fn allow_one(scope: Scope) -> Self {
         Self {
-            alternatives: vec![scope],
+            inner: ScopePolicyInner::AllowOne(scope),
         }
     }
 
     /// Add an alternate allowable scope
     #[inline]
-    #[must_use]
     pub fn or_allow(self, scope: Scope) -> Self {
-        let mut s = self;
-        s.allow(scope);
-        s
+        if scope.is_empty() {
+            let mut this = self;
+            this.inner = ScopePolicyInner::AllowAny;
+            this
+        } else {
+            match self.inner {
+                ScopePolicyInner::AllowAny => Self::allow_any(),
+                ScopePolicyInner::DenyAll => Self::allow_one(scope),
+                ScopePolicyInner::AllowOne(existing) => Self {
+                    inner: ScopePolicyInner::AllowMany(vec![existing, scope]),
+                },
+                ScopePolicyInner::AllowMany(mut scopes) => {
+                    scopes.push(scope);
+                    Self {
+                        inner: ScopePolicyInner::AllowMany(scopes),
+                    }
+                }
+            }
+        }
     }
 
     /// Add an alternate allowable scope
-    #[inline]
     pub fn allow(&mut self, scope: Scope) {
-        if !self.is_allow_all() {
-            if scope.is_empty() {
-                self.alternatives.clear();
-            }
-            self.alternatives.push(scope);
-        }
+        let this = std::mem::replace(self, Self::deny_all());
+        *self = this.or_allow(scope);
     }
 
     /// Constructs a policy that requires this set of scopes from a string
@@ -158,7 +181,6 @@ impl ScopePolicy {
     /// # Panics
     ///
     /// This function will panic if the provided string is not a valid [`Scope`].
-    #[must_use]
     pub fn allow_one_from_static(scope: &'static str) -> Self {
         match scope.parse::<Scope>() {
             Ok(scope) => Self::allow_one(scope),
@@ -171,7 +193,6 @@ impl ScopePolicy {
     /// # Panics
     ///
     /// This function will panic if the provided string is not a valid [`Scope`].
-    #[must_use]
     pub fn or_allow_from_static(self, scope: &'static str) -> Self {
         match scope.parse::<Scope>() {
             Ok(scope) => self.or_allow(scope),
@@ -191,8 +212,8 @@ impl ScopePolicy {
         }
     }
 
-    fn is_allow_all(&self) -> bool {
-        self.alternatives.first().map_or(false, Scope::is_empty)
+    const fn is_allow_all(&self) -> bool {
+        matches!(self.inner, ScopePolicyInner::AllowAny)
     }
 }
 
@@ -201,7 +222,7 @@ impl aliri_traits::Policy for ScopePolicy {
     type Denial = InsufficientScope;
 
     fn evaluate(&self, held: &Self::Request) -> Result<(), Self::Denial> {
-        let allowed = self.alternatives.iter().any(|req| held.contains_all(req));
+        let allowed = self.into_iter().any(|req| held.contains_all(req));
 
         if allowed {
             Ok(())
@@ -213,18 +234,56 @@ impl aliri_traits::Policy for ScopePolicy {
 
 impl IntoIterator for ScopePolicy {
     type Item = Scope;
-    type IntoIter = <Vec<Scope> as IntoIterator>::IntoIter;
+    type IntoIter = IntoIter;
 
     #[inline]
     fn into_iter(self) -> Self::IntoIter {
-        self.alternatives.into_iter()
+        let inner = match self.inner {
+            ScopePolicyInner::DenyAll => IntoIterInner::Empty,
+            ScopePolicyInner::AllowAny => IntoIterInner::One(iter::once(Scope::empty())),
+            ScopePolicyInner::AllowOne(scope) => IntoIterInner::One(iter::once(scope)),
+            ScopePolicyInner::AllowMany(scopes) => IntoIterInner::Many(scopes.into_iter()),
+        };
+        IntoIter { inner }
+    }
+}
+
+/// An iterator over the scopes in a [`ScopePolicy`]
+#[derive(Debug)]
+pub struct IntoIter {
+    inner: IntoIterInner,
+}
+
+#[derive(Debug)]
+enum IntoIterInner {
+    Empty,
+    One(iter::Once<Scope>),
+    Many(vec::IntoIter<Scope>),
+}
+
+impl Iterator for IntoIter {
+    type Item = Scope;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match &mut self.inner {
+            IntoIterInner::Empty => None,
+            IntoIterInner::One(iter) => iter.next(),
+            IntoIterInner::Many(iter) => iter.next(),
+        }
     }
 }
 
 /// An iterator over a set of borrowed scopes
 #[derive(Clone, Debug)]
 pub struct Iter<'a> {
-    iter: std::slice::Iter<'a, Scope>,
+    inner: IterInner<'a>,
+}
+
+#[derive(Clone, Debug)]
+enum IterInner<'a> {
+    Empty,
+    One(iter::Once<&'a Scope>),
+    Many(slice::Iter<'a, Scope>),
 }
 
 impl<'a> Iterator for Iter<'a> {
@@ -232,7 +291,11 @@ impl<'a> Iterator for Iter<'a> {
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        self.iter.next()
+        match &mut self.inner {
+            IterInner::Empty => None,
+            IterInner::One(iter) => iter.next(),
+            IterInner::Many(iter) => iter.next(),
+        }
     }
 }
 
@@ -242,8 +305,14 @@ impl<'a> IntoIterator for &'a ScopePolicy {
 
     #[inline]
     fn into_iter(self) -> Self::IntoIter {
-        Self::IntoIter {
-            iter: self.alternatives.iter(),
+        const EMPTY_SCOPE: &Scope = &Scope::empty();
+        Iter {
+            inner: match &self.inner {
+                ScopePolicyInner::DenyAll => IterInner::Empty,
+                ScopePolicyInner::AllowAny => IterInner::One(iter::once(EMPTY_SCOPE)),
+                ScopePolicyInner::AllowOne(scope) => IterInner::One(iter::once(scope)),
+                ScopePolicyInner::AllowMany(scopes) => IterInner::Many(scopes.iter()),
+            },
         }
     }
 }
@@ -254,16 +323,17 @@ impl Extend<Scope> for ScopePolicy {
     where
         I: IntoIterator<Item = Scope>,
     {
-        self.alternatives.extend(iter);
-        if self.alternatives.iter().any(Scope::is_empty) {
-            self.alternatives.clear();
-            self.alternatives.push(Scope::empty());
+        for scope in iter {
+            self.allow(scope);
+
+            if self.is_allow_all() {
+                break;
+            }
         }
     }
 }
 
-impl FromIterator<Scope> for ScopePolicy {
-    #[inline]
+impl iter::FromIterator<Scope> for ScopePolicy {
     fn from_iter<I>(iter: I) -> Self
     where
         I: IntoIterator<Item = Scope>,

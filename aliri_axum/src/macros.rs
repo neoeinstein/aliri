@@ -167,13 +167,13 @@ macro_rules! scope_guard {
             type Claims = $claim;
 
             fn scope_policy() -> &'static $crate::__private::ScopePolicy {
-                static POLICY: $crate::__private::Lazy<$crate::__private::ScopePolicy> = $crate::__private::Lazy::new(|| {
+                static POLICY: $crate::__private::OnceCell<$crate::__private::ScopePolicy> = $crate::__private::OnceCell::new();
+                POLICY.get_or_init(|| {
                     $crate::__private::ScopePolicy::deny_all()
                     $(
                         .or_allow($scope.parse().unwrap())
                     )*
-                });
-                &POLICY
+                })
             }
         }
 
@@ -256,8 +256,11 @@ macro_rules! scope_guards {
 
 #[cfg(test)]
 mod tests {
-    use aliri_oauth2::{oauth2::HasScope, Scope, scope};
-    use axum::{http::Request, extract::{FromRequest, RequestParts}};
+    use aliri_oauth2::{oauth2, scope};
+    use axum::{
+        extract::{FromRequest, RequestParts},
+        http::Request,
+    };
 
     use crate::AuthFailed;
 
@@ -271,10 +274,10 @@ mod tests {
         scope TestingAdmin = ["testing admin"];
     }
 
-    struct MyClaims(Scope);
+    struct MyClaims(oauth2::Scope);
 
-    impl HasScope for MyClaims {
-        fn scope(&self) -> &Scope {
+    impl oauth2::HasScope for MyClaims {
+        fn scope(&self) -> &oauth2::Scope {
             &self.0
         }
     }
@@ -283,7 +286,7 @@ mod tests {
         RequestParts::new(Request::new(()))
     }
 
-    fn request_with_scope(scope: Scope) -> RequestParts<()> {
+    fn request_with_scope(scope: oauth2::Scope) -> RequestParts<()> {
         let mut req = RequestParts::new(Request::new(()));
         req.extensions_mut().insert(MyClaims(scope));
         req
@@ -320,18 +323,22 @@ mod tests {
 
     #[tokio::test]
     async fn admin_only_scope_guard_with_admin_scope_claims() {
-        AdminOnly::from_request(&mut request_with_admin_scope()).await.unwrap();
+        AdminOnly::from_request(&mut request_with_admin_scope())
+            .await
+            .unwrap();
     }
 
     #[tokio::test]
     async fn admin_only_scope_guard_with_admin_and_testing_scope_claims() {
-        AdminOnly::from_request(&mut request_with_admin_and_testing_scope()).await.unwrap();
+        AdminOnly::from_request(&mut request_with_admin_and_testing_scope())
+            .await
+            .unwrap();
     }
 
     #[tokio::test]
     async fn admin_only_scope_guard_with_no_scope_claims() {
         match AdminOnly::from_request(&mut request_with_no_scope()).await {
-            Err(AuthFailed::InsufficientScopes { .. }) => {},
+            Err(AuthFailed::InsufficientScopes { .. }) => {}
             Err(AuthFailed::MissingClaims) => panic!("Expected insufficient scopes error"),
             Ok(_) => panic!("Expected AuthFailed"),
         }
@@ -339,23 +346,29 @@ mod tests {
 
     #[tokio::test]
     async fn testing_scope_guard_with_testing_scope_claims() {
-        Testing::from_request(&mut request_with_testing_scope()).await.unwrap();
+        Testing::from_request(&mut request_with_testing_scope())
+            .await
+            .unwrap();
     }
 
     #[tokio::test]
     async fn testing_scope_guard_with_admin_and_testing_scope_claims() {
-        Testing::from_request(&mut request_with_admin_and_testing_scope()).await.unwrap();
+        Testing::from_request(&mut request_with_admin_and_testing_scope())
+            .await
+            .unwrap();
     }
 
     #[tokio::test]
     async fn testing_scope_guard_with_testing2_scope_claims() {
-        Testing::from_request(&mut request_with_testing2_scope()).await.unwrap();
+        Testing::from_request(&mut request_with_testing2_scope())
+            .await
+            .unwrap();
     }
 
     #[tokio::test]
     async fn testing_scope_guard_with_admin_scope_claims() {
         match Testing::from_request(&mut request_with_admin_scope()).await {
-            Err(AuthFailed::InsufficientScopes { .. }) => {},
+            Err(AuthFailed::InsufficientScopes { .. }) => {}
             Err(AuthFailed::MissingClaims) => panic!("Expected insufficient scopes error"),
             Ok(_) => panic!("Expected AuthFailed"),
         }
@@ -364,7 +377,7 @@ mod tests {
     #[tokio::test]
     async fn testing_admin_scope_guard_with_testing_scope_claims() {
         match TestingAdmin::from_request(&mut request_with_testing_scope()).await {
-            Err(AuthFailed::InsufficientScopes { .. }) => {},
+            Err(AuthFailed::InsufficientScopes { .. }) => {}
             Err(AuthFailed::MissingClaims) => panic!("Expected insufficient scopes error"),
             Ok(_) => panic!("Expected AuthFailed"),
         }
@@ -373,7 +386,7 @@ mod tests {
     #[tokio::test]
     async fn testing_admin_scope_guard_with_admin_scope_claims() {
         match TestingAdmin::from_request(&mut request_with_admin_scope()).await {
-            Err(AuthFailed::InsufficientScopes { .. }) => {},
+            Err(AuthFailed::InsufficientScopes { .. }) => {}
             Err(AuthFailed::MissingClaims) => panic!("Expected insufficient scopes error"),
             Ok(_) => panic!("Expected AuthFailed"),
         }
@@ -381,6 +394,8 @@ mod tests {
 
     #[tokio::test]
     async fn testing_admin_scope_guard_with_admin_and_testing_scope_claims() {
-        TestingAdmin::from_request(&mut request_with_admin_and_testing_scope()).await.unwrap();
+        TestingAdmin::from_request(&mut request_with_admin_and_testing_scope())
+            .await
+            .unwrap();
     }
 }

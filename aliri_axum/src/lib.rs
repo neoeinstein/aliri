@@ -97,8 +97,8 @@
 //! }
 //! ```
 
-use aliri_oauth2::{ScopePolicy, oauth2};
-use axum_core::response::{Response, IntoResponse};
+use aliri_oauth2::{oauth2, ScopePolicy};
+use axum_core::response::{IntoResponse, Response};
 use http::StatusCode;
 use std::{error::Error, fmt};
 
@@ -124,7 +124,9 @@ pub enum AuthFailed {
     ///
     /// If a policy is specified, then the error response will include a list
     /// of the allowable scopes.
-    InsufficientScopes { policy: Option<&'static ScopePolicy> },
+    InsufficientScopes {
+        policy: Option<&'static ScopePolicy>,
+    },
 }
 
 impl fmt::Display for AuthFailed {
@@ -132,8 +134,10 @@ impl fmt::Display for AuthFailed {
         use std::fmt::Write;
         match self {
             AuthFailed::MissingClaims => f.write_str("token claims missing"),
-            AuthFailed::InsufficientScopes { policy: None } =>  f.write_str("insufficient scopes"),
-            AuthFailed::InsufficientScopes { policy: Some(policy) } => {
+            AuthFailed::InsufficientScopes { policy: None } => f.write_str("insufficient scopes"),
+            AuthFailed::InsufficientScopes {
+                policy: Some(policy),
+            } => {
                 f.write_str("insufficient scopes; one of the following scopes is required: [")?;
                 let mut scopes = policy.into_iter();
                 let mut maybe_scope = scopes.next();
@@ -154,10 +158,15 @@ impl Error for AuthFailed {}
 impl IntoResponse for AuthFailed {
     fn into_response(self) -> Response {
         match self {
-            AuthFailed::MissingClaims => (StatusCode::INTERNAL_SERVER_ERROR, "token claims missing").into_response(),
-            AuthFailed::InsufficientScopes { policy: None } =>
-                (StatusCode::FORBIDDEN, "insufficient scopes").into_response(),
-            AuthFailed::InsufficientScopes { policy: Some(policy) } => {
+            AuthFailed::MissingClaims => {
+                (StatusCode::INTERNAL_SERVER_ERROR, "token claims missing").into_response()
+            }
+            AuthFailed::InsufficientScopes { policy: None } => {
+                (StatusCode::FORBIDDEN, "insufficient scopes").into_response()
+            }
+            AuthFailed::InsufficientScopes {
+                policy: Some(policy),
+            } => {
                 let mut message = String::new();
                 message.push_str("insufficient scopes; one of the following scopes is required: [");
                 let mut scopes = policy.into_iter();
@@ -166,7 +175,13 @@ impl IntoResponse for AuthFailed {
                     use std::fmt::Write;
                     let next = scopes.next();
 
-                    write!(message, "{}{}", scope, if next.is_some() { ", " } else { "" }).expect("writing to string");
+                    write!(
+                        message,
+                        "{}{}",
+                        scope,
+                        if next.is_some() { ", " } else { "" }
+                    )
+                    .expect("writing to string");
                     maybe_scope = next;
                 }
                 message.push(']');
@@ -188,8 +203,8 @@ pub mod __private {
     use aliri_oauth2::oauth2;
     use aliri_traits::Policy;
 
-    pub use once_cell::sync::Lazy;
     pub use aliri_oauth2::ScopePolicy;
+    pub use once_cell::sync::OnceCell;
 
     use crate::{AuthFailed, VerboseAuthxErrors};
 
@@ -206,15 +221,15 @@ pub mod __private {
             .remove::<Claims>()
             .ok_or(AuthFailed::MissingClaims)?;
 
-        policy
-            .evaluate(claims.scope())
-            .map_err(|_| {
-                if req.extensions().get::<VerboseAuthxErrors>().is_some() {
-                    AuthFailed::InsufficientScopes { policy: Some(policy) }
-                } else {
-                    AuthFailed::InsufficientScopes { policy: None }
+        policy.evaluate(claims.scope()).map_err(|_| {
+            if req.extensions().get::<VerboseAuthxErrors>().is_some() {
+                AuthFailed::InsufficientScopes {
+                    policy: Some(policy),
                 }
-            })?;
+            } else {
+                AuthFailed::InsufficientScopes { policy: None }
+            }
+        })?;
 
         Ok(claims)
     }
