@@ -28,8 +28,8 @@ features = [ "rsa", "ec", "hmac", "private-keys" ]
 [dependencies]
 aliri_base64 = { version = "0.1.0", path = "../aliri_base64", features = [ "serde" ] }
 aliri_clock = { version = "0.1.0", path = "../aliri_clock", features = [ "serde" ] }
-aliri_braid = { version = "0.1.5" }
-lazy_static = { version = "1" }
+aliri_braid = { version = "0.2.3" }
+once_cell = { version = "1.4" }
 regex = "1"
 ring = "0.16"
 serde = { version = "1", features = [ "derive" ] }

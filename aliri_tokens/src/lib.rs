@@ -51,9 +51,9 @@
 //!# }
 //!#
 //!# let opts = Opts {
-//!#     client_id: ClientId::new("test"),
-//!#     client_secret: ClientSecret::new("test"),
-//!#     audience: aliri::jwt::Audience::new("test"),
+//!#     client_id: ClientId::from_static("test"),
+//!#     client_secret: ClientSecret::from_static("test"),
+//!#     audience: aliri::jwt::Audience::from_static("test"),
 //!#     token_url: reqwest::Url::parse("https://example.com/oauth/token").unwrap(),
 //!#     credentials_file: std::path::PathBuf::from("credentials.json"),
 //!# };

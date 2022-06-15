@@ -9,6 +9,10 @@ pub trait Policy {
     type Denial: fmt::Debug + fmt::Display + Send + Sync + 'static;
 
     /// Evaluates the request, producing an effect
+    ///
+    /// # Errors
+    ///
+    /// The request has been denied by this policy.
     fn evaluate(&self, request: &Self::Request) -> Result<(), Self::Denial>;
 }
 

@@ -29,6 +29,7 @@ pub(super) struct PublicKeyDto {
 /// Elliptic curve cryptography public key components
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(try_from = "PublicKeyDto", into = "PublicKeyDto")]
+#[must_use]
 pub struct PublicKey {
     curve: Curve,
 

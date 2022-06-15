@@ -163,6 +163,7 @@ macro_rules! b64_builder {
         ///
         /// Implementations of the [`From`] trait assume that assume that the
         /// underlying structure is in raw form.
+        #[must_use]
         $v struct $ty(Vec<u8>);
 
         impl $ty {
@@ -196,24 +197,28 @@ macro_rules! b64_builder {
 
             /// Unwraps the underlying buffer
             #[inline]
+            #[must_use]
             pub fn into_inner(self) -> Vec<u8> {
                 self.0
             }
 
             /// Provides access to the underlying buffer as a vector
             #[inline]
+            #[must_use]
             pub fn as_vec(&self) -> &Vec<u8> {
                 &self.0
             }
 
             /// Provides mutable access to the underlying buffer as a vector
             #[inline]
+            #[must_use]
             pub fn as_vec_mut(&mut self) -> &mut Vec<u8> {
                 &mut self.0
             }
 
             /// Calculates the expected length of the base64-encoding for a buffer of size `len`
             #[inline]
+            #[must_use]
             pub const fn calc_encoded_len(len: usize) -> usize {
                 if $is_padded {
                     (len + 2) / 3 * 4
@@ -342,6 +347,7 @@ macro_rules! b64_builder {
             #[allow(unsafe_code)]
             #[inline]
             /// Transparently reinterprets the slice as base64
+            #[must_use]
             pub fn from_slice(raw: &[u8]) -> &Self {
                 let ptr: *const [u8] = raw;
 
@@ -355,6 +361,7 @@ macro_rules! b64_builder {
             #[allow(unsafe_code)]
             #[inline]
             /// Transparently reinterprets the mutable slice as base64
+            #[must_use]
             pub fn from_mut_slice(raw: &mut [u8]) -> &mut Self {
                 let ptr: *mut [u8] = raw;
 
@@ -367,18 +374,21 @@ macro_rules! b64_builder {
 
             /// Calculates the expected length of the base64-encoding of this buffer
             #[inline]
+            #[must_use]
             pub const fn encoded_len(&self) -> usize {
                 $ty::calc_encoded_len(self.as_slice().len())
             }
 
             /// Provides access to the underlying slice
             #[inline]
+            #[must_use]
             pub const fn as_slice(&self) -> &[u8] {
                 &self.0
             }
 
             /// Provides mutable access to the underlying slice
             #[inline]
+            #[must_use]
             pub fn as_mut_slice(&mut self) -> &mut [u8] {
                 &mut self.0
             }

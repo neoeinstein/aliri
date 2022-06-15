@@ -1,13 +1,12 @@
 //! OAuth2-specific
 
-use std::{collections::hash_set, iter::FromIterator, str::FromStr};
-
-use ahash::AHashSet;
 use aliri::jwt;
 use aliri_braid::braid;
 use aliri_clock::UnixTime;
 use serde::{Deserialize, Serialize};
-use std::convert::TryFrom;
+use std::collections::BTreeSet;
+use std::iter;
+use std::{collections::btree_set, convert::TryFrom, fmt, iter::FromIterator, str::FromStr};
 use thiserror::Error;
 
 /// An invalid scope token
@@ -37,7 +36,8 @@ pub enum InvalidScopeToken {
     validator,
     ref_doc = "A borrowed reference to an OAuth2 [`ScopeToken`]"
 )]
-pub struct ScopeToken;
+#[must_use]
+pub struct ScopeToken(smartstring::alias::String);
 
 impl aliri_braid::Validator for ScopeToken {
     type Error = InvalidScopeToken;
@@ -59,6 +59,27 @@ impl aliri_braid::Validator for ScopeToken {
         } else {
             Ok(())
         }
+    }
+}
+
+impl ScopeToken {
+    /// Construct a new `ScopeToken` from a string
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if the provided string is not a valid scope token.
+    #[inline]
+    pub fn from_string(value: String) -> Result<Self, InvalidScopeToken> {
+        Self::try_from(value)
+    }
+}
+
+impl TryFrom<String> for ScopeToken {
+    type Error = InvalidScopeToken;
+
+    #[inline]
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        Self::new(smartstring::SmartString::from(value))
     }
 }
 
@@ -86,43 +107,58 @@ impl TryFrom<Option<ScopeDto>> for Scope {
 
 impl From<Scope> for ScopeDto {
     fn from(s: Scope) -> Self {
-        let x: Vec<_> = s.0.into_iter().map(ScopeToken::into_string).collect();
-        let y = x.join(" ");
-        ScopeDto::String(y)
+        ScopeDto::String(s.to_string())
     }
 }
 
 /// An OAuth2 Scope defining a set of access permissions
-#[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(try_from = "Option<ScopeDto>", into = "ScopeDto")]
-pub struct Scope(AHashSet<ScopeToken>);
+#[must_use]
+pub struct Scope(ScopeInner);
 
-lazy_static::lazy_static! {
-    /// An empty, static scopes with no access permissions
-    static ref EMPTY_SCOPE: Scope = Scope::empty();
+impl Default for Scope {
+    fn default() -> Self {
+        Self::empty()
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+enum ScopeInner {
+    Empty,
+    Single(ScopeToken),
+    Multiple(BTreeSet<ScopeToken>),
 }
 
 impl Scope {
     /// Produces an empty scope
     #[inline]
-    pub fn empty() -> Self {
-        Self(AHashSet::new())
+    pub const fn empty() -> Self {
+        Self(ScopeInner::Empty)
     }
 
     /// Constructs a new scope from a single scope token
     #[inline]
-    pub fn single(scope_token: ScopeToken) -> Self {
-        let mut s = Self::empty();
-        s.insert(scope_token);
-        s
+    pub const fn single(scope_token: ScopeToken) -> Self {
+        Self(ScopeInner::Single(scope_token))
     }
 
     /// Adds an additional scope token
     #[inline]
     pub fn and(self, scope_token: ScopeToken) -> Self {
-        let mut s = self;
-        s.insert(scope_token);
-        s
+        match self.0 {
+            ScopeInner::Empty => Self::single(scope_token),
+            ScopeInner::Single(existing) => {
+                let mut set = BTreeSet::new();
+                set.insert(existing);
+                set.insert(scope_token);
+                Self(ScopeInner::Multiple(set))
+            }
+            ScopeInner::Multiple(mut set) => {
+                set.insert(scope_token);
+                Self(ScopeInner::Multiple(set))
+            }
+        }
     }
 
     /// Constructs a scope from an iterator of scope tokens
@@ -137,7 +173,8 @@ impl Scope {
     /// Adds a scope token to the scope
     #[inline]
     pub fn insert(&mut self, scope_token: ScopeToken) {
-        self.0.insert(scope_token);
+        let this = std::mem::replace(self, Self::empty());
+        *self = this.and(scope_token);
     }
 
     /// Produces an iterator of the scope tokens in this set
@@ -149,25 +186,116 @@ impl Scope {
     /// Checks to see whether this scope contains all of
     /// the scope tokens in `subset`.
     #[inline]
+    #[must_use]
     pub fn contains_all(&self, subset: &Scope) -> bool {
-        self.0.is_superset(&subset.0)
+        match (&self.0, &subset.0) {
+            (ScopeInner::Empty, ScopeInner::Empty) => true,
+            (ScopeInner::Empty, _) => false,
+            (_, ScopeInner::Empty) => true,
+            (ScopeInner::Single(left), ScopeInner::Single(right)) => left == right,
+            (ScopeInner::Single(_), ScopeInner::Multiple(_)) => false,
+            (ScopeInner::Multiple(set), ScopeInner::Single(token)) => set.contains(token),
+            (ScopeInner::Multiple(superset), ScopeInner::Multiple(subset)) => {
+                superset.is_superset(subset)
+            }
+        }
+    }
+
+    /// The number of scope tokens
+    #[inline]
+    #[must_use]
+    pub fn len(&self) -> usize {
+        match &self.0 {
+            ScopeInner::Empty => 0,
+            ScopeInner::Single(_) => 1,
+            ScopeInner::Multiple(set) => set.len(),
+        }
+    }
+
+    /// Whether this scope has any scope tokens at all
+    #[inline]
+    #[must_use]
+    pub const fn is_empty(&self) -> bool {
+        matches!(self.0, ScopeInner::Empty)
+    }
+}
+
+impl fmt::Display for Scope {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use std::fmt::Write;
+
+        let mut iter = self.iter();
+        let first = iter.next();
+        if let Some(first) = first {
+            fmt::Display::fmt(first, &mut *f)?;
+        }
+
+        for token in iter {
+            f.write_char(' ')?;
+            fmt::Display::fmt(token, &mut *f)?;
+        }
+
+        Ok(())
     }
 }
 
 impl IntoIterator for Scope {
     type Item = ScopeToken;
-    type IntoIter = <AHashSet<ScopeToken> as IntoIterator>::IntoIter;
+    type IntoIter = IntoIter;
 
     #[inline]
     fn into_iter(self) -> Self::IntoIter {
-        self.0.into_iter()
+        match self {
+            Scope(ScopeInner::Empty) => IntoIter {
+                inner: IntoIterInner::Empty,
+            },
+            Scope(ScopeInner::Single(token)) => IntoIter {
+                inner: IntoIterInner::Single(iter::once(token)),
+            },
+            Scope(ScopeInner::Multiple(set)) => IntoIter {
+                inner: IntoIterInner::Multiple(set.into_iter()),
+            },
+        }
+    }
+}
+
+/// An iterator over the tokens in a scope
+#[derive(Debug)]
+pub struct IntoIter {
+    inner: IntoIterInner,
+}
+
+#[derive(Debug)]
+enum IntoIterInner {
+    Empty,
+    Single(iter::Once<ScopeToken>),
+    Multiple(btree_set::IntoIter<ScopeToken>),
+}
+
+impl Iterator for IntoIter {
+    type Item = ScopeToken;
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        match &mut self.inner {
+            IntoIterInner::Empty => None,
+            IntoIterInner::Single(token) => token.next(),
+            IntoIterInner::Multiple(set) => set.next(),
+        }
     }
 }
 
 /// An iterator over a set of borrowed scope tokens
 #[derive(Clone, Debug)]
 pub struct Iter<'a> {
-    iter: hash_set::Iter<'a, ScopeToken>,
+    inner: IterInner<'a>,
+}
+
+#[derive(Clone, Debug)]
+enum IterInner<'a> {
+    Empty,
+    Single(iter::Once<&'a ScopeToken>),
+    Multiple(btree_set::Iter<'a, ScopeToken>),
 }
 
 impl<'a> Iterator for Iter<'a> {
@@ -175,7 +303,11 @@ impl<'a> Iterator for Iter<'a> {
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        self.iter.next().map(|x| x.as_ref())
+        match &mut self.inner {
+            IterInner::Empty => None,
+            IterInner::Single(token) => token.next().map(AsRef::as_ref),
+            IterInner::Multiple(set) => set.next().map(AsRef::as_ref),
+        }
     }
 }
 
@@ -185,8 +317,12 @@ impl<'a> IntoIterator for &'a Scope {
 
     #[inline]
     fn into_iter(self) -> Self::IntoIter {
-        Self::IntoIter {
-            iter: self.0.iter(),
+        Iter {
+            inner: match &self.0 {
+                ScopeInner::Empty => IterInner::Empty,
+                ScopeInner::Single(token) => IterInner::Single(iter::once(token)),
+                ScopeInner::Multiple(set) => IterInner::Multiple(set.iter()),
+            },
         }
     }
 }
@@ -195,12 +331,13 @@ impl<S> Extend<S> for Scope
 where
     S: Into<ScopeToken>,
 {
-    #[inline]
     fn extend<I>(&mut self, iter: I)
     where
         I: IntoIterator<Item = S>,
     {
-        self.0.extend(iter.into_iter().map(Into::into))
+        for token in iter {
+            self.insert(token.into());
+        }
     }
 }
 
@@ -219,12 +356,19 @@ where
     }
 }
 
+impl From<ScopeToken> for Scope {
+    #[inline]
+    fn from(t: ScopeToken) -> Self {
+        Self::single(t)
+    }
+}
+
 impl TryFrom<&'_ str> for Scope {
     type Error = InvalidScopeToken;
 
     #[inline]
     fn try_from(s: &str) -> Result<Self, Self::Error> {
-        s.split_whitespace().map(ScopeToken::new).collect()
+        s.split_whitespace().map(ScopeToken::try_from).collect()
     }
 }
 
@@ -308,61 +452,131 @@ impl HasScope for Scope {
     }
 }
 
+/// Construct a scope from a list of tokens.
+///
+/// ```
+/// use aliri_oauth2::scope;
+///
+/// let scope = scope!["users.read", "users.update", "users.list"];
+/// ```
+///
+/// This is equivalent to the following:
+///
+/// ```
+/// use aliri_oauth2::{oauth2, Scope};
+///
+/// let scope = Scope::empty()
+///     .and(oauth2::ScopeToken::from_static("users.read"))
+///     .and(oauth2::ScopeToken::from_static("users.update"))
+///     .and(oauth2::ScopeToken::from_static("users.list"));
+/// ```
+///
+/// # Panics
+///
+/// This macro will attempt to convert all the passed in string literals into tokens
+/// using [`ScopeToken::from_static`] which will panic if any are invalid.
+///
+/// ```should_panic
+/// use aliri_oauth2::scope;
+///
+/// let scope = scope!["users read", "users.update", "users.list"];
+/// ```
+///
+/// # Errors
+///
+/// If the values passed in are not literals, then the tokens will be parsed
+/// at runtime, and any errors will be propagated back to the caller.
+///
+/// ```
+/// use aliri_oauth2::scope;
+///
+/// let scope = scope![String::from("users.read")].unwrap();
+/// assert!(scope![String::from("users read")].is_err());
+/// ```
+#[macro_export]
+macro_rules! scope {
+    ($($token:literal),+ $(,)?) => {
+        {
+            $crate::Scope::empty()
+            $(
+                .and($crate::oauth2::ScopeToken::from_static($token))
+            )+
+        }
+    };
+    ($($token:expr),+ $(,)?) => {
+        {
+            let __f = || -> Result<$crate::Scope, $crate::oauth2::InvalidScopeToken> {
+                ::core::result::Result::Ok(
+                    $crate::Scope::empty()
+                    $(
+                        .and(::core::convert::TryFrom::try_from($token)?)
+                    )+
+                )
+            };
+
+            __f()
+        }
+    };
+    () => {
+        $crate::Scope::empty()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn owned_handles_valid() {
-        let x = ScopeToken::new("https://crates.io/scopes/publish:crate").unwrap();
+        let x = ScopeToken::from_static("https://crates.io/scopes/publish:crate");
         assert_eq!(x.as_str(), "https://crates.io/scopes/publish:crate");
     }
 
     #[test]
     fn owned_rejects_empty() {
-        let x = ScopeToken::new("");
+        let x = ScopeToken::try_from("");
         assert!(matches!(x, Err(InvalidScopeToken::EmptyString)));
     }
 
     #[test]
     fn owned_rejects_invalid_quote() {
-        let x = ScopeToken::new("https://crates.io/scopes/\"publish:crate\"");
+        let x = ScopeToken::try_from("https://crates.io/scopes/\"publish:crate\"");
         assert!(matches!(x, Err(InvalidScopeToken::InvalidByte { .. })));
     }
 
     #[test]
     fn owned_rejects_invalid_control() {
-        let x = ScopeToken::new("https://crates.io/scopes/\tpublish:crate");
+        let x = ScopeToken::try_from("https://crates.io/scopes/\tpublish:crate");
         assert!(matches!(x, Err(InvalidScopeToken::InvalidByte { .. })));
     }
 
     #[test]
     fn owned_rejects_invalid_backslash() {
-        let x = ScopeToken::new("https://crates.io/scopes/\\publish:crate");
+        let x = ScopeToken::try_from("https://crates.io/scopes/\\publish:crate");
         assert!(matches!(x, Err(InvalidScopeToken::InvalidByte { .. })));
     }
 
     #[test]
     fn owned_rejects_invalid_delete() {
-        let x = ScopeToken::new("https://crates.io/scopes/\x7Fpublish:crate");
+        let x = ScopeToken::try_from("https://crates.io/scopes/\x7Fpublish:crate");
         assert!(matches!(x, Err(InvalidScopeToken::InvalidByte { .. })));
     }
 
     #[test]
     fn owned_rejects_invalid_non_ascii() {
-        let x = ScopeToken::new("https://crates.io/scopes/¿publish:crate");
+        let x = ScopeToken::try_from("https://crates.io/scopes/¿publish:crate");
         assert!(matches!(x, Err(InvalidScopeToken::InvalidByte { .. })));
     }
 
     #[test]
     fn owned_rejects_invalid_emoji() {
-        let x = ScopeToken::new("https://crates.io/scopes/🪤publish:crate");
+        let x = ScopeToken::try_from("https://crates.io/scopes/🪤publish:crate");
         assert!(matches!(x, Err(InvalidScopeToken::InvalidByte { .. })));
     }
 
     #[test]
     fn ref_handles_valid() {
-        let x = ScopeTokenRef::from_str("https://crates.io/scopes/publish:crate").unwrap();
+        let x = ScopeTokenRef::from_static("https://crates.io/scopes/publish:crate");
         assert_eq!(x.as_str(), "https://crates.io/scopes/publish:crate");
     }
 
@@ -406,5 +620,16 @@ mod tests {
     fn ref_rejects_invalid_emoji() {
         let x = ScopeTokenRef::from_str("https://crates.io/scopes/🪤publish:crate");
         assert!(matches!(x, Err(InvalidScopeToken::InvalidByte { .. })));
+    }
+
+    #[test]
+    fn scope_to_string() {
+        let scope: String = scope!["test1", "test2", "test3"].to_string();
+        assert_eq!(scope.len(), 17);
+        assert!(scope.contains("test1"));
+        assert!(scope.contains("test2"));
+        assert!(scope.contains("test3"));
+        assert_eq!(&scope[5..6], " ");
+        assert_eq!(&scope[11..12], " ");
     }
 }

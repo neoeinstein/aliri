@@ -1,37 +1,32 @@
-use aliri::jwa::Algorithm;
 use aliri::{jwa, jwk, jwt, Jwk, Jwks, Jwt};
+use aliri_axum::scope_guards;
 use aliri_base64::Base64UrlRef;
 use aliri_clock::{Clock, DurationSecs, UnixTime};
-use aliri_oauth2::{oauth2, Authority, Scope, ScopePolicy};
-use aliri_tower::VerifyJwt;
+use aliri_oauth2::{oauth2, scope, Authority};
+use aliri_tower::Oauth2Authorizer;
 use axum::extract::Path;
 use axum::routing::{get, post};
 use axum::Router;
-use tower_http::auth::RequireAuthorizationLayer;
+
+scope_guards! {
+    type Claims = CustomClaims;
+
+    scope PostUser = "post_user";
+    scope GetUser = "get_user";
+}
 
 #[tokio::main]
 async fn main() {
     let authority = construct_authority();
 
-    let verify_jwt = VerifyJwt::<CustomClaims, _>::new(authority);
-
-    let require_scope = |scope: Scope| {
-        let verify_scope = verify_jwt.scopes_verifier(ScopePolicy::allow_one(scope));
-        RequireAuthorizationLayer::custom(verify_scope)
-    };
-
-    let check_jwt = RequireAuthorizationLayer::custom(verify_jwt.clone());
+    let authorizer = Oauth2Authorizer::new()
+        .with_claims::<CustomClaims>()
+        .with_terse_error_handler();
 
     let app = Router::new()
-        .route(
-            "/users",
-            post(handle_post).layer(require_scope("post_user".parse().unwrap())),
-        )
-        .route(
-            "/users/:id",
-            get(handle_get).layer(require_scope("get_user".parse().unwrap())),
-        )
-        .layer(&check_jwt);
+        .route("/users", post(handle_post))
+        .route("/users/:id", get(handle_get))
+        .layer(authorizer.jwt_layer(authority));
 
     println!("Press Ctrl+C to exit");
 
@@ -84,7 +79,7 @@ fn construct_authority() -> Authority {
     let secret = Base64UrlRef::from_slice(SHARED_SECRET).to_owned();
     let key = Jwk::from(jwa::Hmac::new(secret))
         .with_algorithm(jwa::Algorithm::HS256)
-        .with_key_id(jwk::KeyId::new(KEY_ID));
+        .with_key_id(jwk::KeyId::from_static(KEY_ID));
 
     print_example_token(&key);
 
@@ -93,29 +88,30 @@ fn construct_authority() -> Authority {
 
     let validator = jwt::CoreValidator::default()
         .add_approved_algorithm(jwa::Algorithm::HS256)
-        .add_allowed_audience(jwt::Audience::new(AUDIENCE))
-        .require_issuer(jwt::Issuer::new(ISSUER));
+        .add_allowed_audience(jwt::Audience::from_static(AUDIENCE))
+        .require_issuer(jwt::Issuer::from_static(ISSUER));
 
     Authority::new(jwks, validator)
 }
 
-async fn handle_post() -> &'static str {
+async fn handle_post(_: PostUser) -> &'static str {
     "Handled POST /users"
 }
 
-async fn handle_get(Path(id): Path<u64>) -> String {
+async fn handle_get(_: GetUser, Path(id): Path<u64>) -> String {
     format!("Handled GET /users/{}", id)
 }
 
 fn print_example_token(key: &Jwk) {
-    let headers = jwt::BasicHeaders::with_key_id(Algorithm::HS256, jwk::KeyId::new(KEY_ID));
+    let headers =
+        jwt::BasicHeaders::with_key_id(jwa::Algorithm::HS256, jwk::KeyId::from_static(KEY_ID));
 
     let payload = CustomClaims {
-        sub: jwt::Subject::new("test"),
-        iss: jwt::Issuer::new(ISSUER),
-        aud: jwt::Audience::new(AUDIENCE).into(),
+        sub: jwt::Subject::from_static("test"),
+        iss: jwt::Issuer::from_static(ISSUER),
+        aud: jwt::Audience::from_static(AUDIENCE).into(),
         exp: aliri_clock::System.now() + DurationSecs(300),
-        scope: "get_user post_user".parse().unwrap(),
+        scope: scope!["get_user", "post_user"],
     };
 
     let jwt = Jwt::try_from_parts_with_signature(&headers, &payload, key).unwrap();

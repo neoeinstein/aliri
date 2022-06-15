@@ -45,8 +45,8 @@
 //! let validator = jwt::CoreValidator::default()
 //!     .ignore_expiration()
 //!     .add_approved_algorithm(jwa::Algorithm::HS256)
-//!     .add_allowed_audience(jwt::Audience::new("my_api"))
-//!     .require_issuer(jwt::Issuer::new("authority"))
+//!     .add_allowed_audience(jwt::Audience::from_static("my_api"))
+//!     .require_issuer(jwt::Issuer::from_static("authority"))
 //!     .check_subject(Regex::new("^Al.ri$").unwrap());
 //!
 //! let data: jwt::Validated = token.verify(&key, &validator).unwrap();
@@ -141,6 +141,7 @@ impl<C, H> Validated<C, H> {
 /// This structure is suitable for inspection to determine which key
 /// should be used to validate the JWT.
 #[derive(Clone, Debug, PartialEq, Eq)]
+#[must_use]
 pub struct Decomposed<'a, H = BasicHeaders> {
     pub(crate) header: H,
     pub(crate) message: &'a str,
@@ -163,6 +164,11 @@ where
     H: for<'de> Deserialize<'de> + CoreHeaders,
 {
     /// Verifies the decomposed JWT against the given JWK and validation plan
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the decomposed token is invalid according to
+    /// the core validator.
     pub fn verify<C, V>(
         self,
         key: &'_ V,
@@ -177,6 +183,11 @@ where
     }
 
     /// Verifies the decomposed JWT against the given JWK and validation plan
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the decomposed token is invalid according to either
+    /// the core or custom validator.
     pub fn verify_with_custom<C, V, X>(
         self,
         key: &'_ V,
@@ -213,6 +224,10 @@ where
 
 impl JwtRef {
     /// Decomposes the JWT into its parts, preparing it for later processing.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the JWT is malformed.
     pub fn decompose<H>(&self) -> Result<Decomposed<H>, error::JwtVerifyError>
     where
         H: for<'de> Deserialize<'de>,
@@ -237,6 +252,10 @@ impl JwtRef {
     ///
     /// If you need to inspect the token first to determine how to verify
     /// the token, use `decompose()` to peek into the JWT.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the token is invalid according to the validator.
     pub fn verify<C, H, V>(
         &self,
         key: &'_ V,
@@ -255,6 +274,11 @@ impl JwtRef {
     ///
     /// If you need to inspect the token first to determine how to verify
     /// the token, use `decompose()` to peek into the JWT.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the token is invalid according to either the core
+    /// or custom validators.
     pub fn verify_with_custom<C, H, V, X>(
         &self,
         key: &'_ V,
@@ -359,12 +383,13 @@ pub struct Subject;
 ///
 /// This type provides custom implementations of [`Display`][JwtRef#impl-Display] and
 /// [`Debug`][JwtRef#impl-Debug] to prevent unintentional disclosures of sensitive values.
-/// See teh documentation on those trait implementations on the [`JwtRef`] type for more
+/// See the documentation on those trait implementations on the [`JwtRef`] type for more
 /// information.
 #[braid(
     serde,
-    debug_impl = "owned",
-    display_impl = "owned",
+    debug = "owned",
+    display = "owned",
+    ord = "omit",
     ref_doc = "\
     A borrowed reference to a JSON Web Token ([`Jwt`])\n\
     \n\
@@ -373,6 +398,7 @@ pub struct Subject;
     See the documentation on those trait implementations for more information.
     "
 )]
+#[must_use]
 pub struct Jwt;
 
 impl Jwt {
@@ -464,8 +490,8 @@ impl fmt::Debug for JwtRef {
         if f.alternate() {
             f.write_str("\"")?;
             let last_period = &self.0.rfind('.');
-            if let Some(last_period) = last_period {
-                f.write_str(&self.0[..last_period + 1])?;
+            if let Some(last_period) = *last_period {
+                f.write_str(&self.0[..=last_period])?;
                 limited_reveal(&self.0[last_period + 1..], &mut *f, 0)?;
             } else {
                 limited_reveal(&self.0, &mut *f, 0)?;
@@ -522,8 +548,8 @@ impl fmt::Display for JwtRef {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if f.alternate() {
             let last_period = &self.0.rfind('.');
-            if let Some(last_period) = last_period {
-                f.write_str(&self.0[..last_period + 1])?;
+            if let Some(last_period) = *last_period {
+                f.write_str(&self.0[..=last_period])?;
                 limited_reveal(&self.0[last_period + 1..], &mut *f, usize::MAX)
             } else {
                 limited_reveal(&self.0, &mut *f, usize::MAX)
@@ -559,6 +585,7 @@ fn limited_reveal(
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(from = "OneOrMany<Audience>", into = "OneOrMany<Audience>")]
 #[repr(transparent)]
+#[must_use]
 pub struct Audiences(Vec<Audience>);
 
 impl Audiences {
@@ -579,6 +606,7 @@ impl Audiences {
 
     /// Indicates whether the audience set is empty
     #[inline]
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
@@ -586,7 +614,7 @@ impl Audiences {
     /// Iterates through references to the audiences in the set
     #[inline]
     pub fn iter(&self) -> impl Iterator<Item = &AudienceRef> {
-        self.0.iter().map(|i| i.as_ref())
+        self.0.iter().map(AsRef::as_ref)
     }
 }
 
@@ -628,6 +656,11 @@ impl From<Audience> for Audiences {
 /// A claims validator
 pub trait ClaimsValidator<C, H> {
     /// Validates the header and payload claims decoded from a JWT
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the header or payload claims are invalid according to
+    /// the validator.
     fn validate(&self, header: &H, claims: &C) -> Result<(), error::ClaimsRejected>;
 }
 
@@ -666,6 +699,7 @@ impl<C, H> ClaimsValidator<C, H> for NoopValidator {
 ///
 /// A default validator configured with common expected validations.
 #[derive(Clone, Debug)]
+#[must_use]
 pub struct CoreValidator {
     approved_algorithms: Vec<jwa::Algorithm>,
     leeway: Duration,
@@ -752,25 +786,25 @@ impl CoreValidator {
     /// Adds a single audience to the set of allowed audiences
     #[inline]
     pub fn add_allowed_audience(self, audience: Audience) -> Self {
-        let mut slf = self;
-        slf.allowed_audiences.push(audience);
-        slf
+        let mut this = self;
+        this.allowed_audiences.push(audience);
+        this
     }
 
     /// Adds multiple audiences to the set of allowed audiences
     #[inline]
     pub fn extend_allowed_audiences<I: IntoIterator<Item = Audience>>(self, alg: I) -> Self {
-        let mut slf = self;
-        slf.allowed_audiences.extend(alg);
-        slf
+        let mut this = self;
+        this.allowed_audiences.extend(alg);
+        this
     }
 
     /// Approves a single algorithm
     #[inline]
     pub fn add_approved_algorithm(self, alg: jwa::Algorithm) -> Self {
-        let mut slf = self;
-        slf.approved_algorithms.push(alg);
-        slf
+        let mut this = self;
+        this.approved_algorithms.push(alg);
+        this
     }
 
     /// Approves multiple algorithms
@@ -779,9 +813,9 @@ impl CoreValidator {
         self,
         alg: I,
     ) -> Self {
-        let mut slf = self;
-        slf.approved_algorithms.extend(alg);
-        slf
+        let mut this = self;
+        this.approved_algorithms.extend(alg);
+        this
     }
 
     /// Require that tokens specify a particular issuer
@@ -887,6 +921,7 @@ impl CoreValidator {
 
 /// Minimal set of headers for common JWTs
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug, PartialEq, Eq)]
+#[must_use]
 pub struct BasicHeaders {
     alg: jwa::Algorithm,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -922,6 +957,7 @@ impl CoreHeaders for BasicHeaders {
 
 /// Common claims used in JWTs
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug, PartialEq, Eq)]
+#[must_use]
 pub struct BasicClaims {
     #[serde(default, skip_serializing_if = "Audiences::is_empty")]
     aud: Audiences,
@@ -937,6 +973,10 @@ pub struct BasicClaims {
 
 impl BasicClaims {
     /// Produces a signed JWT with the given header and claims
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the signature cannot be produced.
     pub fn sign<H: Serialize + HasAlgorithm>(
         &self,
         jwk: &Jwk,
@@ -1067,16 +1107,22 @@ mod tests {
         let validation = CoreValidator::default()
             .with_leeway(Duration::from_secs(2))
             .check_not_before()
-            .extend_allowed_audiences(vec![Audience::new("marcus"), Audience::new("other")])
-            .require_issuer(Issuer::new("face"));
+            .extend_allowed_audiences(vec![
+                Audience::from_static("marcus"),
+                Audience::from_static("other"),
+            ])
+            .require_issuer(Issuer::from_static("face"));
 
-        let audiences = Audiences::from(vec![Audience::new("marcus"), Audience::new("other")]);
+        let audiences = Audiences::from(vec![
+            Audience::from_static("marcus"),
+            Audience::from_static("other"),
+        ]);
 
         let claims = BasicClaims::new()
             .with_not_before(UnixTime(9))
             .with_expiration(UnixTime(5))
             .with_audiences(audiences)
-            .with_issuer(Issuer::new("face"));
+            .with_issuer(Issuer::from_static("face"));
 
         let clock = TestClock::new(UnixTime(7));
 

@@ -1,5 +1,6 @@
 [workspace]
 members = [
+    "aliri_axum",
     "aliri_oauth2",
     "aliri_reqwest",
     "aliri_tokens",

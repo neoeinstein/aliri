@@ -2,17 +2,18 @@
 //! ecosystem, including `axum`.
 //!
 //! See the `examples` folder in the repository for a working example using
-//! an `axum` web server.
+//! an `tonic` web server. For a more ergonomic experience in `axum`,
+//! see the [`aliri_axum`](https://docs.rs/aliri_axum) crate.
 //!
 //! ```
 //! # use axum::extract::Path;
+//! use axum::handler::Handler;
 //! # use axum::routing::{get, post};
-//! use tower_http::auth::RequireAuthorizationLayer;
 //! # use aliri::{jwa, jwk, jwt, Jwk, Jwks};
 //! # use aliri_base64::Base64UrlRef;
 //! # use aliri_clock::UnixTime;
-//! use aliri_oauth2::{Scope, ScopePolicy};
-//! use aliri_tower::{VerifyJwt, VerifyScopes};
+//! use aliri_oauth2::{scope, policy, ScopePolicy};
+//! use aliri_tower::Oauth2Authorizer;
 //!
 //! # #[derive(Clone, Debug, serde::Deserialize)]
 //! pub struct CustomClaims {
@@ -41,7 +42,7 @@
 //! #     let secret = Base64UrlRef::from_slice(b"test").to_owned();
 //! #     let key = Jwk::from(jwa::Hmac::new(secret))
 //! #         .with_algorithm(jwa::Algorithm::HS256)
-//! #         .with_key_id(jwk::KeyId::new("test key"));
+//! #         .with_key_id(jwk::KeyId::from_static("test key"));
 //! #
 //! #     let mut jwks = Jwks::default();
 //! #     jwks.add_key(key);
@@ -49,35 +50,29 @@
 //! #     let validator = jwt::CoreValidator::default()
 //! #         .ignore_expiration() // Only for demonstration purposes
 //! #         .add_approved_algorithm(jwa::Algorithm::HS256)
-//! #         .add_allowed_audience(jwt::Audience::new("my_api"))
-//! #         .require_issuer(jwt::Issuer::new("authority"));
+//! #         .add_allowed_audience(jwt::Audience::from_static("my_api"))
+//! #         .require_issuer(jwt::Issuer::from_static("authority"));
 //! #
 //! #     aliri_oauth2::Authority::new(jwks, validator)
 //! # }
-//!
+//! #
 //! let authority = construct_authority();
-//!
-//! let verify_jwt = VerifyJwt::<CustomClaims, _>::new(authority);
-//!
-//! let require_scope = |scope: Scope| {
-//!     let verify_scope = verify_jwt.scopes_verifier(ScopePolicy::allow_one(scope));
-//!     RequireAuthorizationLayer::custom(verify_scope)
-//! };
-//!
-//! let check_jwt = RequireAuthorizationLayer::custom(verify_jwt.clone());
+//! let authorizer = Oauth2Authorizer::new()
+//!     .with_claims::<CustomClaims>()
+//!     .with_terse_error_handler();
 //!
 //! let app = axum::Router::new()
 //!     .route(
 //!         "/users",
-//!         post(handle_post)
-//!             .layer(require_scope("post_user".parse().unwrap())),
+//!         post(handle_post
+//!             .layer(authorizer.scope_layer(policy![scope!["post_user"]]))),
 //!     )
 //!     .route(
 //!         "/users/:id",
-//!         get(handle_get)
-//!             .layer(require_scope("get_user".parse().unwrap())),
+//!         get(handle_get
+//!             .layer(authorizer.scope_layer(ScopePolicy::allow_one_from_static("get_user")))),
 //!     )
-//!     .layer(&check_jwt);
+//!     .layer(authorizer.jwt_layer(authority));
 //! #
 //! # async fn handle_post() {}
 //! #
@@ -106,18 +101,28 @@
 use std::fmt;
 use std::marker::PhantomData;
 
+mod authorizer;
 mod jwt;
 mod oauth2;
+pub mod util;
 
-pub use crate::jwt::*;
-pub use crate::oauth2::*;
+pub use crate::authorizer::Oauth2Authorizer;
+pub use crate::jwt::OnJwtError;
+pub use crate::oauth2::OnScopeError;
 
-/// Default responders for authentication and authorization failures
-pub struct DefaultErrorHandler<ResBody> {
+/// Terse responders for authentication and authorization failures
+///
+/// This handler will generate a default error response containing the
+/// relevant status code and `www-authenticate` header with an empty body.
+///
+/// This type _does not_ provide `error_description` data to avoid leaking
+/// internal error information, but does provide `scope` information in
+/// when an otherwise valid token lacks sufficient permissions.
+pub struct TerseErrorHandler<ResBody> {
     _ty: PhantomData<fn() -> ResBody>,
 }
 
-impl<ResBody> DefaultErrorHandler<ResBody> {
+impl<ResBody> TerseErrorHandler<ResBody> {
     /// Instantiates a new instance over a given body type
     #[inline]
     pub fn new() -> Self {
@@ -125,24 +130,85 @@ impl<ResBody> DefaultErrorHandler<ResBody> {
     }
 }
 
-impl<ResBody> fmt::Debug for DefaultErrorHandler<ResBody> {
+impl<ResBody> fmt::Debug for TerseErrorHandler<ResBody> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("DefaultErrorHandler")
+        f.write_str("TerseErrorHandler")
     }
 }
 
-impl<ResBody> Default for DefaultErrorHandler<ResBody> {
+impl<ResBody> Default for TerseErrorHandler<ResBody> {
     #[inline]
     fn default() -> Self {
         Self { _ty: PhantomData }
     }
 }
 
-impl<ResBody> Clone for DefaultErrorHandler<ResBody> {
+impl<ResBody> Clone for TerseErrorHandler<ResBody> {
     #[inline]
     fn clone(&self) -> Self {
         Self { _ty: PhantomData }
     }
 }
 
-impl<ResBody> Copy for DefaultErrorHandler<ResBody> {}
+impl<ResBody> Copy for TerseErrorHandler<ResBody> {}
+
+/// Verbose responders for authentication and authorization failures
+///
+/// This handler will generate a default error response containing the
+/// relevant status code and `www-authenticate` header with an empty body.
+///
+/// This type provides `error_description` data in the `www-authenticate`
+/// header.
+pub struct VerboseErrorHandler<ResBody> {
+    _ty: PhantomData<fn() -> ResBody>,
+}
+
+impl<ResBody> VerboseErrorHandler<ResBody> {
+    /// Instantiates a new instance over a given body type
+    #[inline]
+    pub fn new() -> Self {
+        Self { _ty: PhantomData }
+    }
+}
+
+impl<ResBody> fmt::Debug for VerboseErrorHandler<ResBody> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str("VerboseErrorHandler")
+    }
+}
+
+impl<ResBody> Default for VerboseErrorHandler<ResBody> {
+    #[inline]
+    fn default() -> Self {
+        Self { _ty: PhantomData }
+    }
+}
+
+impl<ResBody> Clone for VerboseErrorHandler<ResBody> {
+    #[inline]
+    fn clone(&self) -> Self {
+        Self { _ty: PhantomData }
+    }
+}
+
+impl<ResBody> Copy for VerboseErrorHandler<ResBody> {}
+
+/// ```
+/// use aliri_tower::VerboseErrorHandler;
+/// fn is_send_sync<T: Send + Sync>(_: T) {}
+/// fn verbose_error_handler_is_send_sync<B>(v: VerboseErrorHandler<B>) {
+///     is_send_sync(v)
+/// }
+/// ```
+#[cfg(doctest)]
+fn verbose_error_handler_is_send_sync() {}
+
+/// ```
+/// use aliri_tower::TerseErrorHandler;
+/// fn is_send_sync<T: Send + Sync>(_: T) {}
+/// fn terse_error_handler_is_send_sync<B>(v: TerseErrorHandler<B>) {
+///     is_send_sync(v)
+/// }
+/// ```
+#[cfg(doctest)]
+fn terse_error_handler_is_send_sync() {}
