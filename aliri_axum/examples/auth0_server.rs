@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use aliri::error::JwtVerifyError;
 use aliri::{jwa, jwt};
 use aliri_axum::scope_guards;
@@ -23,6 +25,8 @@ scope_guards! {
 
 #[tokio::main]
 async fn main() -> color_eyre::Result<()> {
+    tracing_subscriber::fmt::init();
+
     let authority = construct_authority().await?;
     let authorizer = Oauth2Authorizer::new()
         .with_claims::<CustomClaims>()
@@ -59,6 +63,8 @@ async fn construct_authority() -> color_eyre::Result<Authority> {
 
     let authority =
         Authority::new_from_url(format!("{}.well-known/jwks.json", ISSUER), validator).await?;
+
+    authority.spawn_refresh(Duration::from_secs(600));
 
     Ok(authority)
 }
