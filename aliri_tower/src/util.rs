@@ -165,10 +165,7 @@ mod tests {
     fn in_forbidden_with_multiple_alternatives_returns_multiple_headers() {
         let resp = forbidden::<()>(
             "descriptive error",
-            Some(&policy![
-                scope!["test1", "test2"],
-                scope!["admin"],
-            ]),
+            Some(&policy![scope!["test1", "test2"], scope!["admin"]]),
         );
 
         let headers = extract_www_authenticate_headers(&resp);

@@ -454,9 +454,6 @@ impl HasScope for Scope {
 
 /// Construct a scope from a list of tokens.
 ///
-/// This macro will attempt to convert all the passed in expressions into tokens.
-/// If any conversion fails, the error will be bubbled up.
-///
 /// ```
 /// use aliri_oauth2::scope;
 ///
@@ -472,6 +469,29 @@ impl HasScope for Scope {
 ///     .and(oauth2::ScopeToken::from_static("users.read"))
 ///     .and(oauth2::ScopeToken::from_static("users.update"))
 ///     .and(oauth2::ScopeToken::from_static("users.list"));
+/// ```
+///
+/// # Panics
+///
+/// This macro will attempt to convert all the passed in string literals into tokens
+/// using [`ScopeToken::from_static`] which will panic if any are invalid.
+///
+/// ```should_panic
+/// use aliri_oauth2::scope;
+///
+/// let scope = scope!["users read", "users.update", "users.list"];
+/// ```
+///
+/// # Errors
+///
+/// If the values passed in are not literals, then the tokens will be parsed
+/// at runtime, and any errors will be propagated back to the caller.
+///
+/// ```
+/// use aliri_oauth2::scope;
+///
+/// let scope = scope![String::from("users.read")].unwrap();
+/// assert!(scope![String::from("users read")].is_err());
 /// ```
 #[macro_export]
 macro_rules! scope {
