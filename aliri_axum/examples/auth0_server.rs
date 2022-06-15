@@ -9,7 +9,7 @@ use aliri_tower::Oauth2Authorizer;
 use axum::extract::{Path, RequestParts};
 use axum::response::IntoResponse;
 use axum::routing::{get, post};
-use axum::Router;
+use axum::{Router, Extension};
 use http::Response;
 use time::format_description::well_known::Rfc3339;
 
@@ -39,9 +39,10 @@ async fn main() -> color_eyre::Result<()> {
         .route("/users/:id", get(handle_get).delete(handle_delete))
         .route("/info", get(handle_get_info))
         .route("/deny_all", get(handle_deny_all))
-        .layer(authorizer.jwt_layer(authority));
+        .layer(authorizer.jwt_layer(authority))
+        .layer(Extension(aliri_axum::VerboseAuthxErrors));
 
-    println!("Run this program with `token` as an argument to generate a token");
+    println!("Run the `auth0_token` program with the desired scopes as an argument to generate a token");
     println!("Press Ctrl+C to exit");
 
     axum::Server::bind(&"127.0.0.1:8080".parse().unwrap())

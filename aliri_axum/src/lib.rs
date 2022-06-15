@@ -79,6 +79,8 @@
 //!     let authorizer = Oauth2Authorizer::new()
 //!         .with_claims::<CustomClaims>()
 //!         .with_terse_error_handler();
+//!     // For verbose error handling, use `with_verbose_error_handler()`
+//!     // or your own custom handler.
 //!
 //!     // Build the router
 //!     let router = Router::new()
@@ -86,6 +88,8 @@
 //!         .route("/resource", post(create_resource))
 //!         .route("/resource/{id}", get(read_resource))
 //!         .layer(authorizer.jwt_layer(authority));
+//!     // For verbose scope errors, add the following layer:
+//!     // .layer(axum::Extension(aliri_axum::VerboseAuthxErrors));
 //!
 //!     // Construct the server
 //!     let server = Server::bind(&SocketAddr::new([0, 0, 0, 0].into(), 3000))
@@ -196,6 +200,7 @@ impl IntoResponse for AuthFailed {
 /// authentication or authorization fails
 ///
 /// When this extension is not present, terse errors are produced.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct VerboseAuthxErrors;
 
 #[doc(hidden)]
