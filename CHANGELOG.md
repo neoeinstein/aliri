@@ -11,6 +11,7 @@ This changelog is based on the format from [Keep a Changelog](https://keepachang
 - Introduced `scope!` and `policy!` macros to make those easier to define as well
 - Several examples added for `aliri_tower` and `aliri_axum`
 - `aliri` crate now has an optional `tracing` feature (disabled by default)
+- `Authority::spawn_refresh` spawns a task that will automatically refresh a remote JWKS as a background task
 
 ### Changed
 

@@ -13,8 +13,8 @@ repository = "https://github.com/neoeinstein/aliri"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-aliri = { version = "0.5.6", path = "../aliri" }
-aliri_oauth2 = { version = "0.7.0", path = "../aliri_oauth2" }
+aliri = { version = "0.5.6", path = "../aliri", default-features = false }
+aliri_oauth2 = { version = "0.7.0", path = "../aliri_oauth2", default-features = false }
 aliri_traits = { version = "0.1.1", path = "../aliri_traits" }
 axum-core = "0.2.5"
 http = "0.2.8"
@@ -24,11 +24,14 @@ once_cell = "1"
 aliri_base64 = { version = "0.1.5", path = "../aliri_base64" }
 aliri_braid = "0.2.3"
 aliri_clock = { version = "0.1.4", path = "../aliri_clock" }
+aliri_oauth2 = { version = "0.7.0", path = "../aliri_oauth2", features = ["rsa", "tokio", "reqwest"] }
 aliri_tower = { version = "0.1.1", path = "../aliri_tower" }
 axum = { version = "0.5", default-features = false }
 color-eyre = "0.6.1"
 reqwest = "0.11.11"
 serde = { version = "1.0.137", features = [ "derive" ] }
 serde_json = "1"
-tokio = { version = "1", features = [ "rt-multi-thread", "macros", "time" ] }
 time = { version = "0.3.9", features = ["formatting"] }
+tokio = { version = "1", features = [ "rt-multi-thread", "macros", "time" ] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3.11", features = ["env-filter"] }

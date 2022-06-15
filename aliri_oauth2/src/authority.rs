@@ -11,7 +11,7 @@ use reqwest::{
     Client, StatusCode,
 };
 use serde::Deserialize;
-use std::sync::Arc;
+use std::{sync::Arc, time::Duration};
 use thiserror::Error;
 
 /// Indicates the requester held insufficient scopes to be granted access
@@ -36,6 +36,8 @@ struct VolatileData {
     jwks: Jwks,
     #[cfg(feature = "reqwest")]
     etag: Option<HeaderValue>,
+    #[cfg(feature = "reqwest")]
+    last_modified: Option<HeaderValue>,
 }
 
 impl VolatileData {
@@ -44,6 +46,8 @@ impl VolatileData {
             jwks,
             #[cfg(feature = "reqwest")]
             etag: None,
+            #[cfg(feature = "reqwest")]
+            last_modified: None,
         }
     }
 }
@@ -101,9 +105,19 @@ impl Authority {
         response.error_for_status_ref()?;
 
         let etag = response.headers().get(header::ETAG).map(ToOwned::to_owned);
+        let last_modified = response
+            .headers()
+            .get(header::LAST_MODIFIED)
+            .map(ToOwned::to_owned);
         let jwks = response.json::<Jwks>().await?;
 
-        let data = VolatileData { jwks, etag };
+        let data = VolatileData {
+            jwks,
+            etag,
+            last_modified,
+        };
+
+        tracing::info!(jwks.url = %jwks_url, "JWKS refreshed");
 
         Ok(Self {
             inner: Arc::new(Inner {
@@ -114,34 +128,85 @@ impl Authority {
         })
     }
 
+    /// A non-terminating future that will automatically refresh the JWKS
+    /// using the configured interval
+    #[cfg(feature = "tokio")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "tokio")))]
+    pub fn spawn_refresh(&self, interval: Duration) {
+        let this = self.clone();
+
+        tokio::spawn(async move {
+            let mut timer = tokio::time::interval(interval);
+            timer.tick().await;
+
+            loop {
+                timer.tick().await;
+                // Ignore any errors; we'll just try again next time
+                let _ = this.refresh().await;
+            }
+        });
+    }
+
     /// Refreshes the JWKS from the remote URL
     ///
     /// No retries are attempted. If the attempt to refresh the JWKS from
     /// the remote URL fails, no change is made to the internal JWKS.
     #[cfg(feature = "reqwest")]
-    #[tracing::instrument]
+    #[cfg_attr(docsrs, doc(cfg(feature = "reqwest")))]
+    #[tracing::instrument(skip(self), fields(jwks.url = tracing::field::Empty))]
     pub async fn refresh(&self) -> Result<(), reqwest::Error> {
         if let Some(remote) = &self.inner.remote {
+            let span = tracing::Span::current();
+            span.record("jwks.url", &&*remote.jwks_url);
+            tracing::debug!("refreshing JWKS");
             let mut request = remote.client.get(&remote.jwks_url);
 
-            if let Some(etag) = &self.inner.data.load().etag {
-                request = request.header(header::IF_NONE_MATCH, etag)
+            {
+                let data = self.inner.data.load();
+                if let Some(etag) = &data.etag {
+                    request = request.header(header::IF_NONE_MATCH, etag)
+                } else if let Some(last_modified) = &data.last_modified {
+                    request = request.header(header::IF_MODIFIED_SINCE, last_modified)
+                }
             }
 
             let response = request.send().await?;
 
             if response.status() == StatusCode::NOT_MODIFIED {
+                tracing::debug!("JWKS not modified");
                 return Ok(());
-            } else {
-                response.error_for_status_ref()?;
+            } else if let Err(err) = response.error_for_status_ref() {
+                let error: &dyn std::error::Error = &err;
+                tracing::warn!(
+                    error,
+                    http.status_code = response.status().as_u16(),
+                    "JWKS refresh failed; unexpected response status",
+                );
+                return Err(err);
             }
 
-            let etag = response.headers().get("etag").map(ToOwned::to_owned);
-            let jwks = response.json::<Jwks>().await?;
+            let etag = response.headers().get(header::ETAG).map(ToOwned::to_owned);
+            let last_modified = response
+                .headers()
+                .get(header::LAST_MODIFIED)
+                .map(ToOwned::to_owned);
+            match response.json::<Jwks>().await {
+                Ok(jwks) => {
+                    let data = Arc::new(VolatileData {
+                        jwks,
+                        etag,
+                        last_modified,
+                    });
 
-            let data = Arc::new(VolatileData { jwks, etag });
-
-            self.inner.data.store(data);
+                    self.inner.data.store(data);
+                    tracing::info!("JWKS refreshed");
+                }
+                Err(err) => {
+                    let error: &dyn std::error::Error = &err;
+                    tracing::warn!(error, "JWKS refresh failed; unexpected error");
+                    return Err(err);
+                }
+            }
         }
 
         Ok(())
@@ -152,6 +217,7 @@ impl Authority {
     /// No retries are attempted. If the attempt to refresh the JWKS from
     /// the remote URL fails, no change is made to the internal JWKS.
     #[cfg(not(feature = "reqwest"))]
+    #[cfg_attr(docsrs, doc(cfg(not(feature = "reqwest"))))]
     #[tracing::instrument]
     pub async fn refresh(&self) -> Result<(), std::convert::Infallible> {
         Ok(())
