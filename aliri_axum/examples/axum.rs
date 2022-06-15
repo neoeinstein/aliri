@@ -111,7 +111,7 @@ fn print_example_token(key: &Jwk) {
         iss: jwt::Issuer::from_static(ISSUER),
         aud: jwt::Audience::from_static(AUDIENCE).into(),
         exp: aliri_clock::System.now() + DurationSecs(300),
-        scope: scope!["get_user", "post_user"].unwrap(),
+        scope: scope!["get_user", "post_user"],
     };
 
     let jwt = Jwt::try_from_parts_with_signature(&headers, &payload, key).unwrap();

@@ -65,7 +65,7 @@
 //!     .route(
 //!         "/users",
 //!         post(handle_post
-//!             .layer(authorizer.scope_layer(policy![scope!["post_user"].unwrap()]))),
+//!             .layer(authorizer.scope_layer(policy![scope!["post_user"]]))),
 //!     )
 //!     .route(
 //!         "/users/:id",

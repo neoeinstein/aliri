@@ -8,6 +8,7 @@ This changelog is based on the format from [Keep a Changelog](https://keepachang
 
 - New `aliri_axum` crate introduced
 - Introduce new `scope_guards!` macro to make it easy to define scope guards
+- Introduced `scope!` and `policy!` macros to make those easier to define as well.
 
 ### Changed
 

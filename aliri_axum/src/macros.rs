@@ -348,23 +348,23 @@ mod tests {
     }
 
     fn request_with_admin_scope() -> RequestParts<()> {
-        request_with_scope(scope!["admin"].unwrap())
+        request_with_scope(scope!["admin"])
     }
 
     fn request_with_no_scope() -> RequestParts<()> {
-        request_with_scope(scope![].unwrap())
+        request_with_scope(scope![])
     }
 
     fn request_with_testing_scope() -> RequestParts<()> {
-        request_with_scope(scope!["testing"].unwrap())
+        request_with_scope(scope!["testing"])
     }
 
     fn request_with_testing2_scope() -> RequestParts<()> {
-        request_with_scope(scope!["testing2"].unwrap())
+        request_with_scope(scope!["testing2"])
     }
 
     fn request_with_admin_and_testing_scope() -> RequestParts<()> {
-        request_with_scope(scope!["admin", "testing"].unwrap())
+        request_with_scope(scope!["admin", "testing"])
     }
 
     #[tokio::test]

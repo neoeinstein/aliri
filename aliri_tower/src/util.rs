@@ -166,8 +166,8 @@ mod tests {
         let resp = forbidden::<()>(
             "descriptive error",
             Some(&policy![
-                scope!["test1", "test2"].unwrap(),
-                scope!["admin"].unwrap()
+                scope!["test1", "test2"],
+                scope!["admin"],
             ]),
         );
 

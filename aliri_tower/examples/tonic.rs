@@ -26,7 +26,7 @@ impl CounterService for MyCounter {
         &self,
         request: Request<CounterRequest>,
     ) -> Result<Response<CounterResponse>, Status> {
-        let policy = policy![scope!["update_count"].unwrap()];
+        let policy = policy![scope!["update_count"]];
         policy
             .evaluate(
                 request

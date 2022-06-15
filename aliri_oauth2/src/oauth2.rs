@@ -458,30 +458,30 @@ impl HasScope for Scope {
 /// If any conversion fails, the error will be bubbled up.
 ///
 /// ```
-/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// use aliri_oauth2::scope;
 ///
-/// let scope = scope!["users.read", "users.update", "users.list"]?;
-/// # Ok(()) }
+/// let scope = scope!["users.read", "users.update", "users.list"];
 /// ```
 ///
 /// This is equivalent to the following:
 ///
 /// ```
-/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-/// # use core::convert::TryInto;
-/// use aliri_oauth2::Scope;
+/// use aliri_oauth2::{oauth2, Scope};
 ///
 /// let scope = Scope::empty()
-///     .and("users.read".try_into()?)
-///     .and("users.update".try_into()?)
-///     .and("users.list".try_into()?);
-/// # Ok(()) }
+///     .and(oauth2::ScopeToken::from_static("users.read"))
+///     .and(oauth2::ScopeToken::from_static("users.update"))
+///     .and(oauth2::ScopeToken::from_static("users.list"));
 /// ```
 #[macro_export]
 macro_rules! scope {
     ($($token:literal),+ $(,)?) => {
-        $crate::scope![$(($token)),+]
+        {
+            $crate::Scope::empty()
+            $(
+                .and($crate::oauth2::ScopeToken::from_static($token))
+            )+
+        }
     };
     ($($token:expr),+ $(,)?) => {
         {
@@ -498,7 +498,7 @@ macro_rules! scope {
         }
     };
     () => {
-        Ok::<_, $crate::oauth2::InvalidScopeToken>($crate::Scope::empty())
+        $crate::Scope::empty()
     }
 }
 
@@ -604,7 +604,7 @@ mod tests {
 
     #[test]
     fn scope_to_string() {
-        let scope: String = scope!("test1", "test2", "test3").unwrap().to_string();
+        let scope: String = scope!["test1", "test2", "test3"].to_string();
         assert_eq!(scope.len(), 17);
         assert!(scope.contains("test1"));
         assert!(scope.contains("test2"));

@@ -356,26 +356,22 @@ impl From<Scope> for ScopePolicy {
 /// For more information about how the alternatives are evaluated, see [`ScopePolicy`].
 ///
 /// ```
-/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// use aliri_oauth2::{scope, policy};
 ///
 /// let policy = policy![
-///     scope!["admin"]?,
-///     scope!["special", "user"]?,
+///     scope!["admin"],
+///     scope!["special", "user"],
 /// ];
-/// # Ok(()) }
 /// ```
 ///
 /// This is equivalent to the following:
 ///
 /// ```
-/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// use aliri_oauth2::{ScopePolicy, scope};
 ///
 /// let policy = ScopePolicy::deny_all()
-///     .or_allow(scope!["admin"]?)
-///     .or_allow(scope!["special", "user"]?);
-/// # Ok(()) }
+///     .or_allow(scope!["admin"])
+///     .or_allow(scope!["special", "user"]);
 /// ```
 #[macro_export]
 macro_rules! policy {
