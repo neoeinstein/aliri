@@ -3,7 +3,7 @@ name = "aliri_actix"
 description = "Actix for interacting with `aliri` authorities"
 keywords = [ "actix", "jose", "jwt", "oauth2", "auth" ]
 categories = [ "authentication", "web-programming", "web-programming::http-server" ]
-version = "0.6.0"
+version = "0.7.0"
 authors = ["Marcus Griep <marcus@griep.us>"]
 edition = "2018"
 readme = "../README.md"
@@ -14,9 +14,9 @@ repository = "https://github.com/neoeinstein/aliri"
 
 [dependencies]
 actix-web = { version = "4", default-features = false }
-aliri = { version = "0.5.0", path = "../aliri" }
+aliri = { version = "0.6.0", path = "../aliri" }
 aliri_traits = { version = "0.1.0", path = "../aliri_traits" }
-aliri_oauth2 = { version = "0.7.0", path = "../aliri_oauth2" }
+aliri_oauth2 = { version = "0.8.0", path = "../aliri_oauth2" }
 futures = "0.3"
 once_cell = "1.4"
 serde = { version = "1", features = [ "derive" ] }
@@ -28,7 +28,7 @@ actix-rt = "2"
 actix-web = { version = "4", default-features = false, features = ["macros"] }
 aliri_base64 = { version = "0.1.0", path = "../aliri_base64" }
 aliri_clock = { version = "0.1.0", path = "../aliri_clock" }
-aliri_oauth2 = { version = "0.7.0", path = "../aliri_oauth2", features = [ "reqwest" ] }
+aliri_oauth2 = { version = "0.8.0", path = "../aliri_oauth2", features = [ "reqwest" ] }
 color-eyre = "0.6"
 regex = "1"
 serde_json = "1"
