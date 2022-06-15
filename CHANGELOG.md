@@ -4,6 +4,8 @@ This changelog is based on the format from [Keep a Changelog](https://keepachang
 
 ## [Unreleased]
 
+## [2022-06-15.1]
+
 ### Changed
 
 - The `aliri_axum` Auth0 example has been updated to return verbose authx errors to aid in learning
