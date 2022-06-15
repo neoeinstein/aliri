@@ -26,7 +26,7 @@ tower-layer = { version = "0.3.1" }
 tower-http = { version = "0.2", features = [ "auth" ] }
 
 [dev-dependencies]
-aliri_braid = "0.2.2"
+aliri_braid = "0.2.3"
 aliri_base64 = { version = "0.1.5", path = "../aliri_base64" }
 aliri_clock = { version = "0.1.4", path = "../aliri_clock" }
 axum = { version = "0.5.4", default-features = false }

@@ -25,7 +25,7 @@ features = [ "rsa", "ec", "hmac", "private-keys", "reqwest" ]
 aliri = { version = "0.5.0", path = "../aliri", default-features = false }
 aliri_clock = { version = "0.1.0", path = "../aliri_clock" }
 aliri_traits = { version = "0.1.0", path = "../aliri_traits" }
-aliri_braid = { version = "0.2.2" }
+aliri_braid = { version = "0.2.3" }
 arc-swap = "1.2"
 reqwest = { version = "0.11", optional = true, features = [ "json" ] }
 serde = { version = "1", features = [ "derive" ] }
