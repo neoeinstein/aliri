@@ -34,6 +34,7 @@ regex = "1"
 ring = "0.16"
 serde = { version = "1", features = [ "derive" ] }
 serde_json = "1"
+tracing = { version = "0.1", optional = true }
 thiserror = "1"
 
 # EC and Private Key support
@@ -41,6 +42,7 @@ openssl = { version = "0.10", optional = true }
 
 [dev-dependencies]
 color-eyre = "0.6"
+tracing-test = "0.2.2"
 
 [package.metadata.workspaces]
 independent = true
