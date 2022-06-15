@@ -133,6 +133,8 @@ fn get_key_by_id_impl<'a>(
 #[cfg(test)]
 mod tests {
     use color_eyre::Result;
+    #[cfg(feature = "tracing")]
+    use tracing_test::traced_test;
 
     use super::*;
 
@@ -168,6 +170,7 @@ mod tests {
     "#;
 
     #[test]
+    #[cfg_attr(feature = "tracing", traced_test)]
     fn deserializes_jwks_with_unknown_alg() -> Result<()> {
         let jwks: Jwks = serde_json::from_str(JWKS_WITH_UNKNOWN_ALG)?;
         dbg!(&jwks);
@@ -176,6 +179,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(feature = "tracing", traced_test)]
     fn deserialize_jwks_with_no_alg() -> Result<()> {
         let jwks: Jwks = serde_json::from_str(JWKS_WITH_NO_ALG)?;
         dbg!(&jwks);
@@ -184,6 +188,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(feature = "tracing", traced_test)]
     fn deserialize_jwks_with_nothing() -> Result<()> {
         let jwks: Jwks = serde_json::from_str(JWKS_WITH_NOTHING)?;
         dbg!(&jwks);
@@ -197,9 +202,26 @@ mod tests {
         use crate::test::rsa::*;
 
         #[test]
+        #[cfg_attr(feature = "tracing", traced_test)]
         fn decodes_jwks() -> Result<()> {
             let jwks: Jwks = serde_json::from_str(JWKS)?;
             dbg!(&jwks);
+            assert_eq!(jwks.keys.len(), 1);
+            Ok(())
+        }
+    }
+
+    #[cfg(all(feature = "rsa", feature = "hmac", feature = "ec"))]
+    mod mixed {
+        use super::*;
+        use crate::test::mixed::*;
+
+        #[test]
+        #[cfg_attr(feature = "tracing", traced_test)]
+        fn decodes_jwks() -> Result<()> {
+            let jwks: Jwks = serde_json::from_str(JWKS)?;
+            dbg!(&jwks);
+            assert_eq!(jwks.keys.len(), 3);
             Ok(())
         }
     }

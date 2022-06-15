@@ -42,6 +42,7 @@ openssl = { version = "0.10", optional = true }
 
 [dev-dependencies]
 color-eyre = "0.6"
+tracing-test = "0.2.2"
 
 [package.metadata.workspaces]
 independent = true
