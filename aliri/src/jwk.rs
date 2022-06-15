@@ -263,13 +263,13 @@ impl Signer for Jwk {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 struct JwkDto {
-    #[serde(rename = "kid")]
+    #[serde(rename = "kid", default, skip_serializing_if = "Option::is_none")]
     key_id: Option<KeyId>,
 
-    #[serde(rename = "use")]
+    #[serde(rename = "use", default, skip_serializing_if = "Option::is_none")]
     usage: Option<jwa::Usage>,
 
-    #[serde(rename = "alg")]
+    #[serde(rename = "alg", default, skip_serializing_if = "Option::is_none")]
     algorithm: Option<jwa::Algorithm>,
 
     #[serde(flatten)]

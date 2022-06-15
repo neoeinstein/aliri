@@ -1,9 +1,9 @@
 use crate::{jwa, jwk, Jwk};
 
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
 /// A JSON Web Key Set (JWKS)
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize)]
 pub struct Jwks {
     keys: Vec<Jwk>,
 }
@@ -131,19 +131,129 @@ fn get_key_by_id_impl<'a>(
 }
 
 #[cfg(test)]
-#[cfg(feature = "rsa")]
 mod tests {
     use color_eyre::Result;
 
-    use crate::test::rsa::*;
-
     use super::*;
 
+    const JWKS_WITH_UNKNOWN_ALG: &str = r#"
+        {
+            "keys": [
+                {
+                    "kid": "1",
+                    "use": "enc",
+                    "alg": "RSA-OAEP"
+                }
+            ]
+        }
+    "#;
+
+    const JWKS_WITH_NO_ALG: &str = r#"
+        {
+            "keys": [
+                {
+                    "kid": "1",
+                    "use": "enc"
+                }
+            ]
+        }
+    "#;
+
+    const JWKS_WITH_NOTHING: &str = r#"
+        {
+            "keys": [
+                {}
+            ]
+        }
+    "#;
+
     #[test]
-    fn decodes_jwks() -> Result<()> {
-        let jwks: Jwks = serde_json::from_str(JWKS)?;
+    fn deserializes_jwks_with_unknown_alg() -> Result<()> {
+        let jwks: Jwks = serde_json::from_str(JWKS_WITH_UNKNOWN_ALG)?;
         dbg!(&jwks);
+        assert!(jwks.keys.is_empty());
         Ok(())
+    }
+
+    #[test]
+    fn deserialize_jwks_with_no_alg() -> Result<()> {
+        let jwks: Jwks = serde_json::from_str(JWKS_WITH_NO_ALG)?;
+        dbg!(&jwks);
+        assert!(jwks.keys.is_empty());
+        Ok(())
+    }
+
+    #[test]
+    fn deserialize_jwks_with_nothing() -> Result<()> {
+        let jwks: Jwks = serde_json::from_str(JWKS_WITH_NOTHING)?;
+        dbg!(&jwks);
+        assert!(jwks.keys.is_empty());
+        Ok(())
+    }
+
+    #[cfg(feature = "rsa")]
+    mod rsa {
+        use super::*;
+        use crate::test::rsa::*;
+
+        #[test]
+        fn decodes_jwks() -> Result<()> {
+            let jwks: Jwks = serde_json::from_str(JWKS)?;
+            dbg!(&jwks);
+            Ok(())
+        }
+    }
+}
+
+impl<'de> serde::Deserialize<'de> for Jwks {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        #[derive(serde::Deserialize)]
+        struct MaybeJwks {
+            #[serde(rename = "keys")]
+            maybe_keys: Vec<MaybeJwk>,
+        }
+
+        #[derive(serde::Deserialize)]
+        #[serde(untagged)]
+        enum MaybeJwk {
+            Jwk(Jwk),
+            Unknown(JwkLike),
+        }
+
+        #[allow(dead_code)]
+        #[derive(serde::Deserialize)]
+        struct JwkLike {
+            #[serde(default)]
+            kid: Option<jwk::KeyId>,
+            #[serde(rename = "use", default)]
+            r#use: Option<String>,
+            #[serde(default)]
+            alg: Option<String>,
+        }
+
+        let maybe_jwks: MaybeJwks = serde::Deserialize::deserialize(deserializer)?;
+        let keys = maybe_jwks
+            .maybe_keys
+            .into_iter()
+            .enumerate()
+            .filter_map(|(idx, k)| match k {
+                MaybeJwk::Jwk(key) => Some(key),
+                MaybeJwk::Unknown(key) => {
+                    #[cfg(feature = "tracing")]
+                    tracing::warn!(
+                        jwk.kid = ?key.kid, "jwk.use" = ?key.r#use, jwk.alg = ?key.alg, jwks.idx = idx,
+                        "ignoring unknown JWK"
+                    );
+                    let _ = (idx, key);
+                    None
+                }
+            })
+            .collect();
+
+        Ok(Jwks { keys })
     }
 }
 

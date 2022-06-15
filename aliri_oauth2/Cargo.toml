@@ -36,7 +36,6 @@ tracing = "0.1.15"
 [dev-dependencies]
 aliri = { version = "0.5.0", path = "../aliri", features = [ "private-keys" ] }
 openssl = "0.10"
-rusty-hook = "0.11"
 serde_json = "1"
 tokio = { version = "1", features = [ "rt-multi-thread", "macros" ] }
 
