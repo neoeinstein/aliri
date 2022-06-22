@@ -47,3 +47,5 @@ This changelog is based on the format from [Keep a Changelog](https://keepachang
 - `Jwks` is now able to deserialize and ignore JWKs with unrecognized algorithms and uses ([#11])
 
 [#11]: https://github.com/neoeinstein/aliri/issues/11
+
+<!-- markdownlint-disable-file MD024 -->
