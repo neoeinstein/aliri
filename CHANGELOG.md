@@ -4,6 +4,10 @@ This changelog is based on the format from [Keep a Changelog](https://keepachang
 
 ## [Unreleased]
 
+### Changed
+
+- Optimize the `serde::Deserialize` implementation of `aliri::Jwks`
+
 ## [2022-06-15.1]
 
 ### Changed

@@ -1,10 +1,11 @@
 use crate::{jwa, jwk, Jwk};
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 /// A JSON Web Key Set (JWKS)
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Jwks {
+    #[serde(deserialize_with = "deserialize_keys")]
     keys: Vec<Jwk>,
 }
 
@@ -227,56 +228,67 @@ mod tests {
     }
 }
 
-impl<'de> serde::Deserialize<'de> for Jwks {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        #[derive(serde::Deserialize)]
-        struct MaybeJwks {
-            #[serde(rename = "keys")]
-            maybe_keys: Vec<MaybeJwk>,
+fn deserialize_keys<'de, D>(deserializer: D) -> Result<Vec<Jwk>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    struct MaybeJwksVisitor;
+
+    impl<'de> serde::de::Visitor<'de> for MaybeJwksVisitor {
+        type Value = Vec<Jwk>;
+
+        fn expecting(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            f.write_str("a list of JWK objects")
         }
 
-        #[derive(serde::Deserialize)]
-        #[serde(untagged)]
-        enum MaybeJwk {
-            Jwk(Jwk),
-            Unknown(JwkLike),
-        }
+        fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+        where
+            A: serde::de::SeqAccess<'de>,
+        {
+            let mut values = Vec::with_capacity(seq.size_hint().unwrap_or_default());
+            let mut index = 0_usize;
 
-        #[allow(dead_code)]
-        #[derive(serde::Deserialize)]
-        struct JwkLike {
-            #[serde(default)]
-            kid: Option<jwk::KeyId>,
-            #[serde(rename = "use", default)]
-            r#use: Option<String>,
-            #[serde(default)]
-            alg: Option<String>,
-        }
-
-        let maybe_jwks: MaybeJwks = serde::Deserialize::deserialize(deserializer)?;
-        let keys = maybe_jwks
-            .maybe_keys
-            .into_iter()
-            .enumerate()
-            .filter_map(|(idx, k)| match k {
-                MaybeJwk::Jwk(key) => Some(key),
-                MaybeJwk::Unknown(key) => {
-                    #[cfg(feature = "tracing")]
-                    tracing::warn!(
-                        jwk.kid = ?key.kid, "jwk.use" = ?key.r#use, jwk.alg = ?key.alg, jwks.idx = idx,
-                        "ignoring unknown JWK"
-                    );
-                    let _ = (idx, key);
-                    None
+            while let Some(value) = seq.next_element()? {
+                match value {
+                    MaybeJwk::Jwk(jwk) => values.push(jwk),
+                    MaybeJwk::Unknown(key) => {
+                        #[cfg(feature = "tracing")]
+                        tracing::warn!(
+                            jwks.idx = index,
+                            jwk.kid = ?key.kid,
+                            "jwk.use" = ?key.r#use,
+                            jwk.alg = ?key.alg,
+                            "ignoring unknown JWK"
+                        );
+                        let _ = (index, key);
+                    }
                 }
-            })
-            .collect();
+                index += 1;
+            }
 
-        Ok(Jwks { keys })
+            Ok(values)
+        }
     }
+
+    #[derive(serde::Deserialize)]
+    #[serde(untagged)]
+    enum MaybeJwk {
+        Jwk(Jwk),
+        Unknown(JwkLike),
+    }
+
+    #[allow(dead_code)]
+    #[derive(serde::Deserialize)]
+    struct JwkLike {
+        #[serde(default)]
+        kid: Option<jwk::KeyId>,
+        #[serde(rename = "use", default)]
+        r#use: Option<String>,
+        #[serde(default)]
+        alg: Option<String>,
+    }
+
+    deserializer.deserialize_seq(MaybeJwksVisitor)
 }
 
 // #[cfg(test)]
