@@ -34,13 +34,19 @@ async fn main() -> color_eyre::Result<()> {
     //.with_terse_error_handler();
     //.with_verbose_error_handler();
 
-    let app = Router::new()
+    let unauthed_routes = Router::new().route("/login", get(|| async {
+        "not implemented, but you can use the `auth0_token` example to generate a token for the authenticated APIs."
+    }));
+
+    let authed_routes = Router::new()
         .route("/users", post(handle_post))
         .route("/users/:id", get(handle_get).delete(handle_delete))
         .route("/info", get(handle_get_info))
         .route("/deny_all", get(handle_deny_all))
         .layer(authorizer.jwt_layer(authority))
         .layer(Extension(aliri_axum::VerboseAuthxErrors));
+
+    let app = authed_routes.merge(unauthed_routes);
 
     println!(
         "Run the `auth0_token` program with the desired scopes as an argument to generate a token"
