@@ -4,6 +4,11 @@ This changelog is based on the format from [Keep a Changelog](https://keepachang
 
 ## [Unreleased]
 
+## [2022-08-10]
+
+- `aliri_oauth2` to 0.8.1
+- `aliri_tokens` to 0.2.1
+
 ### Changed
 
 - (oauth2, tokens) Removed default features on `reqwest` dependency ([#19])
