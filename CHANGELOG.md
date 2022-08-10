@@ -4,6 +4,12 @@ This changelog is based on the format from [Keep a Changelog](https://keepachang
 
 ## [Unreleased]
 
+### Changed
+
+- (oauth2, tokens) Removed default features on `reqwest` dependency ([#19])
+
+[#19]: https://github.com/neoeinstein/aliri/pull/19
+
 ## [2022-06-15.1]
 
 ### Changed

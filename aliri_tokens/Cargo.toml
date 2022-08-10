@@ -3,7 +3,7 @@ name = "aliri_tokens"
 description = "Background token management and renewal based on best practices"
 keywords = [ "jwt", "oauth2", "auth" ]
 categories = [ "authentication" ]
-version = "0.2.0"
+version = "0.2.1"
 authors = ["Marcus Griep <marcus@griep.us>"]
 edition = "2018"
 readme = "../README.md"
@@ -26,7 +26,7 @@ aliri_braid = "0.2.3"
 aliri_clock = { version = "0.1.4", path = "../aliri_clock" }
 async-trait = "0.1.50"
 rand = { version = "0.8.3", optional = true }
-reqwest = { version = "0.11", features = [ "json" ], optional = true }
+reqwest = { version = "0.11", features = [ "json" ], optional = true, default-features = false }
 serde = { version = "1", features = [ "derive" ] }
 serde_json = { version = "1", optional = true }
 thiserror = "1"
