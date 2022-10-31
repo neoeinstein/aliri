@@ -40,7 +40,7 @@ struct Opts {
 
 #[tokio::main]
 async fn main() -> color_eyre::Result<()> {
-    dotenv::dotenv().ok();
+    dotenvy::dotenv().ok();
 
     tracing_subscriber::fmt()
         .pretty()

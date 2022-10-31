@@ -35,7 +35,7 @@ tracing = "0.1.15"
 
 [dev-dependencies]
 color-eyre = "0.6"
-dotenv = "0.15.0"
+dotenvy = "0.15.0"
 structopt = "0.3.21"
 tracing-subscriber = { version = "0.3", features = [ "fmt", "env-filter" ] }
 tokio = { version = "1", features = [ "rt-multi-thread", "macros" ] }
