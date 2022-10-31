@@ -69,7 +69,7 @@ fn get_jwt_from_req(request: &HttpRequest) -> Result<&JwtRef, JwtError> {
         .to_str()
         .map_err(|_| JwtError::MalformedAuthorizationHeader)?;
 
-    if authorization.len() > 7 && (&authorization[0..7]).eq_ignore_ascii_case("bearer ") {
+    if authorization.len() > 7 && authorization[0..7].eq_ignore_ascii_case("bearer ") {
         Ok(JwtRef::from_str(&authorization[7..]))
     } else {
         Err(JwtError::IncorrectAuthorizationScheme)
