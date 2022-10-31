@@ -15,6 +15,8 @@ ec = [ "aliri/ec" ]
 rsa = [ "aliri/rsa" ]
 hmac = [ "aliri/hmac" ]
 private-keys = [ "aliri/private-keys" ]
+rustls-tls = [ "reqwest/rustls-tls" ]
+default-tls = [ "reqwest/default-tls" ]
 default = [ "rsa", "reqwest", "tokio" ]
 
 [package.metadata.docs.rs]
