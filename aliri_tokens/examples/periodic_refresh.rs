@@ -4,8 +4,8 @@ use aliri_tokens::{
     backoff, jitter, sources, ClientId, ClientSecret, TokenLifetimeConfig, TokenStatus,
     TokenWatcher,
 };
-use std::time::Duration;
 use clap::Parser;
+use std::time::Duration;
 use tokio::time;
 
 #[derive(Debug, Parser)]
