@@ -5,34 +5,33 @@ use aliri_tokens::{
     TokenWatcher,
 };
 use std::time::Duration;
-use structopt::StructOpt;
+use clap::Parser;
 use tokio::time;
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Parser)]
 struct Opts {
     /// The issuing authority's token request URL
-    #[structopt(short, long, env, parse(try_from_str))]
+    #[clap(short, long, env)]
     token_url: reqwest::Url,
 
     /// The client ID of the client
-    #[structopt(short, long, env, parse(from_str))]
+    #[clap(short, long, env)]
     client_id: ClientId,
 
     /// The client secret used to identify the client to the issuing authority
-    #[structopt(short = "s", long, env, parse(from_str), hide_env_values = true)]
+    #[clap(short = 's', long, env, hide_env_values = true)]
     client_secret: ClientSecret,
 
     /// The audience to request a token for
-    #[structopt(short, long, env, parse(from_str))]
+    #[clap(short, long, env)]
     audience: jwt::Audience,
 
     /// The local file used to cache credentials
-    #[structopt(
-        short = "f",
+    #[clap(
+        short = 'f',
         long,
         env,
         name = "FILE",
-        parse(from_str),
         default_value = ".credentials.json"
     )]
     credentials_file: std::path::PathBuf,
@@ -47,7 +46,7 @@ async fn main() -> color_eyre::Result<()> {
         .with_env_filter(tracing_subscriber::filter::EnvFilter::from_default_env())
         .init();
 
-    let opts = Opts::from_args();
+    let opts = Opts::parse();
 
     let client = reqwest::Client::builder().https_only(true).build()?;
 

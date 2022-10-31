@@ -34,8 +34,8 @@ tokio = { version = "1", features = [ "time" ] }
 tracing = "0.1.15"
 
 [dev-dependencies]
+clap = { version = "4.0.18", features = ["derive", "env"] }
 color-eyre = "0.6"
 dotenvy = "0.15.0"
-structopt = "0.3.21"
 tracing-subscriber = { version = "0.3", features = [ "fmt", "env-filter" ] }
 tokio = { version = "1", features = [ "rt-multi-thread", "macros" ] }
