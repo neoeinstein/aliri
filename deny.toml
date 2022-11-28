@@ -112,7 +112,7 @@ allow = [
     "ISC",
     # "BSL-1.0",
     # "0BSD",
-    # "Unicode-DFS-2016",
+    "Unicode-DFS-2016",
     # "Unlicense",
     # "Zlib",
     "OpenSSL",
