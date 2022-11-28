@@ -207,28 +207,27 @@ pub struct VerboseAuthxErrors;
 pub mod __private {
     use aliri_oauth2::oauth2;
     use aliri_traits::Policy;
-    use axum_core::extract::RequestParts;
+    use http::request::Parts;
 
     pub use aliri_oauth2::ScopePolicy;
     pub use once_cell::sync::OnceCell;
 
     use crate::{AuthFailed, VerboseAuthxErrors};
 
-    pub fn from_request<Claims, Body>(
-        req: &mut RequestParts<Body>,
+    pub fn from_request<Claims>(
+        req: &mut Parts,
         policy: &'static ScopePolicy,
     ) -> Result<Claims, AuthFailed>
     where
         Claims: oauth2::HasScope + Send + Sync + 'static,
-        Body: Send,
     {
         let claims = req
-            .extensions_mut()
+            .extensions
             .remove::<Claims>()
             .ok_or(AuthFailed::MissingClaims)?;
 
         policy.evaluate(claims.scope()).map_err(|_| {
-            if req.extensions().get::<VerboseAuthxErrors>().is_some() {
+            if req.extensions.get::<VerboseAuthxErrors>().is_some() {
                 AuthFailed::InsufficientScopes {
                     policy: Some(policy),
                 }

@@ -159,7 +159,7 @@ where
 
 /// Convenience wrapper which implements [`FromRequest`] for types that implement [`ScopeGuard`]
 ///
-/// See the [`scope_policy!`] macro for a more convenient way to use this type.
+/// See the [`scope_policy!`][crate::scope_policy] macro for a more convenient way to use this type.
 #[derive(Debug)]
 pub struct Scoped<T: ScopeGuard>(T::Claims);
 

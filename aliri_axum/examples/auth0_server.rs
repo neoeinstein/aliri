@@ -6,11 +6,11 @@ use aliri_axum::scope_guards;
 use aliri_clock::UnixTime;
 use aliri_oauth2::{oauth2, Authority};
 use aliri_tower::Oauth2Authorizer;
-use axum::extract::{Path, RequestParts};
+use axum::extract::Path;
 use axum::response::IntoResponse;
 use axum::routing::{get, post};
 use axum::{Extension, Router};
-use http::Response;
+use http::{request::Parts, Response};
 use time::format_description::well_known::Rfc3339;
 
 scope_guards! {
@@ -224,13 +224,13 @@ impl aliri_tower::OnJwtError for MyErrorHandler {
 struct LoginCount(pub u32);
 
 #[axum::async_trait]
-impl<B: Send> axum::extract::FromRequest<B> for LoginCount {
+impl<S: Sync> axum::extract::FromRequestParts<S> for LoginCount {
     type Rejection = (http::StatusCode, &'static str);
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+    async fn from_request_parts(req: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
         let inner = || -> Option<LoginCount> {
             Some(LoginCount(
-                req.extensions().get::<CustomClaims>()?.login_count,
+                req.extensions.get::<CustomClaims>()?.login_count,
             ))
         };
 

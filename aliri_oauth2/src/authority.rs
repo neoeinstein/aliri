@@ -157,7 +157,7 @@ impl Authority {
     pub async fn refresh(&self) -> Result<(), reqwest::Error> {
         if let Some(remote) = &self.inner.remote {
             let span = tracing::Span::current();
-            span.record("jwks.url", &&*remote.jwks_url);
+            span.record("jwks.url", &remote.jwks_url);
             tracing::debug!("refreshing JWKS");
             let mut request = remote.client.get(&remote.jwks_url);
 
