@@ -1,15 +1,12 @@
-use crate::util::unauthorized;
-use crate::{TerseErrorHandler, VerboseErrorHandler};
-use aliri::error::JwtVerifyError;
-use aliri::jwt::CoreClaims;
-use aliri::Jwt;
-use aliri_oauth2::oauth2::HasScope;
-use aliri_oauth2::{Authority, AuthorityError, ScopePolicy};
+use std::{fmt, marker::PhantomData};
+
+use aliri::{error::JwtVerifyError, jwt::CoreClaims, Jwt};
+use aliri_oauth2::{oauth2::HasScope, Authority, AuthorityError, ScopePolicy};
 use http::{Request, Response};
 use http_body::Body;
-use std::fmt;
-use std::marker::PhantomData;
 use tower_http::auth::AuthorizeRequest;
+
+use crate::{util::unauthorized, TerseErrorHandler, VerboseErrorHandler};
 
 pub(crate) struct VerifyJwt<Claims, OnError> {
     authority: Authority,

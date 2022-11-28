@@ -9,8 +9,7 @@ use openssl::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::error;
-use crate::jws;
+use crate::{error, jws};
 
 #[cfg(feature = "private-keys")]
 mod private;

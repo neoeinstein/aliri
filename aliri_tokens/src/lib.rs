@@ -42,22 +42,22 @@
 //! use aliri_clock::DurationSecs;
 //! use aliri_tokens::{backoff, jitter, sources, ClientId, ClientSecret, TokenLifetimeConfig, TokenWatcher};
 //!
-//!# struct Opts {
-//!#     client_id: ClientId,
-//!#     client_secret: ClientSecret,
-//!#     audience: aliri::jwt::Audience,
-//!#     token_url: reqwest::Url,
-//!#     credentials_file: std::path::PathBuf,
-//!# }
-//!#
-//!# let opts = Opts {
-//!#     client_id: ClientId::from_static("test"),
-//!#     client_secret: ClientSecret::from_static("test"),
-//!#     audience: aliri::jwt::Audience::from_static("test"),
-//!#     token_url: reqwest::Url::parse("https://example.com/oauth/token").unwrap(),
-//!#     credentials_file: std::path::PathBuf::from("credentials.json"),
-//!# };
-//!#
+//! # struct Opts {
+//! #     client_id: ClientId,
+//! #     client_secret: ClientSecret,
+//! #     audience: aliri::jwt::Audience,
+//! #     token_url: reqwest::Url,
+//! #     credentials_file: std::path::PathBuf,
+//! # }
+//! #
+//! # let opts = Opts {
+//! #     client_id: ClientId::from_static("test"),
+//! #     client_secret: ClientSecret::from_static("test"),
+//! #     audience: aliri::jwt::Audience::from_static("test"),
+//! #     token_url: reqwest::Url::parse("https://example.com/oauth/token").unwrap(),
+//! #     credentials_file: std::path::PathBuf::from("credentials.json"),
+//! # };
+//! #
 //! let credentials = sources::oauth2::dto::ClientCredentialsWithAudience {
 //!     credentials: sources::oauth2::dto::ClientCredentials {
 //!         client_id: opts.client_id,
@@ -86,14 +86,14 @@
 //!     jitter_source,
 //!     backoff::ErrorBackoffConfig::default(),
 //! )
-//!# ;/* Commented out due to this trying to interact with the world.
+//! # ;/* Commented out due to this trying to interact with the world.
 //! .await?;
 //!
 //! tracing::info!(
 //!     token = format_args!("{:#?}", watcher.token().access_token()),
 //!     "first access token"
 //! );
-//!# */
+//! # */
 //! ```
 //!
 //! This crate includes an example of doing a periodic refresh using a file cache in
@@ -103,12 +103,12 @@
 //!
 //! The following features are supported by this crate, all of which are enabled by default:
 //!
-//! * `oauth2`: Provides implementations of token refresh sources corresponding to the
-//!   _client credentials_ and _refresh token_ flows.
+//! * `oauth2`: Provides implementations of token refresh sources corresponding to the _client
+//!   credentials_ and _refresh token_ flows.
 //! * `file`: Provides implementations of a token refresh source and cache using the local
 //!   filesystem.
-//! * `rand`: Provides for an implementation of [JitterSource][jitter::JitterSource] based on
-//!   the random number generator provided by the [rand] crate.
+//! * `rand`: Provides for an implementation of [JitterSource][jitter::JitterSource] based on the
+//!   random number generator provided by the [rand] crate.
 
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![warn(

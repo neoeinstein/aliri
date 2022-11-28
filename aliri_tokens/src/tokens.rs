@@ -1,6 +1,7 @@
-use super::{AccessTokenRef, IdTokenRef};
 use aliri_clock::{Clock, DurationSecs, System, UnixTime};
 use serde::{Deserialize, Serialize};
+
+use super::{AccessTokenRef, IdTokenRef};
 
 /// A token as returned by the authority with some additional lifetime information
 #[derive(Debug, Serialize, Deserialize)]

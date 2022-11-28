@@ -4,6 +4,30 @@ This changelog is based on the format from [Keep a Changelog](https://keepachang
 
 ## [Unreleased]
 
+## [2022-11-28]
+
+- `aliri` to 0.6.1
+- `aliri_actix` to 0.8.0
+- `aliri_axum` to 0.2.0
+- `aliri_oauth2` to 0.9.0
+- `aliri_reqwest` to 0.4.0
+- `aliri_tokens` to 0.2.2
+- `aliri_tower` to 0.3.0
+- `aliri_warp` to 0.8.0
+
+### Changed
+
+- (aliri, oauth2, tokens) Upgraded `aliri_braid` to 0.3.1
+- (axum) Upgraded `axum-core` to 0.3.0
+- (axum) Updated scope extractor impl to be `FromRequestParts`
+- (oauth2) Changed underlying string type for `ScopeToken` to `compact_str::CompactString`
+- (reqwest) Upgraded `reqwest-middleware` to 0.2.0
+
+### Added
+
+- (aliri) New functions providing access to the untrusted JWT components
+- (oauth2) New function for const initialization of short `ScopeToken`s (24 characters or less)
+
 ## [2022-08-10]
 
 - `aliri_oauth2` to 0.8.1

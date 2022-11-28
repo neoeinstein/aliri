@@ -1,11 +1,13 @@
 //! Token sources
 
+use std::error;
+
+use aliri_clock::{DurationSecs, System};
+use async_trait::async_trait;
+
 use crate::{
     AccessToken, AccessTokenRef, IdToken, IdTokenRef, TokenLifetimeConfig, TokenWithLifetime,
 };
-use aliri_clock::{DurationSecs, System};
-use async_trait::async_trait;
-use std::error;
 
 pub mod cache;
 #[cfg(feature = "file")]

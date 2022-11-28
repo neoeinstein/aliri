@@ -79,8 +79,8 @@ fn get_jwt_from_req(request: &HttpRequest) -> Result<&JwtRef, JwtError> {
 /// A trait for defining a guard to protect an endpoint based on a policy requiring certain scopes
 /// to be present in the token
 ///
-/// In order to work, an `Authority` must have been established in `actix_web`. This can be done using
-/// `App::app_data()` to attach the authority for verifying tokens.
+/// In order to work, an `Authority` must have been established in `actix_web`. This can be done
+/// using `App::app_data()` to attach the authority for verifying tokens.
 ///
 /// # Examples
 ///
@@ -159,7 +159,7 @@ where
 
 /// Convenience wrapper which implements [`FromRequest`] for types that implement [`ScopeGuard`]
 ///
-/// See the [`scope_policy!`] macro for a more convenient way to use this type.
+/// See the [`scope_policy!`][crate::scope_policy] macro for a more convenient way to use this type.
 #[derive(Debug)]
 pub struct Scoped<T: ScopeGuard>(T::Claims);
 
@@ -298,13 +298,14 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use actix_web::{get, test, App, HttpResponse, Responder};
     use aliri::{jwa, jwk, Jwk, Jwks};
     use aliri_base64::Base64Url;
     use aliri_oauth2::{oauth2::BasicClaimsWithScope, Scope};
     use color_eyre::Result;
     use once_cell::sync::OnceCell;
+
+    use super::*;
 
     #[actix_rt::test]
     async fn test_with_missing_authority() -> Result<()> {

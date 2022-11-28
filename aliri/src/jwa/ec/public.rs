@@ -6,11 +6,10 @@ use openssl::{
     ec::{EcKey, EcPoint, PointConversionForm},
     pkey::PKey,
 };
-use ring::signature::VerificationAlgorithm;
-use serde::{Deserialize, Serialize};
-
 #[cfg(feature = "private-keys")]
 use openssl::{ec::EcKeyRef, pkey::HasPublic};
+use ring::signature::VerificationAlgorithm;
+use serde::{Deserialize, Serialize};
 
 use crate::{
     error,

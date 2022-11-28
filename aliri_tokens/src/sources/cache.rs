@@ -1,10 +1,12 @@
 //! Utilities for caching of tokens
 
-use super::{AsyncTokenCache, AsyncTokenSource};
-use crate::TokenWithLifetime;
+use std::{error, fmt};
+
 use aliri_clock::{Clock, DurationSecs, System, UnixTime};
 use async_trait::async_trait;
-use std::{error, fmt};
+
+use super::{AsyncTokenCache, AsyncTokenSource};
+use crate::TokenWithLifetime;
 
 /// A token source with zero or more intermediate caches and an ultimate fallback
 pub struct CachedTokenSource<B, C = System> {

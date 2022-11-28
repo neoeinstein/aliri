@@ -1,12 +1,17 @@
 //! OAuth2-specific
 
+use std::{
+    collections::{btree_set, BTreeSet},
+    convert::TryFrom,
+    fmt, iter,
+    iter::FromIterator,
+    str::FromStr,
+};
+
 use aliri::jwt;
 use aliri_braid::braid;
 use aliri_clock::UnixTime;
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeSet;
-use std::iter;
-use std::{collections::btree_set, convert::TryFrom, fmt, iter::FromIterator, str::FromStr};
 use thiserror::Error;
 
 /// An invalid scope token
@@ -24,6 +29,7 @@ pub enum InvalidScopeToken {
         value: u8,
     },
 }
+aliri_braid::from_infallible!(InvalidScopeToken);
 
 /// An OAuth2 scope token as defined in [RFC 6749, Section 3.3][RFC6749 3.3]
 ///
@@ -37,7 +43,7 @@ pub enum InvalidScopeToken {
     ref_doc = "A borrowed reference to an OAuth2 [`ScopeToken`]"
 )]
 #[must_use]
-pub struct ScopeToken(smartstring::alias::String);
+pub struct ScopeToken(compact_str::CompactString);
 
 impl aliri_braid::Validator for ScopeToken {
     type Error = InvalidScopeToken;
@@ -47,18 +53,7 @@ impl aliri_braid::Validator for ScopeToken {
     /// A valid scope token is non-empty and composed of printable
     /// ASCII characters except ` `, `"`, and `\`.
     fn validate(s: &str) -> Result<(), Self::Error> {
-        if s.is_empty() {
-            Err(InvalidScopeToken::EmptyString)
-        } else if let Some((position, &value)) = s
-            .as_bytes()
-            .iter()
-            .enumerate()
-            .find(|(_, &b)| b <= 0x20 || b == 0x22 || b == 0x5C || 0x7F <= b)
-        {
-            Err(InvalidScopeToken::InvalidByte { position, value })
-        } else {
-            Ok(())
-        }
+        Self::const_validate(s)
     }
 }
 
@@ -72,14 +67,49 @@ impl ScopeToken {
     pub fn from_string(value: String) -> Result<Self, InvalidScopeToken> {
         Self::try_from(value)
     }
-}
 
-impl TryFrom<String> for ScopeToken {
-    type Error = InvalidScopeToken;
-
+    /// Construct a new `ScopeToken` from a string slice at compile time
+    ///
+    /// # Panics
+    ///
+    /// If the provided scope token is not valid or is longer than 24 bytes, this function will
+    /// panic or fail at compile time.
     #[inline]
-    fn try_from(value: String) -> Result<Self, Self::Error> {
-        Self::new(smartstring::SmartString::from(value))
+    #[track_caller]
+    pub const fn new_const(value: &str) -> Self {
+        if let Err(err) = Self::const_validate(value) {
+            match err {
+                InvalidScopeToken::EmptyString => panic!("scope token cannot be empty"),
+                InvalidScopeToken::InvalidByte { .. } => {
+                    panic!("scope token contains invalid byte")
+                }
+            }
+        }
+
+        Self(compact_str::CompactString::new_inline(value))
+    }
+
+    const fn const_validate(s: &str) -> Result<(), InvalidScopeToken> {
+        if s.is_empty() {
+            return Err(InvalidScopeToken::EmptyString);
+        }
+
+        let mut idx = 0;
+        let b = s.as_bytes();
+        let mut invalid = None;
+        while idx < b.len() {
+            let c = b[idx];
+            if c <= 0x20 || c == 0x22 || c == 0x5C || 0x7F <= c {
+                invalid = Some((idx, c));
+            }
+            idx += 1;
+        }
+
+        if let Some((position, value)) = invalid {
+            Err(InvalidScopeToken::InvalidByte { position, value })
+        } else {
+            Ok(())
+        }
     }
 }
 

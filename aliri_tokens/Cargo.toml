@@ -3,7 +3,7 @@ name = "aliri_tokens"
 description = "Background token management and renewal based on best practices"
 keywords = [ "jwt", "oauth2", "auth" ]
 categories = [ "authentication" ]
-version = "0.2.1"
+version = "0.2.2"
 authors = ["Marcus Griep <marcus@griep.us>"]
 edition = "2018"
 readme = "../README.md"
@@ -22,7 +22,7 @@ rustc-args = ["--cfg", "docsrs"]
 
 [dependencies]
 aliri = { version = "0.6.0", path = "../aliri" }
-aliri_braid = "0.2.3"
+aliri_braid = "0.3.1"
 aliri_clock = { version = "0.1.4", path = "../aliri_clock" }
 async-trait = "0.1.50"
 rand = { version = "0.8.3", optional = true }

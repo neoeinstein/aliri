@@ -1,9 +1,10 @@
 //! DTOs for interacting with OAuth2 token source servers
 
-use crate::{AccessTokenRef, ClientId, ClientIdRef, ClientSecret, IdTokenRef, RefreshTokenRef};
 use aliri::jwt;
 use aliri_clock::DurationSecs;
 use serde::{Deserialize, Serialize, Serializer};
+
+use crate::{AccessTokenRef, ClientId, ClientIdRef, ClientSecret, IdTokenRef, RefreshTokenRef};
 
 /// Client credentials
 #[derive(Debug, Serialize)]

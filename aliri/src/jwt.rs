@@ -55,14 +55,13 @@
 
 use std::{convert::TryFrom, fmt, time::Duration};
 
-use aliri_base64::Base64Url;
+use aliri_base64::{Base64Url, Base64UrlRef};
 use aliri_braid::braid;
 use aliri_clock::{Clock, System, UnixTime};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 
-use crate::jws::Signer;
-use crate::{error, jwa, jwk, jws, Jwk};
+use crate::{error, jwa, jwk, jws, jws::Signer, Jwk};
 
 #[cfg(all(not(feature = "no-unstable"), feature = "unstable"))]
 mod validator;
@@ -219,6 +218,43 @@ where
             headers: self.header,
             claims: payload,
         })
+    }
+
+    /// The untrusted headers of the JWT
+    ///
+    /// **WARNING:** *This headers has not been validated and should not be trusted.*
+    /// An adversary can place arbitrary data into the header and payload of a JWT.
+    /// Trusting this data or using it to directly authenticate the JWT can lead to
+    /// security vulnerabilities. To validate the headers, use the [`verify()`] method.
+    pub fn untrusted_header(&self) -> &H {
+        &self.header
+    }
+
+    /// The untrusted payload of the JWT
+    ///
+    /// **WARNING:** *This payload has not been validated and should not be trusted.*
+    /// An adversary can place arbitrary data into the header and payload of a JWT.
+    /// Trusting this data or using it to directly authenticate the JWT can lead to
+    /// security vulnerabilities. To validate the payload, use the [`verify()`] method.
+    pub fn untrusted_payload(&self) -> &'a str {
+        self.payload
+    }
+
+    /// The untrusted message of the JWT
+    ///
+    /// This contains the encoded header and payload of the JWT, separated by a `.`.
+    ///
+    /// **WARNING:** *This message has not been validated and should not be trusted.*
+    /// An adversary can place arbitrary data into the header and payload of a JWT.
+    /// Trusting this data or using it to directly authenticate the JWT can lead to
+    /// security vulnerabilities. To validate the JWT, use the [`verify()`] method.
+    pub fn untrusted_message(&self) -> &'a str {
+        self.message
+    }
+
+    /// The raw signature of the JWT
+    pub fn signature(&self) -> &Base64UrlRef {
+        &self.signature
     }
 }
 
@@ -460,8 +496,8 @@ impl Jwt {
 /// # Example
 ///
 /// ```
-///# use aliri::jwt::JwtRef;
-///#
+/// # use aliri::jwt::JwtRef;
+/// #
 /// let token = JwtRef::from_str(concat!(
 ///     "eyJhbGciOiJIUzI1NiJ9.",
 ///     "eyJzdWIiOiJBbGlyaSIsImF1ZCI6Im15X2FwaSIsImlzcyI6ImF1dGhvcml0eSJ9.",
@@ -519,8 +555,8 @@ impl fmt::Debug for JwtRef {
 /// # Example
 ///
 /// ```
-///# use aliri::jwt::JwtRef;
-///#
+/// # use aliri::jwt::JwtRef;
+/// #
 /// let token = JwtRef::from_str(concat!(
 ///     "eyJhbGciOiJIUzI1NiJ9.",
 ///     "eyJzdWIiOiJBbGlyaSIsImF1ZCI6Im15X2FwaSIsImlzcyI6ImF1dGhvcml0eSJ9.",
@@ -1082,9 +1118,8 @@ pub enum OneOrMany<T> {
 
 #[cfg(test)]
 mod tests {
-    use color_eyre::Result;
-
     use aliri_clock::TestClock;
+    use color_eyre::Result;
 
     use super::*;
 

@@ -1,4 +1,5 @@
-use crate::{oauth2::HasScope, ScopePolicy};
+use std::{sync::Arc, time::Duration};
+
 use aliri::{
     jwt::{self, CoreHeaders, HasAlgorithm},
     Jwks, JwtRef,
@@ -11,8 +12,9 @@ use reqwest::{
     Client, StatusCode,
 };
 use serde::Deserialize;
-use std::{sync::Arc, time::Duration};
 use thiserror::Error;
+
+use crate::{oauth2::HasScope, ScopePolicy};
 
 /// Indicates the requester held insufficient scopes to be granted access
 /// to a controlled resource
@@ -157,7 +159,7 @@ impl Authority {
     pub async fn refresh(&self) -> Result<(), reqwest::Error> {
         if let Some(remote) = &self.inner.remote {
             let span = tracing::Span::current();
-            span.record("jwks.url", &&*remote.jwks_url);
+            span.record("jwks.url", &remote.jwks_url);
             tracing::debug!("refreshing JWKS");
             let mut request = remote.client.get(&remote.jwks_url);
 

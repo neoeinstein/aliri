@@ -1,11 +1,14 @@
-use crate::{OnJwtError, OnScopeError, TerseErrorHandler, VerboseErrorHandler};
+use std::{fmt, marker::PhantomData};
+
 use aliri::jwt::CoreClaims;
-use aliri_oauth2::oauth2::{BasicClaimsWithScope, HasScope};
-use aliri_oauth2::{Authority, ScopePolicy};
+use aliri_oauth2::{
+    oauth2::{BasicClaimsWithScope, HasScope},
+    Authority, ScopePolicy,
+};
 use http_body::Body;
-use std::fmt;
-use std::marker::PhantomData;
 use tower_http::auth::{AuthorizeRequest, RequireAuthorizationLayer};
+
+use crate::{OnJwtError, OnScopeError, TerseErrorHandler, VerboseErrorHandler};
 
 /// Builder for generating layers that authenticate JWTs and authorize access
 /// based on oauth2 scope grants

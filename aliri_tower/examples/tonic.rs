@@ -1,16 +1,18 @@
+use std::sync::atomic::{AtomicI32, Ordering};
+
 use aliri::{jwa, jwk, jwt, Jwk, Jwks, Jwt};
 use aliri_base64::Base64UrlRef;
 use aliri_clock::{Clock, DurationSecs, UnixTime};
-use aliri_oauth2::oauth2::HasScope;
-use aliri_oauth2::{oauth2, policy, scope, Authority};
+use aliri_oauth2::{oauth2, oauth2::HasScope, policy, scope, Authority};
 use aliri_tower::Oauth2Authorizer;
 use aliri_traits::Policy;
-use std::sync::atomic::{AtomicI32, Ordering};
+use counter::{
+    counter_service_server::{CounterService, CounterServiceServer},
+    CounterRequest, CounterResponse,
+};
 use tonic::{transport::Server, Request, Response, Status};
 
-use counter::counter_service_server::{CounterService, CounterServiceServer};
-use counter::{CounterRequest, CounterResponse};
-
+#[allow(clippy::derive_partial_eq_without_eq)]
 pub mod counter {
     include!("proto/aliri.example.rs");
 }
@@ -55,6 +57,39 @@ impl CounterService for MyCounter {
     }
 }
 
+#[derive(Clone, Copy, Debug)]
+struct AuthorizedService<S>(S);
+
+impl<S, T> tonic::transport::NamedService
+    for AuthorizedService<tower_http::auth::RequireAuthorization<S, T>>
+where
+    S: tonic::transport::NamedService,
+{
+    const NAME: &'static str = S::NAME;
+}
+
+impl<S, R> tower::Service<R> for AuthorizedService<S>
+where
+    S: tower::Service<R>,
+{
+    type Error = S::Error;
+    type Future = S::Future;
+    type Response = S::Response;
+
+    #[inline]
+    fn poll_ready(
+        &mut self,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Result<(), Self::Error>> {
+        self.0.poll_ready(cx)
+    }
+
+    #[inline]
+    fn call(&mut self, req: R) -> Self::Future {
+        self.0.call(req)
+    }
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let authority = construct_authority();
@@ -68,9 +103,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("CounterServiceServer listening on {}", addr);
 
-    Server::builder()
+    let svc = tower::ServiceBuilder::new()
         .layer(authorizer.jwt_layer(authority))
-        .add_service(CounterServiceServer::new(counter))
+        .service(CounterServiceServer::new(counter));
+
+    Server::builder()
+        .add_service(AuthorizedService(svc))
         .serve(addr)
         .await?;
 

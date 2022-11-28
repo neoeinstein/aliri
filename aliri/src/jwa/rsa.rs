@@ -5,8 +5,7 @@ use std::{convert::TryFrom, fmt};
 use aliri_base64::Base64Url;
 use serde::{Deserialize, Serialize};
 
-use crate::error;
-use crate::jws;
+use crate::{error, jws};
 
 #[cfg(feature = "private-keys")]
 mod private;

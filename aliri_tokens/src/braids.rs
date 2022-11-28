@@ -1,5 +1,6 @@
-use aliri_braid::braid;
 use std::fmt;
+
+use aliri_braid::braid;
 
 macro_rules! limited_reveal {
     ($ty:ty: $hidden:literal, $default:literal) => {

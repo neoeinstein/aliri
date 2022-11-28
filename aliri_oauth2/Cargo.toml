@@ -3,7 +3,7 @@ name = "aliri_oauth2"
 description = "JWT authorization based on validating OAuth2 scopes"
 keywords = [ "jose", "jwk", "jwt", "oauth2", "auth" ]
 categories = [ "authentication" ]
-version = "0.8.2"
+version = "0.9.0"
 authors = ["Marcus Griep <marcus@griep.us>"]
 edition = "2018"
 readme = "../README.md"
@@ -24,14 +24,14 @@ rustc-args = ["--cfg", "docsrs"]
 features = [ "rsa", "ec", "hmac", "private-keys", "reqwest" ]
 
 [dependencies]
-aliri = { version = "0.6.0", path = "../aliri", default-features = false }
+aliri = { version = "0.6.1", path = "../aliri", default-features = false }
 aliri_clock = { version = "0.1.0", path = "../aliri_clock" }
 aliri_traits = { version = "0.1.0", path = "../aliri_traits" }
-aliri_braid = { version = "0.2.3" }
+aliri_braid = { version = "0.3.1" }
 arc-swap = "1.2"
+compact_str = { version = "0.6.1", features = ["serde"] }
 reqwest = { version = "0.11", optional = true, default-features = false, features = [ "json" ] }
 serde = { version = "1", features = [ "derive" ] }
-smartstring = { version = "1", features = [ "serde" ] }
 thiserror = "1"
 tokio = { version = "1", features = [ "time" ], optional = true }
 tracing = "0.1.15"
