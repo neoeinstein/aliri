@@ -23,6 +23,7 @@ This changelog is based on the format from [Keep a Changelog](https://keepachang
 
 ### Added
 
+- (aliri) New functions providing access to the untrusted JWT components
 - (oauth2) New function for const initialization of short `ScopeToken`s (24 characters or less)
 
 ## [2022-08-10]
