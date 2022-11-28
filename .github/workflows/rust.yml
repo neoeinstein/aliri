@@ -27,7 +27,7 @@ jobs:
         with:
           components: clippy
       - uses: Swatinem/rust-cache@v2
-      - run: cargo clippy --all-targets --all-features --locked -- -D warnings
+      - run: cargo clippy --all-targets --all-features -- -D warnings
 
   test:
     name: Test
@@ -37,8 +37,8 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - uses: taiki-e/install-action@nextest
-      - run: cargo nextest run --no-fail-fast --all-features --locked
-      - run: cargo test --doc --no-fail-fast --all-features --locked
+      - run: cargo nextest run --no-fail-fast --all-features
+      - run: cargo test --doc --no-fail-fast --all-features
 
   miri:
     name: Miri
@@ -64,4 +64,4 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - run: cargo install --locked cargo-deny
-      - run: cargo deny --locked --all-features check ${{ matrix.checks }}
+      - run: cargo deny --all-features check ${{ matrix.checks }}
