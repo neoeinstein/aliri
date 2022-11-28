@@ -1,6 +1,8 @@
-use crate::Scope;
 use std::{iter, slice, vec};
+
 use thiserror::Error;
+
+use crate::Scope;
 
 /// Indicates the requester held insufficient scope to be granted access
 /// to a controlled resource
@@ -97,7 +99,6 @@ pub struct InsufficientScope;
 /// # Ok(())
 /// # }
 /// ```
-///
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[must_use]
 pub struct ScopePolicy {

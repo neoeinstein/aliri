@@ -79,16 +79,17 @@
     unused_must_use
 )]
 
-use crate::reflection::Case;
+use std::fmt;
+
 use aliri_clock::Clock;
 use aliri_tokens::TokenWatcher;
 use bytes::{BufMut, BytesMut};
-use predicates::prelude::*;
-use predicates::reflection;
+use predicates::{prelude::*, reflection};
 use reqwest::{header, Request, Response};
 use reqwest_middleware::{Middleware, Next, Result};
-use std::fmt;
 use task_local_extensions::Extensions;
+
+use crate::reflection::Case;
 
 /// A middleware that injects an access token into outgoing requests
 #[derive(Clone, Debug)]
@@ -253,15 +254,19 @@ impl fmt::Display for ExactHostMatch {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use aliri_tokens::backoff::ErrorBackoffConfig;
-    use aliri_tokens::jitter::NullJitter;
-    use aliri_tokens::sources::ConstTokenSource;
+    use std::sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    };
+
+    use aliri_tokens::{
+        backoff::ErrorBackoffConfig, jitter::NullJitter, sources::ConstTokenSource,
+    };
     use http::StatusCode;
     use reqwest::Client;
     use reqwest_middleware::ClientBuilder;
-    use std::sync::atomic::{AtomicBool, Ordering};
-    use std::sync::Arc;
+
+    use super::*;
 
     const TEST_TOKEN: &str = "this-is-a-test-token";
     const BEARER_TEST_TOKEN: &str = "bearer this-is-a-test-token";

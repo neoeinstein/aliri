@@ -1,13 +1,12 @@
-use crate::util::forbidden;
-use crate::{TerseErrorHandler, VerboseErrorHandler};
-use aliri_oauth2::oauth2::HasScope;
-use aliri_oauth2::{Scope, ScopePolicy};
+use std::{fmt, marker::PhantomData};
+
+use aliri_oauth2::{oauth2::HasScope, Scope, ScopePolicy};
 use aliri_traits::Policy;
 use http::{Request, Response};
 use http_body::Body;
-use std::fmt;
-use std::marker::PhantomData;
 use tower_http::auth::AuthorizeRequest;
+
+use crate::{util::forbidden, TerseErrorHandler, VerboseErrorHandler};
 
 pub(crate) struct VerifyScope<Claims, OnError> {
     policy: ScopePolicy,

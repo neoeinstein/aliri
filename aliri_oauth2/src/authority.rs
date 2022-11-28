@@ -1,4 +1,5 @@
-use crate::{oauth2::HasScope, ScopePolicy};
+use std::{sync::Arc, time::Duration};
+
 use aliri::{
     jwt::{self, CoreHeaders, HasAlgorithm},
     Jwks, JwtRef,
@@ -11,8 +12,9 @@ use reqwest::{
     Client, StatusCode,
 };
 use serde::Deserialize;
-use std::{sync::Arc, time::Duration};
 use thiserror::Error;
+
+use crate::{oauth2::HasScope, ScopePolicy};
 
 /// Indicates the requester held insufficient scopes to be granted access
 /// to a controlled resource

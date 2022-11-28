@@ -101,10 +101,11 @@
 //! }
 //! ```
 
+use std::{error::Error, fmt};
+
 use aliri_oauth2::{oauth2, ScopePolicy};
 use axum_core::response::{IntoResponse, Response};
 use http::StatusCode;
-use std::{error::Error, fmt};
 
 mod macros;
 
@@ -206,10 +207,9 @@ pub struct VerboseAuthxErrors;
 #[doc(hidden)]
 pub mod __private {
     use aliri_oauth2::oauth2;
+    pub use aliri_oauth2::ScopePolicy;
     use aliri_traits::Policy;
     use http::request::Parts;
-
-    pub use aliri_oauth2::ScopePolicy;
     pub use once_cell::sync::OnceCell;
 
     use crate::{AuthFailed, VerboseAuthxErrors};

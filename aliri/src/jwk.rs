@@ -9,10 +9,9 @@ use std::convert::{TryFrom, TryInto};
 use aliri_braid::braid;
 use serde::{Deserialize, Serialize, Serializer};
 
-use crate::jws::Signer;
 use crate::{
     error, jwa,
-    jws::{self, Verifier},
+    jws::{self, Signer, Verifier},
 };
 
 /// An identifier for a JWK
@@ -551,9 +550,8 @@ mod tests {
 
         #[cfg(feature = "ec")]
         mod ec {
-            use crate::test::ec::*;
-
             use super::*;
+            use crate::test::ec::*;
 
             #[test]
             fn deserialize_p256() -> Result<()> {
@@ -599,9 +597,8 @@ mod tests {
 
         #[cfg(feature = "hmac")]
         mod hmac {
-            use crate::test::hmac::*;
-
             use super::*;
+            use crate::test::hmac::*;
 
             #[test]
             fn deserialize() -> Result<()> {
@@ -620,9 +617,8 @@ mod tests {
 
         #[cfg(feature = "rsa")]
         mod rsa {
-            use crate::test::rsa::*;
-
             use super::*;
+            use crate::test::rsa::*;
 
             #[test]
             fn deserialize() -> Result<()> {
@@ -660,9 +656,8 @@ mod tests {
 
         #[cfg(feature = "ec")]
         mod ec {
-            use crate::test::ec::*;
-
             use super::*;
+            use crate::test::ec::*;
 
             #[test]
             #[cfg(feature = "rsa")]
@@ -739,9 +734,8 @@ mod tests {
 
         #[cfg(feature = "rsa")]
         mod rsa {
-            use crate::test::rsa::*;
-
             use super::*;
+            use crate::test::rsa::*;
 
             #[test]
             #[cfg(feature = "ec")]
@@ -822,9 +816,8 @@ mod tests {
 
         #[cfg(feature = "hmac")]
         mod hmac {
-            use crate::test::hmac::*;
-
             use super::*;
+            use crate::test::hmac::*;
 
             #[test]
             #[cfg(feature = "ec")]

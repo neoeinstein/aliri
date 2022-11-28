@@ -1,10 +1,12 @@
 //! A file token source and caching layer
 
+use std::{error, io, path::PathBuf};
+
+use async_trait::async_trait;
+use tokio::fs::OpenOptions;
+
 use super::{AsyncTokenCache, AsyncTokenSource};
 use crate::TokenWithLifetime;
-use async_trait::async_trait;
-use std::{error, io, path::PathBuf};
-use tokio::fs::OpenOptions;
 
 /// A token source that uses a local file
 #[derive(Debug)]

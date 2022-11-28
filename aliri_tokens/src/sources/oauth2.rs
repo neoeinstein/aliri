@@ -1,11 +1,12 @@
 //! A token source that uses an OAuth2 server as an authority
 
-use super::AsyncTokenSource;
-use crate::{ClientIdRef, RefreshTokenRef, TokenLifetimeConfig, TokenWithLifetime};
 use aliri::jwt;
 use aliri_clock::Clock;
 use async_trait::async_trait;
 use thiserror::Error;
+
+use super::AsyncTokenSource;
+use crate::{ClientIdRef, RefreshTokenRef, TokenLifetimeConfig, TokenWithLifetime};
 
 pub mod dto;
 

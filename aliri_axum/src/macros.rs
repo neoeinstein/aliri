@@ -3,7 +3,8 @@
 /// Constructs an extractor that enables easily asserting that a provided token
 /// has the expected set of scopes.
 ///
-/// For an more concise way to construct several scope guards, see [`scope_guards!`][crate::scope_guards!].
+/// For an more concise way to construct several scope guards, see
+/// [`scope_guards!`][crate::scope_guards!].
 ///
 /// In the simplest case, a single scope can be used:
 ///
@@ -69,7 +70,7 @@
 ///     "You're an admin!"
 /// }
 ///
-///# #[tokio::main(flavor = "current_thread")] async fn main() {
+/// # #[tokio::main(flavor = "current_thread")] async fn main() {
 /// // Build the router
 /// let router = Router::new()
 ///     .route("/test", get(test_endpoint));

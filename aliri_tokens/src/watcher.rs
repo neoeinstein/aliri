@@ -1,13 +1,15 @@
-use crate::jitter::JitterSource;
-use crate::sources::AsyncTokenSource;
-use crate::{
-    backoff::{ErrorBackoffConfig, ErrorBackoffHandler, WithBackoff},
-    TokenWithLifetime,
-};
-use aliri_clock::{Clock, DurationSecs, System, UnixTime};
 use std::{error, ops, time::Duration};
+
+use aliri_clock::{Clock, DurationSecs, System, UnixTime};
 use thiserror::Error;
 use tokio::sync::watch;
+
+use crate::{
+    backoff::{ErrorBackoffConfig, ErrorBackoffHandler, WithBackoff},
+    jitter::JitterSource,
+    sources::AsyncTokenSource,
+    TokenWithLifetime,
+};
 
 /// A token watcher that can be uses to obtain up-to-date tokens
 #[derive(Clone, Debug)]
@@ -174,9 +176,10 @@ async fn forever_refresh<S, J, C>(
                 tokio::time::sleep(d).await;
             }
             Delay::UntilTime(t) => {
-                // We do this dance because the timer does not "advance" while a system is suspended.
-                // This is unlikely to occur if the instance is long-lived in the cloud, but on
-                // local machines, such as laptops, this is more possible.
+                // We do this dance because the timer does not "advance" while a system is
+                // suspended. This is unlikely to occur if the instance is
+                // long-lived in the cloud, but on local machines, such as laptops,
+                // this is more possible.
                 //
                 // To handle this case, we use a heartbeat of about 30 seconds. Thus, if we wake
                 // up after the token is not just expired, but stale, there will be, on average,

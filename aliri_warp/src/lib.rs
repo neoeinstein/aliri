@@ -19,7 +19,6 @@ pub mod jwt;
 pub mod oauth2;
 
 #[doc(hidden)]
-pub use jwt::jwt;
-
-#[doc(hidden)]
 pub use jwks::jwks;
+#[doc(hidden)]
+pub use jwt::jwt;

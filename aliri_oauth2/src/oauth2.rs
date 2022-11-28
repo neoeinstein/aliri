@@ -1,12 +1,17 @@
 //! OAuth2-specific
 
+use std::{
+    collections::{btree_set, BTreeSet},
+    convert::TryFrom,
+    fmt, iter,
+    iter::FromIterator,
+    str::FromStr,
+};
+
 use aliri::jwt;
 use aliri_braid::braid;
 use aliri_clock::UnixTime;
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeSet;
-use std::iter;
-use std::{collections::btree_set, convert::TryFrom, fmt, iter::FromIterator, str::FromStr};
 use thiserror::Error;
 
 /// An invalid scope token
@@ -67,8 +72,8 @@ impl ScopeToken {
     ///
     /// # Panics
     ///
-    /// If the provided scope token is not valid or is longer than 24 bytes, this function will panic
-    /// or fail at compile time.
+    /// If the provided scope token is not valid or is longer than 24 bytes, this function will
+    /// panic or fail at compile time.
     #[inline]
     #[track_caller]
     pub const fn new_const(value: &str) -> Self {

@@ -1,6 +1,6 @@
-use crate::{jwa, jwk, Jwk};
-
 use serde::Serialize;
+
+use crate::{jwa, jwk, Jwk};
 
 /// A JSON Web Key Set (JWKS)
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize)]

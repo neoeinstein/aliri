@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use aliri::jwt;
 use aliri_clock::DurationSecs;
 use aliri_tokens::{
@@ -5,7 +7,6 @@ use aliri_tokens::{
     TokenWatcher,
 };
 use clap::Parser;
-use std::time::Duration;
 use tokio::time;
 
 #[derive(Debug, Parser)]

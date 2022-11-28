@@ -4,9 +4,11 @@ use aliri_base64::Base64UrlRef;
 use aliri_clock::{Clock, DurationSecs, UnixTime};
 use aliri_oauth2::{oauth2, scope, Authority};
 use aliri_tower::Oauth2Authorizer;
-use axum::extract::Path;
-use axum::routing::{get, post};
-use axum::Router;
+use axum::{
+    extract::Path,
+    routing::{get, post},
+    Router,
+};
 
 scope_guards! {
     type Claims = CustomClaims;

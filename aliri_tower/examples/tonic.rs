@@ -1,15 +1,16 @@
+use std::sync::atomic::{AtomicI32, Ordering};
+
 use aliri::{jwa, jwk, jwt, Jwk, Jwks, Jwt};
 use aliri_base64::Base64UrlRef;
 use aliri_clock::{Clock, DurationSecs, UnixTime};
-use aliri_oauth2::oauth2::HasScope;
-use aliri_oauth2::{oauth2, policy, scope, Authority};
+use aliri_oauth2::{oauth2, oauth2::HasScope, policy, scope, Authority};
 use aliri_tower::Oauth2Authorizer;
 use aliri_traits::Policy;
-use std::sync::atomic::{AtomicI32, Ordering};
+use counter::{
+    counter_service_server::{CounterService, CounterServiceServer},
+    CounterRequest, CounterResponse,
+};
 use tonic::{transport::Server, Request, Response, Status};
-
-use counter::counter_service_server::{CounterService, CounterServiceServer};
-use counter::{CounterRequest, CounterResponse};
 
 #[allow(clippy::derive_partial_eq_without_eq)]
 pub mod counter {

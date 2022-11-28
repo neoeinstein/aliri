@@ -1,15 +1,16 @@
 use std::time::Duration;
 
-use aliri::error::JwtVerifyError;
-use aliri::{jwa, jwt};
+use aliri::{error::JwtVerifyError, jwa, jwt};
 use aliri_axum::scope_guards;
 use aliri_clock::UnixTime;
 use aliri_oauth2::{oauth2, Authority};
 use aliri_tower::Oauth2Authorizer;
-use axum::extract::Path;
-use axum::response::IntoResponse;
-use axum::routing::{get, post};
-use axum::{Extension, Router};
+use axum::{
+    extract::Path,
+    response::IntoResponse,
+    routing::{get, post},
+    Extension, Router,
+};
 use http::{request::Parts, Response};
 use time::format_description::well_known::Rfc3339;
 

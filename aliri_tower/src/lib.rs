@@ -98,17 +98,14 @@
     unused_must_use
 )]
 
-use std::fmt;
-use std::marker::PhantomData;
+use std::{fmt, marker::PhantomData};
 
 mod authorizer;
 mod jwt;
 mod oauth2;
 pub mod util;
 
-pub use crate::authorizer::Oauth2Authorizer;
-pub use crate::jwt::OnJwtError;
-pub use crate::oauth2::OnScopeError;
+pub use crate::{authorizer::Oauth2Authorizer, jwt::OnJwtError, oauth2::OnScopeError};
 
 /// Terse responders for authentication and authorization failures
 ///

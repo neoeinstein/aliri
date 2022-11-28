@@ -115,9 +115,11 @@ fn insufficient_scope_no_policy(description: &str) -> HeaderValue {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use aliri_oauth2::{policy, scope};
     use std::collections::BTreeSet;
+
+    use aliri_oauth2::{policy, scope};
+
+    use super::*;
 
     #[test]
     fn in_unauthorized_description_unicode_and_non_printing_description_does_not_panic() {

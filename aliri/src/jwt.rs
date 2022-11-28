@@ -61,8 +61,7 @@ use aliri_clock::{Clock, System, UnixTime};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 
-use crate::jws::Signer;
-use crate::{error, jwa, jwk, jws, Jwk};
+use crate::{error, jwa, jwk, jws, jws::Signer, Jwk};
 
 #[cfg(all(not(feature = "no-unstable"), feature = "unstable"))]
 mod validator;
@@ -460,8 +459,8 @@ impl Jwt {
 /// # Example
 ///
 /// ```
-///# use aliri::jwt::JwtRef;
-///#
+/// # use aliri::jwt::JwtRef;
+/// #
 /// let token = JwtRef::from_str(concat!(
 ///     "eyJhbGciOiJIUzI1NiJ9.",
 ///     "eyJzdWIiOiJBbGlyaSIsImF1ZCI6Im15X2FwaSIsImlzcyI6ImF1dGhvcml0eSJ9.",
@@ -519,8 +518,8 @@ impl fmt::Debug for JwtRef {
 /// # Example
 ///
 /// ```
-///# use aliri::jwt::JwtRef;
-///#
+/// # use aliri::jwt::JwtRef;
+/// #
 /// let token = JwtRef::from_str(concat!(
 ///     "eyJhbGciOiJIUzI1NiJ9.",
 ///     "eyJzdWIiOiJBbGlyaSIsImF1ZCI6Im15X2FwaSIsImlzcyI6ImF1dGhvcml0eSJ9.",
@@ -1082,9 +1081,8 @@ pub enum OneOrMany<T> {
 
 #[cfg(test)]
 mod tests {
-    use color_eyre::Result;
-
     use aliri_clock::TestClock;
+    use color_eyre::Result;
 
     use super::*;
 

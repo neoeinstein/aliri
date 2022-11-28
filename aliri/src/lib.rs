@@ -54,7 +54,6 @@
 //! Inspect this token at [jwt.io][token] and verify with the shared secret `test`.
 //!
 //!   [token]: https://jwt.io/#debugger-io?token=eyJhbGciOiJIUzI1NiIsImtpZCI6InRlc3Qga2V5In0.eyJzdWIiOiJBbGlyaSIsImF1ZCI6Im15X2FwaSIsImlzcyI6ImF1dGhvcml0eSJ9.yKDd4Ba3fdedqRKHrSUUMuF01-ctdXzEKM9oyWjSx9A
-//!
 
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![warn(
@@ -83,9 +82,7 @@ pub(crate) mod test;
 
 #[doc(inline)]
 pub use jwk::Jwk;
-
 #[doc(inline)]
 pub use jwks::Jwks;
-
 #[doc(inline)]
 pub use jwt::{Jwt, JwtRef};
