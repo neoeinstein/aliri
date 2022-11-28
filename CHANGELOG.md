@@ -4,6 +4,8 @@ This changelog is based on the format from [Keep a Changelog](https://keepachang
 
 ## [Unreleased]
 
+## [2022-11-28]
+
 - `aliri` to 0.6.1
 - `aliri_actix` to 0.8.0
 - `aliri_axum` to 0.2.0
