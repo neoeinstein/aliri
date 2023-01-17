@@ -72,7 +72,7 @@ impl PrivateKey {
             .replace("-----END PRIVATE KEY-----", "")
             .replace('\n', "");
 
-        let pkcs8 = Base64::from_encoded(&pkcs8_str).map_err(error::key_rejected)?;
+        let pkcs8 = Base64::from_encoded(pkcs8_str).map_err(error::key_rejected)?;
 
         let ring_cache = Arc::new(
             ring::signature::EcdsaKeyPair::from_pkcs8(

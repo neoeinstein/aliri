@@ -77,8 +77,11 @@ impl PublicKey {
     ) -> Result<Self, error::KeyRejected> {
         let modulus = modulus.into();
         let exponent = exponent.into();
-        if modulus.as_slice().len() != 256 {
-            return Err(error::key_rejected("key modulus must be 2048 bits"));
+        if modulus.as_slice().len() < 256 {
+            return Err(error::key_rejected(format!(
+                "key modulus must be at least 2048 bits, but it was {}",
+                modulus.as_slice().len() * 8
+            )));
         }
 
         // TODO: Better early validation of the public key component
