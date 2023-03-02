@@ -61,7 +61,7 @@ impl CounterService for MyCounter {
 struct AuthorizedService<S>(S);
 
 impl<S, T> tonic::transport::NamedService
-    for AuthorizedService<tower_http::auth::RequireAuthorization<S, T>>
+    for AuthorizedService<tower_http::validate_request::ValidateRequestHeader<S, T>>
 where
     S: tonic::transport::NamedService,
 {

@@ -6,7 +6,7 @@ use aliri_oauth2::{
     Authority, ScopePolicy,
 };
 use http_body::Body;
-use tower_http::auth::{AuthorizeRequest, RequireAuthorizationLayer};
+use tower_http::validate_request::{ValidateRequest, ValidateRequestHeaderLayer};
 
 use crate::{OnJwtError, OnScopeError, TerseErrorHandler, VerboseErrorHandler};
 
@@ -123,10 +123,10 @@ where
     pub fn jwt_layer<ReqBody>(
         &self,
         authority: Authority,
-    ) -> RequireAuthorizationLayer<
-        impl AuthorizeRequest<ReqBody, ResponseBody = OnError::Body> + Clone,
+    ) -> ValidateRequestHeaderLayer<
+        impl ValidateRequest<ReqBody, ResponseBody = OnError::Body> + Clone,
     > {
-        RequireAuthorizationLayer::custom(crate::jwt::VerifyJwt::<Claims, _>::new(
+        ValidateRequestHeaderLayer::custom(crate::jwt::VerifyJwt::<Claims, _>::new(
             authority,
             self.on_error.clone(),
         ))
@@ -147,10 +147,10 @@ where
     pub fn scope_layer<ReqBody>(
         &self,
         policy: ScopePolicy,
-    ) -> RequireAuthorizationLayer<
-        impl AuthorizeRequest<ReqBody, ResponseBody = OnError::Body> + Clone,
+    ) -> ValidateRequestHeaderLayer<
+        impl ValidateRequest<ReqBody, ResponseBody = OnError::Body> + Clone,
     > {
-        RequireAuthorizationLayer::custom(crate::oauth2::VerifyScope::<Claims, _>::new(
+        ValidateRequestHeaderLayer::custom(crate::oauth2::VerifyScope::<Claims, _>::new(
             policy,
             self.on_error.clone(),
         ))

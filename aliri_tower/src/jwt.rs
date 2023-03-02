@@ -4,7 +4,7 @@ use aliri::{error::JwtVerifyError, jwt::CoreClaims, Jwt};
 use aliri_oauth2::{oauth2::HasScope, Authority, AuthorityError, ScopePolicy};
 use http::{Request, Response};
 use http_body::Body;
-use tower_http::auth::AuthorizeRequest;
+use tower_http::validate_request::ValidateRequest;
 
 use crate::{util::unauthorized, TerseErrorHandler, VerboseErrorHandler};
 
@@ -67,7 +67,7 @@ where
     }
 }
 
-impl<Claims, OnError, ReqBody> AuthorizeRequest<ReqBody> for VerifyJwt<Claims, OnError>
+impl<Claims, OnError, ReqBody> ValidateRequest<ReqBody> for VerifyJwt<Claims, OnError>
 where
     OnError: OnJwtError,
     OnError::Body: Body + Default,
@@ -75,7 +75,7 @@ where
 {
     type ResponseBody = OnError::Body;
 
-    fn authorize(
+    fn validate(
         &mut self,
         request: &mut Request<ReqBody>,
     ) -> Result<(), Response<Self::ResponseBody>> {

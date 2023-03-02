@@ -4,7 +4,7 @@ use aliri_oauth2::{oauth2::HasScope, Scope, ScopePolicy};
 use aliri_traits::Policy;
 use http::{Request, Response};
 use http_body::Body;
-use tower_http::auth::AuthorizeRequest;
+use tower_http::validate_request::ValidateRequest;
 
 use crate::{util::forbidden, TerseErrorHandler, VerboseErrorHandler};
 
@@ -50,7 +50,7 @@ impl<Claims, OnError> VerifyScope<Claims, OnError> {
     }
 }
 
-impl<Claims, OnError, ReqBody> AuthorizeRequest<ReqBody> for VerifyScope<Claims, OnError>
+impl<Claims, OnError, ReqBody> ValidateRequest<ReqBody> for VerifyScope<Claims, OnError>
 where
     OnError: OnScopeError,
     OnError::Body: Body + Default,
@@ -58,7 +58,7 @@ where
 {
     type ResponseBody = OnError::Body;
 
-    fn authorize(
+    fn validate(
         &mut self,
         request: &mut Request<ReqBody>,
     ) -> Result<(), Response<Self::ResponseBody>> {
