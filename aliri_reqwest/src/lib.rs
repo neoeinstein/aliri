@@ -140,7 +140,7 @@ impl<P> AccessTokenMiddleware<P> {
         }
 
         let mut header_value = BytesMut::with_capacity(token.access_token().as_str().len() + 7);
-        header_value.put_slice(b"bearer ");
+        header_value.put_slice(b"Bearer ");
         header_value.put_slice(token.access_token().as_str().as_bytes());
         let mut value =
             header::HeaderValue::from_maybe_shared(header_value).expect("only valid header bytes");
@@ -269,7 +269,7 @@ mod tests {
     use super::*;
 
     const TEST_TOKEN: &str = "this-is-a-test-token";
-    const BEARER_TEST_TOKEN: &str = "bearer this-is-a-test-token";
+    const BEARER_TEST_TOKEN: &str = "Bearer this-is-a-test-token";
 
     struct AuthChecker {
         expected_authorization: String,
