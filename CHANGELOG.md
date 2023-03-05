@@ -4,6 +4,18 @@ This changelog is based on the format from [Keep a Changelog](https://keepachang
 
 ## [Unreleased]
 
+## [2023-03-04]
+
+- `aliri_axum` to 0.2.1
+- `aliri_tower` to 0.4.0
+- `aliri_reqwest` to 0.4.1
+
+### Changed
+
+- (axum) Upgraded `aliri_tower` to 0.4.0
+- (tower) Upgraded `tower-http` to 0.4.0
+- (reqwest) Correct casing of `Bearer` auth scheme when sending credentials (#34)
+
 ## [2022-11-28]
 
 - `aliri` to 0.6.1
