@@ -34,6 +34,8 @@
 mod authority;
 pub mod oauth2;
 mod policy;
+mod oidc;
+
 
 pub use authority::{Authority, AuthorityError};
 pub use oauth2::Scope;

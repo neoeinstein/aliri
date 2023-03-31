@@ -14,7 +14,7 @@ use reqwest::{
 use serde::Deserialize;
 use thiserror::Error;
 
-use crate::{oauth2::HasScope, ScopePolicy};
+use crate::{oauth2::HasScope, ScopePolicy, oidc::{OidcConfiguration, fetch_oidc_configuration}};
 
 /// Indicates the requester held insufficient scopes to be granted access
 /// to a controlled resource
@@ -128,6 +128,21 @@ impl Authority {
                 validator,
             }),
         })
+    }
+
+
+    /// Constructs a new JWKS authority from a issuer
+    #[cfg(feature = "reqwest")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "reqwest")))]
+    pub async fn new_from_issuer(
+        issuer: String,
+        validator: jwt::CoreValidator,
+    ) -> Result<Self, reqwest::Error> {
+        let oidc_configuration: OidcConfiguration = fetch_oidc_configuration(
+        &format!("{}/.well-known/openid-configuration", &issuer)
+        ).await?;
+
+        Self::new_from_url(oidc_configuration.jwks_uri, validator).await
     }
 
     /// A non-terminating future that will automatically refresh the JWKS
