@@ -2,7 +2,7 @@ use aliri::{jwa, jwk, jwt, Jwk, Jwks, Jwt};
 use aliri_axum::scope_guards;
 use aliri_base64::Base64UrlRef;
 use aliri_clock::{Clock, DurationSecs, UnixTime};
-use aliri_oauth2::{oauth2, scope, Authority};
+use aliri_oauth2::{scope, Authority};
 use aliri_tower::Oauth2Authorizer;
 use axum::{
     extract::Path,
@@ -44,7 +44,7 @@ pub struct CustomClaims {
     aud: jwt::Audiences,
     sub: jwt::Subject,
     exp: UnixTime,
-    scope: oauth2::Scope,
+    scope: scope::Scope,
 }
 
 impl jwt::CoreClaims for CustomClaims {
@@ -65,8 +65,8 @@ impl jwt::CoreClaims for CustomClaims {
     }
 }
 
-impl oauth2::HasScope for CustomClaims {
-    fn scope(&self) -> &oauth2::Scope {
+impl scope::HasScope for CustomClaims {
+    fn scope(&self) -> &scope::Scope {
         &self.scope
     }
 }

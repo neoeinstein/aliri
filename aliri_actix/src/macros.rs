@@ -122,7 +122,7 @@
 /// use aliri::jwt;
 /// use aliri_actix::scope_policy;
 /// use aliri_clock::UnixTime;
-/// use aliri_oauth2::oauth2;
+/// use aliri_oauth2::scope;
 /// use serde::Deserialize;
 /// use actix_web::{get, HttpResponse, Responder};
 ///
@@ -167,7 +167,7 @@
 #[macro_export]
 macro_rules! scope_policy {
     ($i:ident/$s:ident; $($($scope:literal),*);*) => {
-      scope_policy!($i/$s(::aliri_oauth2::oauth2::BasicClaimsWithScope); $($($scope),*);*);
+      scope_policy!($i/$s(::aliri_oauth2::scope::BasicClaimsWithScope); $($($scope),*);*);
     };
     ($i:ident/$s:ident($claim:ty); $($($scope:literal),*);*) => {
         #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -199,7 +199,7 @@ macro_rules! scope_policy {
                         .or_allow(
                             ::aliri_oauth2::Scope::empty()
                             $(
-                                .and(::aliri_oauth2::oauth2::ScopeToken::from_static($scope))
+                                .and(::aliri_oauth2::scope::ScopeToken::from_static($scope))
                             )*
                         )
                     )*

@@ -32,9 +32,9 @@
 )]
 
 mod authority;
-pub mod oauth2;
+pub mod scope;
 mod policy;
 
 pub use authority::{Authority, AuthorityError};
-pub use oauth2::Scope;
+pub use scope::Scope;
 pub use policy::{InsufficientScope, ScopePolicy};

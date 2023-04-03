@@ -6,7 +6,7 @@ use actix_web::{
     FromRequest, HttpRequest, ResponseError,
 };
 use aliri::{jwt, JwtRef};
-use aliri_oauth2::{oauth2::HasScope, Authority, AuthorityError, ScopePolicy};
+use aliri_oauth2::{scope::HasScope, Authority, AuthorityError, ScopePolicy};
 use serde::Deserialize;
 use thiserror::Error;
 
@@ -229,7 +229,7 @@ where
 /// use aliri_actix::jwt::AllowAll;
 /// use aliri_clock::UnixTime;
 /// use aliri::jwt;
-/// use aliri_oauth2::oauth2;
+/// use aliri_oauth2::scope;
 /// use serde::Deserialize;
 ///
 /// #[derive(Clone, Debug, Deserialize)]
@@ -259,7 +259,7 @@ where
 /// }
 /// ```
 #[derive(Debug)]
-pub struct AllowAll<C = aliri_oauth2::oauth2::BasicClaimsWithScope>(C);
+pub struct AllowAll<C = aliri_oauth2::scope::BasicClaimsWithScope>(C);
 
 impl<C> AllowAll<C> {
     /// Borrows a reference to the inner claims payload
@@ -301,7 +301,7 @@ mod tests {
     use actix_web::{get, test, App, HttpResponse, Responder};
     use aliri::{jwa, jwk, Jwk, Jwks};
     use aliri_base64::Base64Url;
-    use aliri_oauth2::{oauth2::BasicClaimsWithScope, Scope};
+    use aliri_oauth2::{scope::BasicClaimsWithScope, Scope};
     use color_eyre::Result;
     use once_cell::sync::OnceCell;
 

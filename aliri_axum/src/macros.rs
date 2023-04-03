@@ -89,7 +89,7 @@
 /// use aliri::jwt;
 /// use aliri_axum::scope_guard;
 /// use aliri_clock::UnixTime;
-/// use aliri_oauth2::oauth2;
+/// use aliri_oauth2::scope;
 /// use serde::Deserialize;
 ///
 /// #[derive(Clone, Debug, Deserialize)]
@@ -130,13 +130,13 @@
 #[macro_export]
 macro_rules! scope_guard {
     ($vis:vis $i:ident; *) => {
-        $crate::scope_guard!($vis $i(::aliri_oauth2::oauth2::BasicClaimsWithScope); *);
+        $crate::scope_guard!($vis $i(::aliri_oauth2::scope::BasicClaimsWithScope); *);
     };
     ($vis:vis $i:ident; $scope:literal) => {
         $crate::scope_guard!($vis $i; [$scope]);
     };
     ($vis:vis $i:ident; [$($scope:literal)||* $(,)?]) => {
-        $crate::scope_guard!($vis $i(::aliri_oauth2::oauth2::BasicClaimsWithScope); [$($scope)||*]);
+        $crate::scope_guard!($vis $i(::aliri_oauth2::scope::BasicClaimsWithScope); [$($scope)||*]);
     };
     ($vis:vis $i:ident($claim:ty); $scope:literal) => {
         $crate::scope_guard!($vis $i($claim); [$scope]);
@@ -275,7 +275,7 @@ macro_rules! scope_guard {
 ///
 /// ```
 /// use aliri_axum::scope_guards;
-/// use aliri_oauth2::oauth2;
+/// use aliri_oauth2::scope;
 ///
 /// struct CustomClaims {
 ///     scope: oauth2::Scope,
@@ -314,7 +314,7 @@ macro_rules! scope_guards {
 
 #[cfg(test)]
 mod tests {
-    use aliri_oauth2::{oauth2, scope};
+    use aliri_oauth2::{scope};
     use axum::{
         extract::FromRequestParts,
         http::{request::Parts, Request},
@@ -332,10 +332,10 @@ mod tests {
         scope TestingAdmin = ["testing admin"];
     }
 
-    struct MyClaims(oauth2::Scope);
+    struct MyClaims(scope::Scope);
 
-    impl oauth2::HasScope for MyClaims {
-        fn scope(&self) -> &oauth2::Scope {
+    impl scope::HasScope for MyClaims {
+        fn scope(&self) -> &scope::Scope {
             &self.0
         }
     }
@@ -344,7 +344,7 @@ mod tests {
         Request::new(()).into_parts().0
     }
 
-    fn request_with_scope(scope: oauth2::Scope) -> Parts {
+    fn request_with_scope(scope: scope::Scope) -> Parts {
         let mut parts = Request::new(()).into_parts().0;
         parts.extensions.insert(MyClaims(scope));
         parts

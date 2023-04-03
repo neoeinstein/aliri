@@ -1,6 +1,6 @@
 use std::{fmt, marker::PhantomData};
 
-use aliri_oauth2::{oauth2::HasScope, Scope, ScopePolicy};
+use aliri_oauth2::{scope::HasScope, Scope, ScopePolicy};
 use aliri_traits::Policy;
 use http::{Request, Response};
 use http_body::Body;

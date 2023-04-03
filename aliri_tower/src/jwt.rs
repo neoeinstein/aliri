@@ -1,7 +1,7 @@
 use std::{fmt, marker::PhantomData};
 
 use aliri::{error::JwtVerifyError, jwt::CoreClaims, Jwt};
-use aliri_oauth2::{oauth2::HasScope, Authority, AuthorityError, ScopePolicy};
+use aliri_oauth2::{scope::HasScope, Authority, AuthorityError, ScopePolicy};
 use http::{Request, Response};
 use http_body::Body;
 use tower_http::validate_request::ValidateRequest;

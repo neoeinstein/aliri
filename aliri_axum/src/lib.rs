@@ -103,7 +103,7 @@
 
 use std::{error::Error, fmt};
 
-use aliri_oauth2::{oauth2, ScopePolicy};
+use aliri_oauth2::{scope, ScopePolicy};
 use axum_core::response::{IntoResponse, Response};
 use http::StatusCode;
 
@@ -112,7 +112,7 @@ mod macros;
 /// Defines a scope policy for a given endpoint guard
 pub trait EndpointScopePolicy {
     /// The claims structure to extract from the request extensions and return if authorized
-    type Claims: oauth2::HasScope;
+    type Claims: scope::HasScope;
 
     /// The scope policy to be enforced when this type is used as an endpoint guard
     fn scope_policy() -> &'static ScopePolicy;
@@ -206,7 +206,7 @@ pub struct VerboseAuthxErrors;
 
 #[doc(hidden)]
 pub mod __private {
-    use aliri_oauth2::oauth2;
+    use aliri_oauth2::scope;
     pub use aliri_oauth2::ScopePolicy;
     use aliri_traits::Policy;
     use http::request::Parts;
@@ -219,7 +219,7 @@ pub mod __private {
         policy: &'static ScopePolicy,
     ) -> Result<Claims, AuthFailed>
     where
-        Claims: oauth2::HasScope + Send + Sync + 'static,
+        Claims: scope::HasScope + Send + Sync + 'static,
     {
         let claims = req
             .extensions
