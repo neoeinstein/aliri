@@ -29,6 +29,7 @@ pub struct ClientCredentialsTokenSource<C> {
     token_url: reqwest::Url,
     credentials: dto::ClientCredentialsWithAudience,
     lifetime_config: TokenLifetimeConfig<C>,
+    content_type: ContentType
 }
 
 impl<C> ClientCredentialsTokenSource<C> {
@@ -38,12 +39,14 @@ impl<C> ClientCredentialsTokenSource<C> {
         token_url: reqwest::Url,
         credentials: dto::ClientCredentialsWithAudience,
         lifetime_config: TokenLifetimeConfig<C>,
+        content_type: ContentType
     ) -> Self {
         Self {
             client,
             token_url,
             credentials,
             lifetime_config,
+            content_type
         }
     }
 }
@@ -58,6 +61,7 @@ impl<C: Clock + Send + Sync> AsyncTokenSource for ClientCredentialsTokenSource<C
             self.token_url.clone(),
             &mut self.credentials,
             &self.lifetime_config,
+            &self.content_type
         )
         .await
     }
@@ -70,6 +74,7 @@ pub struct RefreshTokenSource<C> {
     token_url: reqwest::Url,
     credentials: dto::RefreshTokenCredentialsSource,
     lifetime_config: TokenLifetimeConfig<C>,
+    content_type: ContentType
 }
 
 impl<C> RefreshTokenSource<C> {
@@ -79,12 +84,14 @@ impl<C> RefreshTokenSource<C> {
         token_url: reqwest::Url,
         credentials: dto::RefreshTokenCredentialsSource,
         lifetime_config: TokenLifetimeConfig<C>,
+        content_type: ContentType
     ) -> Self {
         Self {
             client,
             token_url,
             credentials,
             lifetime_config,
+            content_type
         }
     }
 }
@@ -99,6 +106,7 @@ impl<C: Clock + Send + Sync> AsyncTokenSource for RefreshTokenSource<C> {
             self.token_url.clone(),
             &mut self.credentials,
             &self.lifetime_config,
+            &self.content_type
         )
         .await
     }
@@ -134,6 +142,15 @@ fn maybe_value<'a, T: tracing::Value + 'a>(v: &'a Option<T>) -> &'a dyn tracing:
     }
 }
 
+/// Request content type
+#[derive(Debug, PartialEq, Eq)]
+pub enum ContentType {
+    /// json content type
+    Json,
+    /// form content type
+    Form
+}
+
 #[tracing::instrument(
     err,
     skip(client, token_url, credentials),
@@ -149,13 +166,19 @@ async fn request_token<R: CredentialsSource, C: Clock>(
     token_url: reqwest::Url,
     credentials: &mut R,
     lifetime_config: &TokenLifetimeConfig<C>,
+    content_type: &ContentType
 ) -> Result<TokenWithLifetime, TokenRequestError> {
     tracing::trace!("requesting token from authority");
 
-    let resp = client
-        .post(token_url)
-        .json(&credentials)
-        .send()
+    let mut req = client
+        .post(token_url);
+    if *content_type == ContentType::Form {
+        req = req.form(&credentials);
+    }
+    else {
+        req = req.json(&credentials);
+    }
+    let resp = req.send()
         .await
         .map_err(TokenRequestError::RequestSend)?;
 
