@@ -122,7 +122,7 @@
 /// use aliri::jwt;
 /// use aliri_actix::scope_policy;
 /// use aliri_clock::UnixTime;
-/// use aliri_oauth2::scope;
+/// use aliri_oauth2::{HasScope, Scope};
 /// use serde::Deserialize;
 /// use actix_web::{get, HttpResponse, Responder};
 ///
@@ -131,7 +131,7 @@
 ///     iss: jwt::Issuer,
 ///     aud: jwt::Audiences,
 ///     sub: jwt::Subject,
-///     scope: oauth2::Scope,
+///     scope: Scope,
 /// }
 ///
 /// impl jwt::CoreClaims for CustomClaims {
@@ -142,8 +142,8 @@
 ///     fn sub(&self) -> Option<&jwt::SubjectRef> { Some(&self.sub) }
 /// }
 ///
-/// impl oauth2::HasScope for CustomClaims {
-///     fn scope(&self) -> &oauth2::Scope { &self.scope }
+/// impl HasScope for CustomClaims {
+///     fn scope(&self) -> &Scope { &self.scope }
 /// }
 ///
 /// // Define our initial scope

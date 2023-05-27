@@ -89,7 +89,7 @@
 /// use aliri::jwt;
 /// use aliri_axum::scope_guard;
 /// use aliri_clock::UnixTime;
-/// use aliri_oauth2::scope;
+/// use aliri_oauth2::{HasScope, Scope};
 /// use serde::Deserialize;
 ///
 /// #[derive(Clone, Debug, Deserialize)]
@@ -97,7 +97,7 @@
 ///     iss: jwt::Issuer,
 ///     aud: jwt::Audiences,
 ///     sub: jwt::Subject,
-///     scope: oauth2::Scope,
+///     scope: Scope,
 /// }
 ///
 /// impl jwt::CoreClaims for CustomClaims {
@@ -108,8 +108,8 @@
 ///     fn sub(&self) -> Option<&jwt::SubjectRef> { Some(&self.sub) }
 /// }
 ///
-/// impl oauth2::HasScope for CustomClaims {
-///     fn scope(&self) -> &oauth2::Scope { &self.scope }
+/// impl HasScope for CustomClaims {
+///     fn scope(&self) -> &Scope { &self.scope }
 /// }
 ///
 /// // Define our initial scope
@@ -275,14 +275,14 @@ macro_rules! scope_guard {
 ///
 /// ```
 /// use aliri_axum::scope_guards;
-/// use aliri_oauth2::scope;
+/// use aliri_oauth2::{HasScope, Scope};
 ///
 /// struct CustomClaims {
-///     scope: oauth2::Scope,
+///     scope: Scope,
 /// }
 ///
-/// impl oauth2::HasScope for CustomClaims {
-///     fn scope(&self) -> &oauth2::Scope {
+/// impl HasScope for CustomClaims {
+///     fn scope(&self) -> &Scope {
 ///        &self.scope
 ///     }
 /// }
@@ -314,7 +314,7 @@ macro_rules! scope_guards {
 
 #[cfg(test)]
 mod tests {
-    use aliri_oauth2::{scope};
+    use aliri_oauth2::{scope, HasScope, Scope};
     use axum::{
         extract::FromRequestParts,
         http::{request::Parts, Request},
@@ -332,10 +332,10 @@ mod tests {
         scope TestingAdmin = ["testing admin"];
     }
 
-    struct MyClaims(scope::Scope);
+    struct MyClaims(Scope);
 
-    impl scope::HasScope for MyClaims {
-        fn scope(&self) -> &scope::Scope {
+    impl HasScope for MyClaims {
+        fn scope(&self) -> &Scope {
             &self.0
         }
     }

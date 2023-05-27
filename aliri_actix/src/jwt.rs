@@ -6,7 +6,7 @@ use actix_web::{
     FromRequest, HttpRequest, ResponseError,
 };
 use aliri::{jwt, JwtRef};
-use aliri_oauth2::{scope::HasScope, Authority, AuthorityError, ScopePolicy};
+use aliri_oauth2::{Authority, AuthorityError, HasScope, ScopePolicy};
 use serde::Deserialize;
 use thiserror::Error;
 
@@ -88,7 +88,7 @@ fn get_jwt_from_req(request: &HttpRequest) -> Result<&JwtRef, JwtError> {
 /// use actix_web::{get, HttpResponse, Responder};
 /// use aliri_actix::jwt::{ScopeGuard, Scoped};
 /// use aliri::jwt;
-/// use aliri_oauth2::{oauth2, Scope, ScopePolicy};
+/// use aliri_oauth2::{scope::BasicClaimsWithScope, Scope, ScopePolicy};
 /// use once_cell::sync::OnceCell;
 /// use serde::Deserialize;
 ///
@@ -96,7 +96,7 @@ fn get_jwt_from_req(request: &HttpRequest) -> Result<&JwtRef, JwtError> {
 /// struct TestScope;
 ///
 /// impl ScopeGuard for TestScope {
-///     type Claims = oauth2::BasicClaimsWithScope;
+///     type Claims = BasicClaimsWithScope;
 ///
 ///     fn scope_policy() -> &'static ScopePolicy {
 ///         static POLICY: OnceCell<ScopePolicy> = OnceCell::new();
@@ -229,7 +229,7 @@ where
 /// use aliri_actix::jwt::AllowAll;
 /// use aliri_clock::UnixTime;
 /// use aliri::jwt;
-/// use aliri_oauth2::scope;
+/// use aliri_oauth2::{HasScope, Scope};
 /// use serde::Deserialize;
 ///
 /// #[derive(Clone, Debug, Deserialize)]
@@ -237,7 +237,7 @@ where
 ///     iss: jwt::Issuer,
 ///     aud: jwt::Audiences,
 ///     sub: jwt::Subject,
-///     scope: oauth2::Scope,
+///     scope: Scope,
 /// }
 ///
 /// impl jwt::CoreClaims for CustomClaims {
@@ -248,8 +248,8 @@ where
 ///     fn sub(&self) -> Option<&jwt::SubjectRef> { Some(&self.sub) }
 /// }
 ///
-/// impl oauth2::HasScope for CustomClaims {
-///     fn scope(&self) -> &oauth2::Scope { &self.scope }
+/// impl HasScope for CustomClaims {
+///     fn scope(&self) -> &Scope { &self.scope }
 /// }
 ///
 /// #[get("/metrics")]
