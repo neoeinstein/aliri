@@ -3,7 +3,7 @@ name = "aliri"
 description = "Implementations of the Javascript/JSON Object Signing and Encryption (JOSE) standards"
 keywords = [ "jwk", "jwa", "jose", "jwt", "auth" ]
 categories = [ "authentication" ]
-version = "0.6.1"
+version = "0.6.2"
 authors = ["Marcus Griep <marcus@griep.us>"]
 edition = "2018"
 readme = "../README.md"
@@ -26,7 +26,7 @@ rustc-args = ["--cfg", "docsrs"]
 features = [ "rsa", "ec", "hmac", "private-keys" ]
 
 [dependencies]
-aliri_base64 = { version = "0.1.0", path = "../aliri_base64", features = [ "serde" ] }
+aliri_base64 = { version = "0.1.7", path = "../aliri_base64", features = [ "serde" ] }
 aliri_clock = { version = "0.1.0", path = "../aliri_clock", features = [ "serde" ] }
 aliri_braid = { version = "0.4.0" }
 once_cell = { version = "1.4" }

@@ -4,9 +4,24 @@ This changelog is based on the format from [Keep a Changelog](https://keepachang
 
 ## [Unreleased]
 
+## [2023-05-27]
+
+- `aliri` to 0.6.2
+- `aliri_actix` to 0.9.0
+- `aliri_axum` to 0.3.0
+- `aliri_base64` to 0.1.7
+- `aliri_oauth2` to 0.10.0
+- `aliri_tokens` to 0.2.3
+- `aliri_tower` to 0.5.0
+- `aliri_warp` to 0.9.0
+
+### Changed
+
 - (oauth2) BREAKING: Rename `oauth2` module to `scope` ([#37])
 - (oauth2) Re-export `HasScope` at crate root
 - (tokens) Enable sending credentials to the authority using form data ([#38])
+- Upgraded `aliri_braid` to 0.4
+- Upgraded `base64` to 0.21
 
   [#37]: https://github.com/neoeinstein/aliri/pull/37
   [#38]: https://github.com/neoeinstein/aliri/pull/38
