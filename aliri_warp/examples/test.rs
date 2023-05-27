@@ -5,7 +5,7 @@ use std::{
 };
 
 use aliri::{jwa, jwk, jwt, jwt::CoreClaims as _, Jwk, Jwks, Jwt};
-use aliri_oauth2::{oauth2, oauth2::HasScope as _, Authority, ScopePolicy};
+use aliri_oauth2::{scope, Authority, HasScope as _, ScopePolicy};
 use color_eyre::Result;
 use warp::{Filter, Reply};
 
@@ -78,7 +78,7 @@ async fn main() -> Result<()> {
             Arc::new(validator.clone()),
         ))
         .map(
-            |param, agent: String, claims: oauth2::BasicClaimsWithScope| {
+            |param, agent: String, claims: scope::BasicClaimsWithScope| {
                 format!(
                     "Hello {}, whose agent is {}, authorized as {}!",
                     param,
@@ -97,8 +97,8 @@ async fn main() -> Result<()> {
     ));
 
     let mut policy = ScopePolicy::deny_all();
-    policy.allow(oauth2::Scope::single("say:hello".parse()?));
-    policy.allow(oauth2::Scope::from_scope_tokens(vec![
+    policy.allow(scope::Scope::single("say:hello".parse()?));
+    policy.allow(scope::Scope::from_scope_tokens(vec![
         "say:anything".parse()?,
         "no-really:anything".parse()?,
     ]));
@@ -112,7 +112,7 @@ async fn main() -> Result<()> {
             Arc::new(policy),
         ))
         .map(
-            |param, agent: String, claims: oauth2::BasicClaimsWithScope| {
+            |param, agent: String, claims: scope::BasicClaimsWithScope| {
                 format!(
                     "Hello {}, whose agent is {}, authorized as {} with scope {:?}!",
                     param,

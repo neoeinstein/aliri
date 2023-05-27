@@ -21,7 +21,7 @@
 //! #     iss: aliri::jwt::Issuer,
 //! #     aud: aliri::jwt::Audiences,
 //! #     sub: aliri::jwt::Subject,
-//! #     scope: aliri_oauth2::oauth2::Scope,
+//! #     scope: aliri_oauth2::scope::Scope,
 //! }
 //!
 //! impl jwt::CoreClaims for CustomClaims {
@@ -33,8 +33,8 @@
 //! #     fn sub(&self) -> Option<&aliri::jwt::SubjectRef> { Some(&self.sub) }
 //! }
 //!
-//! # impl aliri_oauth2::oauth2::HasScope for CustomClaims {
-//! #     fn scope(&self) -> &aliri_oauth2::oauth2::Scope { &self.scope }
+//! # impl aliri_oauth2::HasScope for CustomClaims {
+//! #     fn scope(&self) -> &aliri_oauth2::scope::Scope { &self.scope }
 //! # }
 //! #
 //! # fn construct_authority() -> aliri_oauth2::Authority {

@@ -6,7 +6,7 @@
 //! ```no_run
 //! use aliri::jwt;
 //! use aliri_clock::UnixTime;
-//! use aliri_oauth2::{Authority, oauth2};
+//! use aliri_oauth2::{Authority, HasScope, Scope};
 //! use aliri_tower::Oauth2Authorizer;
 //! use axum::{
 //!     extract::Path,
@@ -23,7 +23,7 @@
 //!     iss: jwt::Issuer,
 //!     aud: jwt::Audiences,
 //!     sub: jwt::Subject,
-//!     scope: oauth2::Scope,
+//!     scope: Scope,
 //! }
 //!
 //! impl jwt::CoreClaims for CustomClaims {
@@ -34,8 +34,8 @@
 //!     fn sub(&self) -> Option<&jwt::SubjectRef> { Some(&self.sub) }
 //! }
 //!
-//! impl oauth2::HasScope for CustomClaims {
-//!     fn scope(&self) -> &oauth2::Scope {
+//! impl HasScope for CustomClaims {
+//!     fn scope(&self) -> &Scope {
 //!        &self.scope
 //!     }
 //! }
@@ -103,7 +103,7 @@
 
 use std::{error::Error, fmt};
 
-use aliri_oauth2::{oauth2, ScopePolicy};
+use aliri_oauth2::{HasScope, ScopePolicy};
 use axum_core::response::{IntoResponse, Response};
 use http::StatusCode;
 
@@ -112,7 +112,7 @@ mod macros;
 /// Defines a scope policy for a given endpoint guard
 pub trait EndpointScopePolicy {
     /// The claims structure to extract from the request extensions and return if authorized
-    type Claims: oauth2::HasScope;
+    type Claims: HasScope;
 
     /// The scope policy to be enforced when this type is used as an endpoint guard
     fn scope_policy() -> &'static ScopePolicy;
@@ -206,7 +206,7 @@ pub struct VerboseAuthxErrors;
 
 #[doc(hidden)]
 pub mod __private {
-    use aliri_oauth2::oauth2;
+    use aliri_oauth2::HasScope;
     pub use aliri_oauth2::ScopePolicy;
     use aliri_traits::Policy;
     use http::request::Parts;
@@ -219,7 +219,7 @@ pub mod __private {
         policy: &'static ScopePolicy,
     ) -> Result<Claims, AuthFailed>
     where
-        Claims: oauth2::HasScope + Send + Sync + 'static,
+        Claims: HasScope + Send + Sync + 'static,
     {
         let claims = req
             .extensions

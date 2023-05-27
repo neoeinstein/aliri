@@ -31,7 +31,7 @@ pub enum InvalidScopeToken {
 }
 aliri_braid::from_infallible!(InvalidScopeToken);
 
-/// An OAuth2 scope token as defined in [RFC 6749, Section 3.3][RFC6749 3.3]
+/// An OAuth2 (or OIDC) scope token as defined in [RFC 6749, Section 3.3][RFC6749 3.3]
 ///
 /// A scope token must be composed of printable ASCII characters excluding
 /// ` ` (space), `"` (double quote), and `\` (backslash).
@@ -40,7 +40,7 @@ aliri_braid::from_infallible!(InvalidScopeToken);
 #[braid(
     serde,
     validator,
-    ref_doc = "A borrowed reference to an OAuth2 [`ScopeToken`]"
+    ref_doc = "A borrowed reference to an OAuth2 (or OIDC) [`ScopeToken`]"
 )]
 #[must_use]
 pub struct ScopeToken(compact_str::CompactString);
@@ -141,7 +141,7 @@ impl From<Scope> for ScopeDto {
     }
 }
 
-/// An OAuth2 Scope defining a set of access permissions
+/// An OAuth2 (or OIDC) Scope defining a set of access permissions
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(try_from = "Option<ScopeDto>", into = "ScopeDto")]
 #[must_use]
@@ -459,9 +459,9 @@ impl jwt::CoreClaims for BasicClaimsWithScope {
     }
 }
 
-/// Indicates that the type has an OAuth2 scope claim
+/// Indicates that the type has an OAuth2 (or OIDC) scope claim
 pub trait HasScope {
-    /// OAuth2 scope
+    /// OAuth2 (or OIDC) scope
     ///
     /// Scope claimed by the underlying token, generally in the `scope`
     /// claim.
@@ -493,12 +493,12 @@ impl HasScope for Scope {
 /// This is equivalent to the following:
 ///
 /// ```
-/// use aliri_oauth2::{oauth2, Scope};
+/// use aliri_oauth2::{scope, Scope};
 ///
 /// let scope = Scope::empty()
-///     .and(oauth2::ScopeToken::from_static("users.read"))
-///     .and(oauth2::ScopeToken::from_static("users.update"))
-///     .and(oauth2::ScopeToken::from_static("users.list"));
+///     .and(scope::ScopeToken::from_static("users.read"))
+///     .and(scope::ScopeToken::from_static("users.update"))
+///     .and(scope::ScopeToken::from_static("users.list"));
 /// ```
 ///
 /// # Panics
@@ -529,13 +529,13 @@ macro_rules! scope {
         {
             $crate::Scope::empty()
             $(
-                .and($crate::oauth2::ScopeToken::from_static($token))
+                .and($crate::scope::ScopeToken::from_static($token))
             )+
         }
     };
     ($($token:expr),+ $(,)?) => {
         {
-            let __f = || -> Result<$crate::Scope, $crate::oauth2::InvalidScopeToken> {
+            let __f = || -> Result<$crate::Scope, $crate::scope::InvalidScopeToken> {
                 ::core::result::Result::Ok(
                     $crate::Scope::empty()
                     $(

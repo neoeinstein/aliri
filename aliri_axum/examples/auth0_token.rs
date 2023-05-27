@@ -1,6 +1,6 @@
 use aliri::{jwt, JwtRef};
 use aliri_braid::braid;
-use aliri_oauth2::oauth2;
+use aliri_oauth2::scope;
 
 #[tokio::main]
 async fn main() -> color_eyre::Result<()> {
@@ -22,7 +22,7 @@ struct UserCode;
 #[derive(serde::Serialize)]
 struct DeviceFlowRequest<'a> {
     client_id: &'a ClientIdRef,
-    scope: &'a oauth2::Scope,
+    scope: &'a scope::Scope,
     audience: &'a jwt::AudienceRef,
 }
 
@@ -61,7 +61,7 @@ struct TokenError<'a> {
 struct TokenSuccess<'a> {
     #[serde(borrow)]
     access_token: &'a JwtRef,
-    scope: oauth2::Scope,
+    scope: scope::Scope,
     expires_in: aliri_clock::DurationSecs,
 }
 
@@ -72,8 +72,8 @@ async fn perform_device_login_flow(
 
     let scope = scope
         .into_iter()
-        .map(oauth2::ScopeToken::try_from)
-        .collect::<Result<oauth2::Scope, _>>()?;
+        .map(scope::ScopeToken::try_from)
+        .collect::<Result<scope::Scope, _>>()?;
 
     let client = reqwest::Client::default();
     let resp = client
