@@ -33,7 +33,7 @@
 //! #     fn sub(&self) -> Option<&aliri::jwt::SubjectRef> { Some(&self.sub) }
 //! }
 //!
-//! # impl aliri_oauth2::scope::HasScope for CustomClaims {
+//! # impl aliri_oauth2::HasScope for CustomClaims {
 //! #     fn scope(&self) -> &aliri_oauth2::scope::Scope { &self.scope }
 //! # }
 //! #

@@ -5,7 +5,7 @@ use std::{
 };
 
 use aliri::{jwa, jwk, jwt, jwt::CoreClaims as _, Jwk, Jwks, Jwt};
-use aliri_oauth2::{scope, scope::HasScope as _, Authority, ScopePolicy};
+use aliri_oauth2::{scope, Authority, HasScope as _, ScopePolicy};
 use color_eyre::Result;
 use warp::{Filter, Reply};
 

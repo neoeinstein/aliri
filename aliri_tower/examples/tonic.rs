@@ -3,7 +3,7 @@ use std::sync::atomic::{AtomicI32, Ordering};
 use aliri::{jwa, jwk, jwt, Jwk, Jwks, Jwt};
 use aliri_base64::Base64UrlRef;
 use aliri_clock::{Clock, DurationSecs, UnixTime};
-use aliri_oauth2::{scope, scope::HasScope, policy, Authority};
+use aliri_oauth2::{policy, scope, Authority, HasScope};
 use aliri_tower::Oauth2Authorizer;
 use aliri_traits::Policy;
 use counter::{
@@ -142,7 +142,7 @@ impl jwt::CoreClaims for CustomClaims {
     }
 }
 
-impl scope::HasScope for CustomClaims {
+impl HasScope for CustomClaims {
     fn scope(&self) -> &scope::Scope {
         &self.scope
     }

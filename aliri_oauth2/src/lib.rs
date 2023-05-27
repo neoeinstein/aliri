@@ -32,9 +32,9 @@
 )]
 
 mod authority;
-pub mod scope;
 mod policy;
+pub mod scope;
 
 pub use authority::{Authority, AuthorityError};
-pub use scope::Scope;
 pub use policy::{InsufficientScope, ScopePolicy};
+pub use scope::{HasScope, Scope};

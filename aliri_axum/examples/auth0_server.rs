@@ -3,7 +3,7 @@ use std::time::Duration;
 use aliri::{error::JwtVerifyError, jwa, jwt};
 use aliri_axum::scope_guards;
 use aliri_clock::UnixTime;
-use aliri_oauth2::{scope, Authority};
+use aliri_oauth2::{Authority, HasScope, Scope};
 use aliri_tower::Oauth2Authorizer;
 use axum::{
     extract::Path,
@@ -133,8 +133,8 @@ pub struct CustomClaims {
     exp: UnixTime,
     iat: UnixTime,
     azp: ClientId,
-    scope: scope::Scope,
-    permissions: scope::Scope,
+    scope: Scope,
+    permissions: Scope,
 }
 
 impl jwt::CoreClaims for CustomClaims {
@@ -155,8 +155,8 @@ impl jwt::CoreClaims for CustomClaims {
     }
 }
 
-impl scope::HasScope for CustomClaims {
-    fn scope(&self) -> &scope::Scope {
+impl HasScope for CustomClaims {
+    fn scope(&self) -> &Scope {
         &self.scope
     }
 }
