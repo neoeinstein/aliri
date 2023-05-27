@@ -1,5 +1,7 @@
 //! A token source that uses an OAuth2 server as an authority
 
+use std::marker::PhantomData;
+
 use aliri::jwt;
 use aliri_clock::Clock;
 use async_trait::async_trait;
@@ -24,44 +26,56 @@ pub trait CredentialsSource: serde::Serialize {
 
 /// A credentials source for the client credentials flow
 #[derive(Debug)]
-pub struct ClientCredentialsTokenSource<C> {
+pub struct ClientCredentialsTokenSource<C, T = JsonBody> {
     client: reqwest::Client,
     token_url: reqwest::Url,
     credentials: dto::ClientCredentialsWithAudience,
     lifetime_config: TokenLifetimeConfig<C>,
-    content_type: ContentType
+    content_type: PhantomData<fn() -> T>,
 }
 
-impl<C> ClientCredentialsTokenSource<C> {
+impl<C> ClientCredentialsTokenSource<C, JsonBody> {
     /// Constructs a new client credentials source
     pub fn new(
         client: reqwest::Client,
         token_url: reqwest::Url,
         credentials: dto::ClientCredentialsWithAudience,
         lifetime_config: TokenLifetimeConfig<C>,
-        content_type: ContentType
     ) -> Self {
         Self {
             client,
             token_url,
             credentials,
             lifetime_config,
-            content_type
+            content_type: PhantomData,
+        }
+    }
+
+    /// Configures the token source to send credentials to
+    /// the authority as form data
+    pub fn using_form_data(self) -> ClientCredentialsTokenSource<C, FormBody> {
+        ClientCredentialsTokenSource {
+            client: self.client,
+            token_url: self.token_url,
+            credentials: self.credentials,
+            lifetime_config: self.lifetime_config,
+            content_type: PhantomData,
         }
     }
 }
 
 #[async_trait]
-impl<C: Clock + Send + Sync> AsyncTokenSource for ClientCredentialsTokenSource<C> {
+impl<C: Clock + Send + Sync, T: RequestType> AsyncTokenSource
+    for ClientCredentialsTokenSource<C, T>
+{
     type Error = TokenRequestError;
 
     async fn request_token(&mut self) -> Result<TokenWithLifetime, Self::Error> {
-        request_token(
+        request_token::<_, _, T>(
             &self.client,
             self.token_url.clone(),
             &mut self.credentials,
             &self.lifetime_config,
-            &self.content_type
         )
         .await
     }
@@ -69,44 +83,54 @@ impl<C: Clock + Send + Sync> AsyncTokenSource for ClientCredentialsTokenSource<C
 
 /// A credentials source that uses the refresh token flow
 #[derive(Debug)]
-pub struct RefreshTokenSource<C> {
+pub struct RefreshTokenSource<C, T = JsonBody> {
     client: reqwest::Client,
     token_url: reqwest::Url,
     credentials: dto::RefreshTokenCredentialsSource,
     lifetime_config: TokenLifetimeConfig<C>,
-    content_type: ContentType
+    content_type: PhantomData<fn() -> T>,
 }
 
-impl<C> RefreshTokenSource<C> {
+impl<C> RefreshTokenSource<C, JsonBody> {
     /// Constructs a new refresh token source
     pub fn new(
         client: reqwest::Client,
         token_url: reqwest::Url,
         credentials: dto::RefreshTokenCredentialsSource,
         lifetime_config: TokenLifetimeConfig<C>,
-        content_type: ContentType
     ) -> Self {
         Self {
             client,
             token_url,
             credentials,
             lifetime_config,
-            content_type
+            content_type: PhantomData,
+        }
+    }
+
+    /// Configures the token source to send credentials to
+    /// the authority as form data
+    pub fn using_form_data(self) -> RefreshTokenSource<C, FormBody> {
+        RefreshTokenSource {
+            client: self.client,
+            token_url: self.token_url,
+            credentials: self.credentials,
+            lifetime_config: self.lifetime_config,
+            content_type: PhantomData,
         }
     }
 }
 
 #[async_trait]
-impl<C: Clock + Send + Sync> AsyncTokenSource for RefreshTokenSource<C> {
+impl<C: Clock + Send + Sync, T: RequestType> AsyncTokenSource for RefreshTokenSource<C, T> {
     type Error = TokenRequestError;
 
     async fn request_token(&mut self) -> Result<TokenWithLifetime, Self::Error> {
-        request_token(
+        request_token::<_, _, T>(
             &self.client,
             self.token_url.clone(),
             &mut self.credentials,
             &self.lifetime_config,
-            &self.content_type
         )
         .await
     }
@@ -148,7 +172,7 @@ pub enum ContentType {
     /// json content type
     Json,
     /// form content type
-    Form
+    Form,
 }
 
 #[tracing::instrument(
@@ -161,26 +185,16 @@ pub enum ContentType {
         credentials.audience = maybe_value(&credentials.audience().map(|a| a.as_str())),
     ),
 )]
-async fn request_token<R: CredentialsSource, C: Clock>(
+async fn request_token<R: CredentialsSource, C: Clock, T: RequestType>(
     client: &reqwest::Client,
     token_url: reqwest::Url,
     credentials: &mut R,
     lifetime_config: &TokenLifetimeConfig<C>,
-    content_type: &ContentType
 ) -> Result<TokenWithLifetime, TokenRequestError> {
     tracing::trace!("requesting token from authority");
 
-    let mut req = client
-        .post(token_url);
-    if *content_type == ContentType::Form {
-        req = req.form(&credentials);
-    }
-    else {
-        req = req.json(&credentials);
-    }
-    let resp = req.send()
-        .await
-        .map_err(TokenRequestError::RequestSend)?;
+    let req = T::attach_payload(client.post(token_url), credentials);
+    let resp = req.send().await.map_err(TokenRequestError::RequestSend)?;
 
     tracing::debug!(
         response.status = resp.status().as_u16(),
@@ -225,4 +239,39 @@ async fn request_token<R: CredentialsSource, C: Clock>(
     }
 
     Ok(token)
+}
+
+/// A manner of attaching a serializable payload to a request
+pub trait RequestType {
+    /// Attaches the serializable payload to the request body
+    fn attach_payload<S: serde::Serialize>(
+        request: reqwest::RequestBuilder,
+        payload: &S,
+    ) -> reqwest::RequestBuilder;
+}
+
+/// Attaches credentials to the request body as JSON
+#[derive(Debug)]
+pub struct JsonBody;
+
+/// Attaches credentials to the request body as URL-encoded form data
+#[derive(Debug)]
+pub struct FormBody;
+
+impl RequestType for JsonBody {
+    fn attach_payload<S: serde::Serialize>(
+        request: reqwest::RequestBuilder,
+        payload: &S,
+    ) -> reqwest::RequestBuilder {
+        request.json(payload)
+    }
+}
+
+impl RequestType for FormBody {
+    fn attach_payload<S: serde::Serialize>(
+        request: reqwest::RequestBuilder,
+        payload: &S,
+    ) -> reqwest::RequestBuilder {
+        request.form(payload)
+    }
 }

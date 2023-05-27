@@ -65,7 +65,6 @@ async fn main() -> color_eyre::Result<()> {
         opts.token_url,
         credentials,
         TokenLifetimeConfig::default(),
-        sources::oauth2::ContentType::Json
     );
 
     let file_source = sources::file::FileTokenSource::new(opts.credentials_file);

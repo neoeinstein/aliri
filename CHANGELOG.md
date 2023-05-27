@@ -4,6 +4,10 @@ This changelog is based on the format from [Keep a Changelog](https://keepachang
 
 ## [Unreleased]
 
+- (tokens) Enable sending credentials to the authority using form data ([#38])
+
+  [#38]: https://github.com/neoeinstein/aliri/pull/38
+
 ## [2023-03-04]
 
 - `aliri_axum` to 0.2.1
