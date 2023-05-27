@@ -2,7 +2,7 @@ use aliri::{jwa, jwk, jwt, Jwk, Jwks, Jwt};
 use aliri_axum::scope_guards;
 use aliri_base64::Base64UrlRef;
 use aliri_clock::{Clock, DurationSecs, UnixTime};
-use aliri_oauth2::{oauth2, scope, Authority};
+use aliri_oauth2::{Authority, HasScope, Scope};
 use aliri_tower::Oauth2Authorizer;
 use axum::{
     extract::Path,
@@ -44,7 +44,7 @@ pub struct CustomClaims {
     aud: jwt::Audiences,
     sub: jwt::Subject,
     exp: UnixTime,
-    scope: oauth2::Scope,
+    scope: Scope,
 }
 
 impl jwt::CoreClaims for CustomClaims {
@@ -65,8 +65,8 @@ impl jwt::CoreClaims for CustomClaims {
     }
 }
 
-impl oauth2::HasScope for CustomClaims {
-    fn scope(&self) -> &oauth2::Scope {
+impl HasScope for CustomClaims {
+    fn scope(&self) -> &Scope {
         &self.scope
     }
 }
@@ -113,7 +113,7 @@ fn print_example_token(key: &Jwk) {
         iss: jwt::Issuer::from_static(ISSUER),
         aud: jwt::Audience::from_static(AUDIENCE).into(),
         exp: aliri_clock::System.now() + DurationSecs(300),
-        scope: scope!["get_user", "post_user"],
+        scope: aliri_oauth2::scope!["get_user", "post_user"],
     };
 
     let jwt = Jwt::try_from_parts_with_signature(&headers, &payload, key).unwrap();

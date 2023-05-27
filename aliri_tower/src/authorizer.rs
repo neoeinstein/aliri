@@ -2,7 +2,7 @@ use std::{fmt, marker::PhantomData};
 
 use aliri::jwt::CoreClaims;
 use aliri_oauth2::{
-    oauth2::{BasicClaimsWithScope, HasScope},
+    scope::{BasicClaimsWithScope, HasScope},
     Authority, ScopePolicy,
 };
 use http_body::Body;

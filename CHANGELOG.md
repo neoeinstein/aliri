@@ -4,8 +4,11 @@ This changelog is based on the format from [Keep a Changelog](https://keepachang
 
 ## [Unreleased]
 
+- (oauth2) BREAKING: Rename `oauth2` module to `scope` ([#37])
+- (oauth2) Re-export `HasScope` at crate root
 - (tokens) Enable sending credentials to the authority using form data ([#38])
 
+  [#37]: https://github.com/neoeinstein/aliri/pull/37
   [#38]: https://github.com/neoeinstein/aliri/pull/38
 
 ## [2023-03-04]

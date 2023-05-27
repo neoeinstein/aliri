@@ -14,7 +14,7 @@ use reqwest::{
 use serde::Deserialize;
 use thiserror::Error;
 
-use crate::{oauth2::HasScope, ScopePolicy};
+use crate::{HasScope, ScopePolicy};
 
 /// Indicates the requester held insufficient scopes to be granted access
 /// to a controlled resource
