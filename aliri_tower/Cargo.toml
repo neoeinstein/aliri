@@ -26,13 +26,13 @@ tower-layer = { version = "0.3.1" }
 tower-http = { version = "0.4", features = [ "validate-request" ] }
 
 [dev-dependencies]
-aliri_braid = "0.3.1"
+aliri_braid = "0.4.0"
 aliri_base64 = { version = "0.1.5", path = "../aliri_base64" }
 aliri_clock = { version = "0.1.4", path = "../aliri_clock" }
 axum = { version = "0.6", default-features = false }
 prost = "0.11.2"
 tokio = { version = "1", features = [ "rt-multi-thread", "macros" ] }
-tonic = { version = "0.8.2", features = ["gzip"] }
+tonic = { version = "0.9.2", features = ["gzip"] }
 tower = "0.4.13"
 regex = "1"
 

@@ -191,7 +191,7 @@ macro_rules! b64_builder {
             /// If the underlying buffer has already been decoded, then
             /// transparently wrap the buffer using [`from_raw()`][Self::from_raw()].
             pub fn from_encoded<T: AsRef<[u8]>>(enc: T) -> Result<Self, InvalidBase64Data> {
-                let data = ::base64::decode_config(enc, $config)?;
+                let data = ::base64::engine::Engine::decode(&$config, enc)?;
                 Ok(Self(data))
             }
 
@@ -329,7 +329,7 @@ macro_rules! b64_builder {
         impl<'de> ::serde::Deserialize<'de> for $ty {
             fn deserialize<D: ::serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
                 let raw: &[u8] = ::serde::Deserialize::deserialize(deserializer)?;
-                let data = base64::decode_config(raw, $config)
+                let data = ::base64::engine::Engine::decode(&$config, raw)
                     .map_err(serde::de::Error::custom)?;
                 Ok(Self(data))
             }
@@ -419,14 +419,14 @@ macro_rules! b64_builder {
 
         impl ::std::fmt::Display for $ty_ref {
             fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-                let encoded = ::base64::encode_config(&self.0, $config);
+                let encoded = ::base64::engine::Engine::encode(&$config, &self.0);
                 f.write_str(&encoded)
             }
         }
 
         impl ::std::fmt::Debug for $ty_ref {
             fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-                let encoded = ::base64::encode_config(&self.0, $config);
+                let encoded = ::base64::engine::Engine::encode(&$config, &self.0);
                 write!(f, "`{}`", encoded)
             }
         }
@@ -436,7 +436,7 @@ macro_rules! b64_builder {
         #[cfg_attr(docsrs, doc(cfg(feature = "serde")))]
         impl ::serde::Serialize for $ty_ref {
             fn serialize<S: ::serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-                let encoded = ::base64::encode_config(&self.0, $config);
+                let encoded = ::base64::engine::Engine::encode(&$config, &self.0);
                 serializer.serialize_str(encoded.as_str())
             }
         }
@@ -449,7 +449,7 @@ b64_builder! {
     /// Encoding alphabet: `A`–`Z`, `a`–`z`, `0`–`9`, `+`, `/`
     ///
     /// Padding character: `=`
-    pub struct Base64(base64::STANDARD, true);
+    pub struct Base64(base64::engine::general_purpose::STANDARD, true);
 
     /// Borrowed data to be encoded as standard base64
     ///
@@ -463,7 +463,7 @@ b64_builder! {
     /// Owned data to be encoded as URL-safe base64 (no padding)
     ///
     /// Encoding alphabet: `A`–`Z`, `a`–`z`, `0`–`9`, `-`, `_`
-    pub struct Base64Url(base64::URL_SAFE_NO_PAD, false);
+    pub struct Base64Url(base64::engine::general_purpose::URL_SAFE_NO_PAD, false);
 
     /// Borrowed data to be encoded as URL-safe base64 (no padding)
     ///
