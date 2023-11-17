@@ -166,16 +166,19 @@ where
 
     #[inline]
     fn on_missing_or_malformed(&self) -> Response<Self::Body> {
+        tracing::debug!("JWT validation failed: authorization token is missing or malformed");
         unauthorized("")
     }
 
     #[inline]
     fn on_no_matching_jwk(&self) -> Response<Self::Body> {
+        tracing::debug!("JWT validation failed: token signing key (kid) is not trusted");
         unauthorized("")
     }
 
     #[inline]
     fn on_jwt_invalid(&self, _: JwtVerifyError) -> Response<Self::Body> {
+        tracing::debug!("JWT validation failed");
         unauthorized("")
     }
 }
@@ -188,12 +191,16 @@ where
 
     #[inline]
     fn on_missing_or_malformed(&self) -> Response<Self::Body> {
-        unauthorized("authorization token is missing or malformed")
+        let message = "authorization token is missing or malformed";
+        tracing::debug!("JWT validation failed: {message}");
+        unauthorized(message)
     }
 
     #[inline]
     fn on_no_matching_jwk(&self) -> Response<Self::Body> {
-        unauthorized("token signing key (kid) is not trusted")
+        let message = "token signing key (kid) is not trusted";
+        tracing::debug!("JWT validation failed: {message}");
+        unauthorized(message)
     }
 
     #[inline]
@@ -207,7 +214,7 @@ where
             write!(&mut description, ": {next}").unwrap();
             err = next;
         }
-
+        tracing::debug!("JWT validation failed: {description}");
         unauthorized(&description)
     }
 }
