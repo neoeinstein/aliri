@@ -9,6 +9,7 @@ use axum::{
     routing::{get, post},
     Router,
 };
+use tokio::net::TcpListener;
 
 scope_guards! {
     type Claims = CustomClaims;
@@ -32,10 +33,9 @@ async fn main() {
 
     println!("Press Ctrl+C to exit");
 
-    axum::Server::bind(&"127.0.0.1:8080".parse().unwrap())
-        .serve(app.into_make_service())
-        .await
-        .unwrap();
+    let listener = TcpListener::bind("127.0.0.1:8000").await.unwrap();
+    let router  = app.into_make_service();
+    axum::serve(listener, router).await.unwrap();
 }
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
