@@ -13,6 +13,7 @@ use axum::{
 };
 use http::{request::Parts, Response};
 use time::format_description::well_known::Rfc3339;
+use tokio::net::TcpListener;
 
 scope_guards! {
     type Claims = CustomClaims;
@@ -54,10 +55,9 @@ async fn main() -> color_eyre::Result<()> {
     );
     println!("Press Ctrl+C to exit");
 
-    axum::Server::bind(&"127.0.0.1:8080".parse().unwrap())
-        .serve(app.into_make_service())
-        .await
-        .unwrap();
+    let listener = TcpListener::bind("127.0.0.1:8000").await.unwrap();
+    let router  = app.into_make_service();
+    axum::serve(listener, router).await.unwrap();
 
     Ok(())
 }
@@ -165,7 +165,7 @@ impl HasScope for CustomClaims {
 struct MyErrorHandler;
 
 impl aliri_tower::OnJwtError for MyErrorHandler {
-    type Body = axum::body::BoxBody;
+    type Body = axum::body::Body;
 
     fn on_missing_or_malformed(&self) -> Response<Self::Body> {
         let (parts, ()) =

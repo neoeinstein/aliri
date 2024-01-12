@@ -59,8 +59,9 @@
 /// ```no_run
 /// use aliri_axum::scope_guard;
 /// use axum::routing::get;
-/// use axum::{Router, Server};
+/// use axum::Router;
 /// use std::net::SocketAddr;
+/// use tokio::net::TcpListener;
 ///
 /// // Define our initial scope
 /// scope_guard!(AdminOnly; "admin");
@@ -75,11 +76,9 @@
 /// let router = Router::new()
 ///     .route("/test", get(test_endpoint));
 ///
-/// // Construct the server
-/// let server = Server::bind(&SocketAddr::new([0, 0, 0, 0].into(), 3000))
-///     .serve(router.into_make_service())
-///     .await
-///     .unwrap();
+/// // Construct the server///
+/// let listener = TcpListener::bind("0.0.0.0:3000").await.unwrap();
+/// axum::serve(listener, router.into_make_service()).await.unwrap();
 /// # }
 /// ```
 ///
@@ -332,6 +331,7 @@ mod tests {
         scope TestingAdmin = ["testing admin"];
     }
 
+    #[derive(Clone)]
     struct MyClaims(Scope);
 
     impl HasScope for MyClaims {

@@ -17,22 +17,23 @@ aliri = { version = "0.6.0", path = "../aliri" }
 aliri_traits = { version = "0.1.1", path = "../aliri_traits" }
 aliri_oauth2 = { version = "0.10.0", path = "../aliri_oauth2", features = [ "reqwest" ] }
 bytes = "1.1.0"
-http = "0.2"
-http-body = "0.4.4"
+http = "1.0.0"
+http-body = "1.0.0"
 serde = { version = "1", features = [ "derive" ] }
 thiserror = "1"
 tracing = "0.1"
 tower-layer = { version = "0.3.1" }
-tower-http = { version = "0.4", features = [ "validate-request" ] }
+tower-http = { version = "0.5.0", features = [ "validate-request" ] }
 
 [dev-dependencies]
 aliri_braid = "0.4.0"
 aliri_base64 = { version = "0.1.5", path = "../aliri_base64" }
 aliri_clock = { version = "0.1.4", path = "../aliri_clock" }
-axum = { version = "0.6", default-features = false }
+axum = { version = "0.7.3", default-features = false }
 prost = "0.11.2"
 tokio = { version = "1", features = [ "rt-multi-thread", "macros" ] }
-tonic = { version = "0.9.2", features = ["gzip"] }
+# Blocked by https://github.com/hyperium/tonic/issues/1579
+#tonic = { version = "0.10.2", features = ["gzip"] }
 tower = "0.4.13"
 regex = "1"
 
