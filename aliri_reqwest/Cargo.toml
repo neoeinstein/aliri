@@ -24,7 +24,7 @@ task-local-extensions = "0.1.1"
 tracing = "0.1"
 
 [dev-dependencies]
-http = "0.2.6"
+http = "0.2.12"
 tokio = { version = "1", features = [ "macros", "time" ] }
 
 [package.metadata.workspaces]
