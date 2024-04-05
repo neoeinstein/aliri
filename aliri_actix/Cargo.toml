@@ -18,7 +18,7 @@ aliri = { version = "0.6.0", path = "../aliri" }
 aliri_traits = { version = "0.1.0", path = "../aliri_traits" }
 aliri_oauth2 = { version = "0.10.0", path = "../aliri_oauth2" }
 futures = "0.3"
-once_cell = "1.4"
+once_cell = "1.19"
 serde = { version = "1", features = [ "derive" ] }
 thiserror = "1"
 tracing = "0.1"
