@@ -596,11 +596,7 @@ impl fmt::Display for JwtRef {
     }
 }
 
-fn limited_reveal(
-    unprotected: &str,
-    f: &mut std::fmt::Formatter,
-    default_len: usize,
-) -> std::fmt::Result {
+fn limited_reveal(unprotected: &str, f: &mut fmt::Formatter, default_len: usize) -> fmt::Result {
     let max_len = f.width().unwrap_or(default_len);
     if max_len <= 1 {
         f.write_str("…")
@@ -1019,6 +1015,12 @@ impl BasicClaims {
         headers: &H,
     ) -> Result<Jwt, error::JwtSigningError> {
         Jwt::try_from_parts_with_signature(headers, self, jwk)
+    }
+}
+
+impl Default for BasicClaims {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

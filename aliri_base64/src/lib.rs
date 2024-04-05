@@ -299,6 +299,12 @@ macro_rules! b64_builder {
             }
         }
 
+        impl Default for $ty {
+            fn default() -> Self {
+                Self::new()
+            }
+        }
+
         impl ::std::fmt::Display for $ty {
             #[inline]
             fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {

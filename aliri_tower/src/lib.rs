@@ -143,7 +143,7 @@ impl<ResBody> Default for TerseErrorHandler<ResBody> {
 impl<ResBody> Clone for TerseErrorHandler<ResBody> {
     #[inline]
     fn clone(&self) -> Self {
-        Self { _ty: PhantomData }
+        *self
     }
 }
 
@@ -184,7 +184,7 @@ impl<ResBody> Default for VerboseErrorHandler<ResBody> {
 impl<ResBody> Clone for VerboseErrorHandler<ResBody> {
     #[inline]
     fn clone(&self) -> Self {
-        Self { _ty: PhantomData }
+        *self
     }
 }
 
