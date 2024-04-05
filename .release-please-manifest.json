@@ -1,0 +1,14 @@
+{
+  "aliri": "0.6.2",
+  "aliri_actix": "0.9.0",
+  "aliri_axum": "0.3.0",
+  "aliri_base64": "0.1.7",
+  "aliri_clock": "0.1.4",
+  "aliri_marcos": "0.1.2",
+  "aliri_oauth2": "0.10.0",
+  "aliri_reqwest": "0.4.1",
+  "aliri_tokens": "0.2.3",
+  "aliri_tower": "0.5.0",
+  "aliri_traits": "0.1.1",
+  "aliri_warp": "0.9.0"
+}
