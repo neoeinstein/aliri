@@ -1,0 +1,119 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:best-practices",
+    ":approveMajorUpdates",
+    ":enableVulnerabilityAlerts",
+    ":automergeDigest",
+    "security:openssf-scorecard"
+  ],
+  "osvVulnerabilityAlerts": true,
+  "packageRules": [
+    {
+      "matchManagers": [
+        "cargo"
+      ],
+      "matchUpdateTypes": [
+        "patch"
+      ],
+      "groupName": "cargo all non breaking changes"
+    },
+    {
+      "matchManagers": [
+        "cargo"
+      ],
+      "matchUpdateTypes": [
+        "minor"
+      ],
+      "matchCurrentVersion": ">=1.0.0",
+      "groupName": "cargo all non breaking changes"
+    },
+    {
+      "dependencyDashboardApproval": true,
+      "matchUpdateTypes": [
+        "minor"
+      ],
+      "matchCurrentVersion": "<1.0.0"
+    },
+    {
+      "groupName": "hyper ecosystem",
+      "matchUpdateTypes": [
+        "digest",
+        "patch",
+        "minor",
+        "major"
+      ],
+      "matchSourceUrls": [
+        "https://github.com/hyperium/h2",
+        "https://github.com/hyperium/h3",
+        "https://github.com/hyperium/headers",
+        "https://github.com/hyperium/http",
+        "https://github.com/hyperium/http-body",
+        "https://github.com/hyperium/hyper",
+        "https://github.com/hyperium/hyper-tls",
+        "https://github.com/hyperium/hyper-util",
+        "https://github.com/hyperium/mime"
+      ]
+    },
+    {
+      "groupName": "rust axum monorepo",
+      "matchUpdateTypes": [
+        "digest",
+        "patch",
+        "minor",
+        "major"
+      ],
+      "matchSourceUrls": [
+        "https://github.com/tokio-rs/axum"
+      ]
+    },
+    {
+      "groupName": "rust prost monorepo",
+      "matchUpdateTypes": [
+        "digest",
+        "patch",
+        "minor",
+        "major"
+      ],
+      "matchSourceUrls": [
+        "https://github.com/tokio-rs/prost"
+      ]
+    },
+    {
+      "groupName": "rust tokio monorepo",
+      "matchUpdateTypes": [
+        "digest",
+        "patch",
+        "minor",
+        "major"
+      ],
+      "matchSourceUrls": [
+        "https://github.com/tokio-rs/tokio"
+      ]
+    },
+    {
+      "groupName": "rust tracing monorepo",
+      "matchUpdateTypes": [
+        "digest",
+        "patch",
+        "minor",
+        "major"
+      ],
+      "matchSourceUrls": [
+        "https://github.com/tokio-rs/tracing"
+      ]
+    },
+    {
+      "groupName": "rust tower middleware ecosystem",
+      "matchUpdateTypes": [
+        "digest",
+        "patch",
+        "minor",
+        "major"
+      ],
+      "matchSourceUrlPrefixes": [
+        "https://github.com/tower-rs/"
+      ]
+    }
+  ]
+}
