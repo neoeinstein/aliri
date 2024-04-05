@@ -34,7 +34,7 @@ reqwest = { version = "0.11", optional = true, default-features = false, feature
 serde = { version = "1", features = [ "derive" ] }
 thiserror = "1"
 tokio = { version = "1", features = [ "time" ], optional = true }
-tracing = "0.1.15"
+tracing = "0.1.40"
 
 [dev-dependencies]
 aliri = { version = "0.6.0", path = "../aliri", features = [ "private-keys" ] }
