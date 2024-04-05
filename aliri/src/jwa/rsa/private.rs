@@ -114,7 +114,7 @@ impl jws::Signer for PrivateKey {
     }
 
     fn sign(&self, alg: Self::Algorithm, data: &[u8]) -> Result<Vec<u8>, Self::Error> {
-        let mut buf = vec![0; self.ring_cache.public_modulus_len()];
+        let mut buf = vec![0; self.ring_cache.public().modulus_len()];
         self.ring_cache
             .sign(alg.into_signing_params(), &*jwa::CRATE_RNG, data, &mut buf)
             .map_err(|e| error::unexpected(e.to_string()))?;

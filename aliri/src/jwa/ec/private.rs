@@ -78,6 +78,7 @@ impl PrivateKey {
             ring::signature::EcdsaKeyPair::from_pkcs8(
                 SigningAlgorithm::from(public_key.curve()).signing_algorithm(),
                 pkcs8.as_slice(),
+                &ring::rand::SystemRandom::new(),
             )
             .map_err(|e| error::key_rejected(e.to_string()))?,
         );
