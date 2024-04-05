@@ -24,8 +24,8 @@ rustc-args = ["--cfg", "docsrs"]
 aliri = { version = "0.6.0", path = "../aliri" }
 aliri_braid = "0.4.0"
 aliri_clock = { version = "0.1.4", path = "../aliri_clock" }
-async-trait = "0.1.50"
-rand = { version = "0.8.3", optional = true }
+async-trait = "0.1.79"
+rand = { version = "0.8.5", optional = true }
 reqwest = { version = "0.11", features = [ "json" ], optional = true, default-features = false }
 serde = { version = "1", features = [ "derive" ] }
 serde_json = { version = "1", optional = true }
@@ -34,8 +34,8 @@ tokio = { version = "1", features = [ "time" ] }
 tracing = "0.1.15"
 
 [dev-dependencies]
-clap = { version = "4.0.18", features = ["derive", "env"] }
+clap = { version = "4.5.4", features = ["derive", "env"] }
 color-eyre = "0.6"
-dotenvy = "0.15.0"
+dotenvy = "0.15.7"
 tracing-subscriber = { version = "0.3", features = [ "fmt", "env-filter" ] }
 tokio = { version = "1", features = [ "rt-multi-thread", "macros" ] }
