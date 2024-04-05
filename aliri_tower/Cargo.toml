@@ -18,7 +18,7 @@ aliri_traits = { version = "0.1.1", path = "../aliri_traits" }
 aliri_oauth2 = { version = "0.10.0", path = "../aliri_oauth2", features = [ "reqwest" ] }
 bytes = "1.1.0"
 http = "0.2"
-http-body = "0.4.4"
+http-body = "0.4.6"
 serde = { version = "1", features = [ "derive" ] }
 thiserror = "1"
 tracing = "0.1"
