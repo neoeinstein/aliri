@@ -11,10 +11,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     error,
-    jwa::{
-        self,
-        ec::{public::PublicKeyDto, Curve, PublicKey, SigningAlgorithm},
-    },
+    jwa::ec::{public::PublicKeyDto, Curve, PublicKey, SigningAlgorithm},
     jws,
 };
 
@@ -125,7 +122,7 @@ impl jws::Signer for PrivateKey {
 
         let signature = self
             .ring_cache
-            .sign(&*jwa::CRATE_RNG, data)
+            .sign(&ring::rand::SystemRandom::new(), data)
             .map_err(|e| error::unexpected(e.to_string()))?;
 
         Ok(signature.as_ref().to_owned())
