@@ -89,8 +89,6 @@ use reqwest::{header, Request, Response};
 use reqwest_middleware::{Middleware, Next, Result};
 use task_local_extensions::Extensions;
 
-use crate::reflection::Case;
-
 /// A middleware that injects an access token into outgoing requests
 #[derive(Clone, Debug)]
 pub struct AccessTokenMiddleware<P> {
@@ -180,7 +178,7 @@ impl Predicate<Request> for HttpsOnly {
         req.url().scheme() == "https"
     }
 
-    fn find_case(&self, expected: bool, req: &Request) -> Option<Case> {
+    fn find_case(&self, expected: bool, req: &Request) -> Option<reflection::Case> {
         let result = self.eval(req);
         if result != expected {
             Some(
@@ -226,7 +224,7 @@ impl Predicate<Request> for ExactHostMatch {
         req.url().host_str() == Some(&self.host)
     }
 
-    fn find_case(&self, expected: bool, req: &Request) -> Option<Case> {
+    fn find_case(&self, expected: bool, req: &Request) -> Option<reflection::Case> {
         let result = self.eval(req);
         if result != expected {
             Some(
@@ -431,7 +429,7 @@ mod tests {
                 Request::new(reqwest::Method::GET, "https://example.com".parse().unwrap());
             let predicate = HttpsOnly;
             let result = dbg!(predicate.find_case(true, &request));
-            assert!(matches!(result, None))
+            assert!(result.is_none())
         }
 
         #[test]
@@ -439,7 +437,7 @@ mod tests {
             let request = Request::new(reqwest::Method::GET, "http://example.com".parse().unwrap());
             let predicate = HttpsOnly;
             let result = dbg!(predicate.find_case(false, &request));
-            assert!(matches!(result, None))
+            assert!(result.is_none())
         }
     }
 
@@ -452,7 +450,7 @@ mod tests {
                 Request::new(reqwest::Method::GET, "https://example.com".parse().unwrap());
             let predicate = ExactHostMatch::new("example.com");
             let result = dbg!(predicate.find_case(true, &request));
-            assert!(matches!(result, None))
+            assert!(result.is_none())
         }
 
         #[test]
@@ -463,7 +461,7 @@ mod tests {
             );
             let predicate = ExactHostMatch::new("example.com");
             let result = dbg!(predicate.find_case(false, &request));
-            assert!(matches!(result, None))
+            assert!(result.is_none())
         }
     }
 }

@@ -30,7 +30,7 @@ impl FileTokenSource {
         Ok(token)
     }
 
-    async fn write_token(&mut self, token: &TokenWithLifetime) -> Result<(), std::io::Error> {
+    async fn write_token(&mut self, token: &TokenWithLifetime) -> Result<(), io::Error> {
         use tokio::io::AsyncWriteExt;
 
         let mut file = OpenOptions::new()
@@ -48,7 +48,7 @@ impl FileTokenSource {
 
 #[async_trait]
 impl AsyncTokenSource for FileTokenSource {
-    type Error = std::io::Error;
+    type Error = io::Error;
 
     async fn request_token(&mut self) -> Result<TokenWithLifetime, Self::Error> {
         self.read_token().await

@@ -230,7 +230,7 @@ mod tests {
 
     fn extract_www_authenticate_headers<B>(resp: &Response<B>) -> BTreeSet<&str> {
         resp.headers()
-            .get_all(http::header::WWW_AUTHENTICATE)
+            .get_all(header::WWW_AUTHENTICATE)
             .iter()
             .map(|v| v.to_str().unwrap())
             .collect::<BTreeSet<_>>()
