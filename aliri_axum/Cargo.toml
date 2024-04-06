@@ -16,8 +16,8 @@ repository = "https://github.com/neoeinstein/aliri"
 aliri = { version = "0.6.0", path = "../aliri", default-features = false }
 aliri_oauth2 = { version = "0.10.0", path = "../aliri_oauth2", default-features = false }
 aliri_traits = { version = "0.1.1", path = "../aliri_traits" }
-axum-core = "0.3.0"
-http = "0.2.12"
+axum-core = "0.4.3"
+http = "1.1.0"
 once_cell = "1"
 
 [dev-dependencies]
@@ -26,7 +26,7 @@ aliri_braid = "0.4.0"
 aliri_clock = { version = "0.1.4", path = "../aliri_clock" }
 aliri_oauth2 = { version = "0.10.0", path = "../aliri_oauth2", features = ["rsa", "tokio", "reqwest"] }
 aliri_tower = { version = "0.5.0", path = "../aliri_tower" }
-axum = { version = "0.6", default-features = false, features = ["tokio"] }
+axum = { version = "0.7.5", default-features = false, features = ["tokio", "http1", "http2"] }
 color-eyre = "0.6.3"
 reqwest = "0.12.3"
 serde = { version = "1.0.197", features = [ "derive" ] }

@@ -332,6 +332,7 @@ mod tests {
         scope TestingAdmin = ["testing admin"];
     }
 
+    #[derive(Clone)]
     struct MyClaims(Scope);
 
     impl HasScope for MyClaims {

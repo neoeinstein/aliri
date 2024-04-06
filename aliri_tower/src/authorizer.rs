@@ -111,7 +111,8 @@ impl<Claims, OnError> Oauth2Authorizer<Claims, OnError>
 where
     OnError: OnJwtError + Clone,
     OnError::Body: Body + Default,
-    Claims: for<'de> serde::Deserialize<'de> + HasScope + CoreClaims + Send + Sync + 'static,
+    Claims:
+        for<'de> serde::Deserialize<'de> + HasScope + CoreClaims + Clone + Send + Sync + 'static,
 {
     /// Authorizer layer that verifies the validity of a JWT
     ///

@@ -71,7 +71,8 @@ impl<Claims, OnError, ReqBody> ValidateRequest<ReqBody> for VerifyJwt<Claims, On
 where
     OnError: OnJwtError,
     OnError::Body: Body + Default,
-    Claims: for<'de> serde::Deserialize<'de> + HasScope + CoreClaims + Send + Sync + 'static,
+    Claims:
+        for<'de> serde::Deserialize<'de> + HasScope + CoreClaims + Clone + Send + Sync + 'static,
 {
     type ResponseBody = OnError::Body;
 
