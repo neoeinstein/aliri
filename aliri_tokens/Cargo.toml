@@ -26,7 +26,7 @@ aliri_braid = "0.4.0"
 aliri_clock = { version = "0.1.4", path = "../aliri_clock" }
 async-trait = "0.1.79"
 rand = { version = "0.8.5", optional = true }
-reqwest = { version = "0.11", features = [ "json" ], optional = true, default-features = false }
+reqwest = { version = "0.12", features = [ "json" ], optional = true, default-features = false }
 serde = { version = "1", features = [ "derive" ] }
 serde_json = { version = "1", optional = true }
 thiserror = "1"
