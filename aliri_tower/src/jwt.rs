@@ -239,7 +239,7 @@ fn extract_jwt(auth: &str) -> Option<Jwt> {
 struct JwtMissingOrMalformed;
 
 impl JwtMissingOrMalformed {
-    const ERROR_DESC: &'static str = "token signing key (kid) is not trusted";
+    const ERROR_DESC: &'static str = "authorization token is missing or malformed";
 }
 
 impl fmt::Display for JwtMissingOrMalformed {
