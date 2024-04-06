@@ -1,4 +1,4 @@
-use std::{convert::TryFrom, fmt};
+use std::{convert::TryFrom, fmt, str::FromStr};
 
 use serde::{Deserialize, Serialize};
 
@@ -67,6 +67,57 @@ impl Algorithm {
     pub const ES384: Algorithm = Self::Signing(jws::Algorithm::ES384);
     /// The ES512 signing algorithm
     pub const ES512: Algorithm = Self::Signing(jws::Algorithm::ES512);
+}
+
+impl TryFrom<&'_ str> for Algorithm {
+    type Error = error::UnknownAlgorithm;
+
+    #[inline]
+    fn try_from(value: &'_ str) -> Result<Self, Self::Error> {
+        match value {
+            #[cfg(feature = "ec")]
+            "ES256" => Ok(Algorithm::ES256),
+            #[cfg(feature = "ec")]
+            "ES384" => Ok(Algorithm::ES384),
+            #[cfg(feature = "ec")]
+            "ES512" => Ok(Algorithm::ES512),
+            #[cfg(feature = "rsa")]
+            "RS256" => Ok(Algorithm::RS256),
+            #[cfg(feature = "rsa")]
+            "RS384" => Ok(Algorithm::RS384),
+            #[cfg(feature = "rsa")]
+            "RS512" => Ok(Algorithm::RS512),
+            #[cfg(feature = "rsa")]
+            "PS256" => Ok(Algorithm::PS256),
+            #[cfg(feature = "rsa")]
+            "PS384" => Ok(Algorithm::PS384),
+            #[cfg(feature = "rsa")]
+            "PS512" => Ok(Algorithm::PS512),
+            #[cfg(feature = "hmac")]
+            "HS256" => Ok(Algorithm::HS256),
+            #[cfg(feature = "hmac")]
+            "HS384" => Ok(Algorithm::HS384),
+            #[cfg(feature = "hmac")]
+            "HS512" => Ok(Algorithm::HS512),
+            _ => Err(error::unknown_algorithm(value.to_string())),
+        }
+    }
+}
+
+impl TryFrom<String> for Algorithm {
+    type Error = error::UnknownAlgorithm;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        Self::try_from(value.as_str())
+    }
+}
+
+impl FromStr for Algorithm {
+    type Err = error::UnknownAlgorithm;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Self::try_from(s)
+    }
 }
 
 impl<T> From<T> for Algorithm
