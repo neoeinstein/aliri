@@ -2,10 +2,7 @@ use std::{convert::TryFrom, fmt, str::FromStr};
 
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    error::{self, unknown_algorithm, UnknownAlgorithm},
-    jwa, jws,
-};
+use crate::{error, jwa, jws};
 
 /// An algorithm
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq, Serialize, Deserialize)]
@@ -73,7 +70,7 @@ impl Algorithm {
 }
 
 impl TryFrom<&'_ str> for Algorithm {
-    type Error = UnknownAlgorithm;
+    type Error = error::UnknownAlgorithm;
 
     #[inline]
     fn try_from(value: &'_ str) -> Result<Self, Self::Error> {
@@ -102,13 +99,13 @@ impl TryFrom<&'_ str> for Algorithm {
             "HS384" => Ok(Algorithm::HS384),
             #[cfg(feature = "hmac")]
             "HS512" => Ok(Algorithm::HS512),
-            _ => Err(unknown_algorithm(value.to_string())),
+            _ => Err(error::unknown_algorithm(value.to_string())),
         }
     }
 }
 
 impl TryFrom<String> for Algorithm {
-    type Error = UnknownAlgorithm;
+    type Error = error::UnknownAlgorithm;
 
     fn try_from(value: String) -> Result<Self, Self::Error> {
         Self::try_from(value.as_str())
@@ -116,7 +113,7 @@ impl TryFrom<String> for Algorithm {
 }
 
 impl FromStr for Algorithm {
-    type Err = UnknownAlgorithm;
+    type Err = error::UnknownAlgorithm;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Self::try_from(s)
