@@ -79,7 +79,7 @@
 //! # async fn handle_get(Path(id): Path<u64>) {}
 //! #
 //! # async {
-//! # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+//! # axum::serve(tokio::net::TcpListener::bind("").await.unwrap(), app).await.unwrap();
 //! # };
 //! ```
 

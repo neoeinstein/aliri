@@ -54,10 +54,8 @@ async fn main() -> color_eyre::Result<()> {
     );
     println!("Press Ctrl+C to exit");
 
-    axum::Server::bind(&"127.0.0.1:8080".parse().unwrap())
-        .serve(app.into_make_service())
-        .await
-        .unwrap();
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:8080").await?;
+    axum::serve(listener, app).await?;
 
     Ok(())
 }
@@ -165,7 +163,7 @@ impl HasScope for CustomClaims {
 struct MyErrorHandler;
 
 impl aliri_tower::OnJwtError for MyErrorHandler {
-    type Body = axum::body::BoxBody;
+    type Body = axum::body::Body;
 
     fn on_missing_or_malformed(&self) -> Response<Self::Body> {
         let (parts, ()) =

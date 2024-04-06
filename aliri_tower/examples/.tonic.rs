@@ -1,3 +1,6 @@
+//! Note: This example is non-functional until after a tonic release that
+//! supports the `http` 1.0 stack of dependencies
+
 use std::sync::atomic::{AtomicI32, Ordering};
 
 use aliri::{jwa, jwk, jwt, Jwk, Jwks, Jwt};
@@ -60,10 +63,10 @@ impl CounterService for MyCounter {
 #[derive(Clone, Copy, Debug)]
 struct AuthorizedService<S>(S);
 
-impl<S, T> tonic::transport::NamedService
+impl<S, T> tonic::server::NamedService
     for AuthorizedService<tower_http::validate_request::ValidateRequestHeader<S, T>>
 where
-    S: tonic::transport::NamedService,
+    S: tonic::server::NamedService,
 {
     const NAME: &'static str = S::NAME;
 }
@@ -92,25 +95,25 @@ where
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let authority = construct_authority();
+    // let authority = construct_authority();
 
-    let authorizer = Oauth2Authorizer::new()
-        .with_claims::<CustomClaims>()
-        .with_terse_error_handler();
+    // let authorizer = Oauth2Authorizer::new()
+    //     .with_claims::<CustomClaims>()
+    //     .with_terse_error_handler();
 
-    let addr = "[::1]:50051".parse().unwrap();
-    let counter = MyCounter::default();
+    // let addr = "[::1]:50051".parse().unwrap();
+    // let counter = MyCounter::default();
 
-    println!("CounterServiceServer listening on {}", addr);
+    // println!("CounterServiceServer listening on {}", addr);
 
-    let svc = tower::ServiceBuilder::new()
-        .layer(authorizer.jwt_layer(authority))
-        .service(CounterServiceServer::new(counter));
+    // let svc = tower::ServiceBuilder::new()
+    //     .layer(authorizer.jwt_layer(authority))
+    //     .service(CounterServiceServer::new(counter));
 
-    Server::builder()
-        .add_service(AuthorizedService(svc))
-        .serve(addr)
-        .await?;
+    // Server::builder()
+    //     .add_service(AuthorizedService(svc))
+    //     .serve(addr)
+    //     .await?;
 
     Ok(())
 }

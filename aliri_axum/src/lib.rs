@@ -13,12 +13,12 @@
 //!     http::StatusCode,
 //!     response::{IntoResponse, Response},
 //!     routing::{get, post},
-//!     Server, Router,
+//!     Router,
 //! };
 //! use std::net::SocketAddr;
 //! use serde::Deserialize;
 //!
-//! #[derive(Debug, Deserialize)]
+//! #[derive(Clone, Debug, Deserialize)]
 //! pub struct CustomClaims {
 //!     iss: jwt::Issuer,
 //!     aud: jwt::Audiences,
@@ -92,10 +92,9 @@
 //!     // .layer(axum::Extension(aliri_axum::VerboseAuthxErrors));
 //!
 //!     // Construct the server
-//!     let server = Server::bind(&SocketAddr::new([0, 0, 0, 0].into(), 3000))
-//!         .serve(router.into_make_service())
-//!         .await
-//!         .unwrap();
+//!     let listener = tokio::net::TcpListener::bind(&SocketAddr::new([0, 0, 0, 0].into(), 3000))
+//!         .await?;
+//!     axum::serve(listener, router).await?;
 //!
 //!     Ok(())
 //! }

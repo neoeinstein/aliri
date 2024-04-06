@@ -59,7 +59,7 @@
 /// ```no_run
 /// use aliri_axum::scope_guard;
 /// use axum::routing::get;
-/// use axum::{Router, Server};
+/// use axum::Router;
 /// use std::net::SocketAddr;
 ///
 /// // Define our initial scope
@@ -76,8 +76,10 @@
 ///     .route("/test", get(test_endpoint));
 ///
 /// // Construct the server
-/// let server = Server::bind(&SocketAddr::new([0, 0, 0, 0].into(), 3000))
-///     .serve(router.into_make_service())
+/// let listener = tokio::net::TcpListener::bind(&SocketAddr::new([0, 0, 0, 0].into(), 3000))
+///     .await
+///     .unwrap();
+/// axum::serve(listener, router)
 ///     .await
 ///     .unwrap();
 /// # }
@@ -332,6 +334,7 @@ mod tests {
         scope TestingAdmin = ["testing admin"];
     }
 
+    #[derive(Clone)]
     struct MyClaims(Scope);
 
     impl HasScope for MyClaims {
