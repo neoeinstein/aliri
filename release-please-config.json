@@ -3,6 +3,7 @@
   "release-type": "rust",
   "bump-minor-pre-major": true,
   "bump-patch-for-minor-pre-major": true,
+  "bootstrap-sha": "7ac4f31852049177cd40e96d9b4d2e458f272fa8",
   "packages": {
     "aliri": {},
     "aliri_actix": {},
