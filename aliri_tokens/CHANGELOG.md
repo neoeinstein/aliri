@@ -1,0 +1,9 @@
+# Changelog
+
+## [0.2.4](https://github.com/neoeinstein/aliri/compare/aliri_tokens-v0.2.3...aliri_tokens-v0.2.4) (2024-04-06)
+
+
+### Bug Fixes
+
+* **deps:** update cargo all non breaking changes ([#54](https://github.com/neoeinstein/aliri/issues/54)) ([4218dab](https://github.com/neoeinstein/aliri/commit/4218dabe09f51daf699b1efbf317427ede063fe3))
+* **deps:** update rust tracing monorepo ([#53](https://github.com/neoeinstein/aliri/issues/53)) ([1b83612](https://github.com/neoeinstein/aliri/commit/1b83612dbcfc94afaeb6b9e52fbf26da45986822))

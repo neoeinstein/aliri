@@ -1,0 +1,8 @@
+# Changelog
+
+## [0.4.2](https://github.com/neoeinstein/aliri/compare/aliri_reqwest-v0.4.1...aliri_reqwest-v0.4.2) (2024-04-06)
+
+
+### Bug Fixes
+
+* **deps:** update cargo all non breaking changes ([#54](https://github.com/neoeinstein/aliri/issues/54)) ([4218dab](https://github.com/neoeinstein/aliri/commit/4218dabe09f51daf699b1efbf317427ede063fe3))
