@@ -35,7 +35,7 @@ impl Hmac {
     ///
     /// Unable to generate a new HMAC secret.
     pub fn generate(alg: SigningAlgorithm) -> Result<Self, error::Unexpected> {
-        Self::generate_with_rng(alg, &*super::CRATE_RNG)
+        Self::generate_with_rng(alg, &ring::rand::SystemRandom::new())
     }
 
     /// Generates a new HMAC secret using the provided source of randomness

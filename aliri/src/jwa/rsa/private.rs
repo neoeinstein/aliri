@@ -10,7 +10,7 @@ use ring::signature::RsaKeyPair;
 use serde::{Deserialize, Serialize};
 
 use super::{PublicKey, SigningAlgorithm};
-use crate::{error, jwa, jws};
+use crate::{error, jws};
 
 /// RSA private key components
 #[derive(Clone, Serialize, Deserialize)] // Should we allow serialization here?
@@ -114,9 +114,14 @@ impl jws::Signer for PrivateKey {
     }
 
     fn sign(&self, alg: Self::Algorithm, data: &[u8]) -> Result<Vec<u8>, Self::Error> {
-        let mut buf = vec![0; self.ring_cache.public_modulus_len()];
+        let mut buf = vec![0; self.ring_cache.public().modulus_len()];
         self.ring_cache
-            .sign(alg.into_signing_params(), &*jwa::CRATE_RNG, data, &mut buf)
+            .sign(
+                alg.into_signing_params(),
+                &ring::rand::SystemRandom::new(),
+                data,
+                &mut buf,
+            )
             .map_err(|e| error::unexpected(e.to_string()))?;
         Ok(buf)
     }

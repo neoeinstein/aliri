@@ -78,6 +78,7 @@ mod jwks;
 pub mod jws;
 pub mod jwt;
 
+#[cfg(test)]
 pub(crate) mod test;
 
 #[doc(inline)]
