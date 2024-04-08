@@ -3,15 +3,7 @@
   "extends": [
     "github>neoeinstein/renovate-config",
     "github>neoeinstein/renovate-config//rust/library",
-    ":approveMajorUpdates",
+    "github>neoeinstein/renovate-config:approve-breaking",
     ":automergeDigest"
-  ],
-  "packageRules": [
-    {
-      "extends": [
-        "github>neoeinstein/renovate-config:semver/breaking/unstable"
-      ],
-      "dependencyDashboardApproval": true
-    }
   ]
 }
