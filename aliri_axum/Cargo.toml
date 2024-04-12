@@ -25,7 +25,7 @@ aliri_base64 = { version = "0.1.5", path = "../aliri_base64" }
 aliri_braid = "0.4.0"
 aliri_clock = { version = "0.1.4", path = "../aliri_clock" }
 aliri_oauth2 = { version = "0.10.0", path = "../aliri_oauth2", features = ["rsa", "tokio", "reqwest"] }
-aliri_tower = { version = "0.5.0", path = "../aliri_tower" }
+aliri_tower = { version = "0.6.0", path = "../aliri_tower" }
 axum = { version = "0.7.5", default-features = false, features = ["tokio", "http1", "http2"] }
 color-eyre = "0.6.3"
 reqwest = "0.12.3"
