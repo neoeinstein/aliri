@@ -87,7 +87,6 @@ use bytes::{BufMut, BytesMut};
 use predicates::{prelude::*, reflection};
 use reqwest::{header, Request, Response};
 use reqwest_middleware::{Middleware, Next, Result};
-use task_local_extensions::Extensions;
 
 /// A middleware that injects an access token into outgoing requests
 #[derive(Clone, Debug)]
@@ -155,7 +154,7 @@ where
     async fn handle(
         &self,
         mut req: Request,
-        extensions: &mut Extensions,
+        extensions: &mut http::Extensions,
         next: Next<'_>,
     ) -> Result<Response> {
         if self.predicate.eval(&req) {
@@ -260,7 +259,6 @@ mod tests {
     use aliri_tokens::{
         backoff::ErrorBackoffConfig, jitter::NullJitter, sources::ConstTokenSource,
     };
-    use http::StatusCode;
     use reqwest::Client;
     use reqwest_middleware::ClientBuilder;
 
@@ -285,7 +283,12 @@ mod tests {
 
     #[async_trait::async_trait]
     impl Middleware for AuthChecker {
-        async fn handle(&self, req: Request, _: &mut Extensions, _: Next<'_>) -> Result<Response> {
+        async fn handle(
+            &self,
+            req: Request,
+            _: &mut http::Extensions,
+            _: Next<'_>,
+        ) -> Result<Response> {
             let authorization_header = req
                 .headers()
                 .get(header::AUTHORIZATION)
@@ -307,7 +310,12 @@ mod tests {
 
     #[async_trait::async_trait]
     impl Middleware for NoAuthChecker {
-        async fn handle(&self, req: Request, _: &mut Extensions, _: Next<'_>) -> Result<Response> {
+        async fn handle(
+            &self,
+            req: Request,
+            _: &mut http::Extensions,
+            _: Next<'_>,
+        ) -> Result<Response> {
             assert_eq!(req.headers().get(header::AUTHORIZATION), None);
             self.checked.store(true, Ordering::Release);
 
@@ -342,7 +350,7 @@ mod tests {
 
             let resp = client.get("https://example.com").send().await.unwrap();
 
-            assert_eq!(resp.status(), StatusCode::OK);
+            assert_eq!(resp.status(), http::StatusCode::OK);
             assert!(auth_checker.checked.load(Ordering::Acquire));
         }
 
@@ -363,7 +371,7 @@ mod tests {
 
                 let resp = client.get("https://example.com").send().await.unwrap();
 
-                assert_eq!(resp.status(), StatusCode::OK);
+                assert_eq!(resp.status(), http::StatusCode::OK);
                 assert!(auth_checker.checked.load(Ordering::Acquire));
             }
         }
@@ -385,7 +393,7 @@ mod tests {
 
                 let resp = client.get("https://example.com").send().await.unwrap();
 
-                assert_eq!(resp.status(), StatusCode::OK);
+                assert_eq!(resp.status(), http::StatusCode::OK);
                 assert!(auth_checker.checked.load(Ordering::Acquire));
             }
         }
@@ -415,7 +423,7 @@ mod tests {
                 .await
                 .unwrap();
 
-            assert_eq!(resp.status(), StatusCode::OK);
+            assert_eq!(resp.status(), http::StatusCode::OK);
             assert!(auth_checker.checked.load(Ordering::Acquire));
         }
     }

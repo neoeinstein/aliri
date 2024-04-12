@@ -17,14 +17,13 @@ aliri_tokens = { version = "0.2.0", path = "../aliri_tokens" }
 aliri_clock = { version = "0.1.4", path = "../aliri_clock" }
 async-trait = "0.1.79"
 bytes = "1.6.0"
+http = "1.1.0"
 predicates = { version = "3.1.0", default-features = false }
-reqwest = { version = "0.11.10", default-features = false }
-reqwest-middleware = "0.2.5"
-task-local-extensions = "0.1.4"
+reqwest = { version = "0.12.3", default-features = false }
+reqwest-middleware = "0.3.0"
 tracing = "0.1"
 
 [dev-dependencies]
-http = "0.2.12"
 tokio = { version = "1", features = [ "macros", "time" ] }
 
 [package.metadata.workspaces]
