@@ -13,7 +13,7 @@ repository = "https://github.com/neoeinstein/aliri"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-aliri_tokens = { version = "0.2.0", path = "../aliri_tokens" }
+aliri_tokens = { version = "0.3.0", path = "../aliri_tokens" }
 aliri_clock = { version = "0.1.4", path = "../aliri_clock" }
 async-trait = "0.1.79"
 bytes = "1.6.0"
