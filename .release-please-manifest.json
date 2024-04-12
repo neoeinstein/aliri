@@ -1,7 +1,7 @@
 {
   "aliri": "0.6.3",
   "aliri_actix": "0.9.1",
-  "aliri_axum": "0.3.0",
+  "aliri_axum": "0.4.0",
   "aliri_base64": "0.1.8",
   "aliri_clock": "0.1.4",
   "aliri_marcos": "0.1.2",
