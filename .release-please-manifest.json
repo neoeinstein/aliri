@@ -1,5 +1,5 @@
 {
-  "aliri": "0.6.2",
+  "aliri": "0.6.3",
   "aliri_actix": "0.9.0",
   "aliri_axum": "0.3.0",
   "aliri_base64": "0.1.8",
