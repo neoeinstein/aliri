@@ -6,7 +6,7 @@
   "aliri_clock": "0.1.4",
   "aliri_marcos": "0.1.2",
   "aliri_oauth2": "0.10.1",
-  "aliri_reqwest": "0.4.1",
+  "aliri_reqwest": "0.5.0",
   "aliri_tokens": "0.3.0",
   "aliri_tower": "0.6.0",
   "aliri_traits": "0.1.1",
