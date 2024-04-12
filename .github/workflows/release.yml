@@ -1,0 +1,36 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "*-v*"
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  release:
+    name: Publish Release ${{ github.ref_name }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install Stable Rust Toolchain
+        uses: dtolnay/rust-toolchain@stable
+      - id: parse-tag
+        name: Verify tag matches cargo manifest
+        run: |
+          REF_CRATE=$(echo ${{ github.ref_name }} | cut -d '-' -f 1)
+          echo "crate=${REF_CRATE}" >> "$GITHUB_OUTPUT"
+          REF_VERSION=$(echo ${{ github.ref_name }} | cut -d '-' -f 2-)
+          VERSION=$(cargo read-manifest --manifest-path ${REF_CRATE}/Cargo.toml | jq -r .version)
+          if [ "${REF_VERSION}" != "v${VERSION}" ]; then
+            echo "::error::Tag name ${{ github.ref_name }} doesn't match the version in Cargo.toml (${VERSION})";
+            exit 1;
+          fi
+        shell: bash
+      - name: Publish Rust crate
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+          CARGO_PUBLISH_TIMEOUT: '0'
+        run: cargo publish -p ${{ steps.parse-tag.outputs.crate }}
+        shell: bash
