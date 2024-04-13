@@ -13,23 +13,24 @@ jobs:
   release-please:
     runs-on: ubuntu-latest
     steps:
-      - uses: google-github-actions/release-please-action@a37ac6e4f6449ce8b3f7607e4d97d0146028dc0b # v4
+      - id: release-please
+        uses: google-github-actions/release-please-action@a37ac6e4f6449ce8b3f7607e4d97d0146028dc0b # v4
         with:
           token: ${{ secrets.RELEASE_PLEASE_PAT }}
     outputs:
-      releases:  ${{ steps.release-please.releases_created }}
-      release-aliri: ${{ steps.release-please['aliri'].release_created }}
-      release-aliri_actix: ${{ steps.release-please['aliri_actix'].release_created }}
-      release-aliri_axum: ${{ steps.release-please['aliri_axum'].release_created }}
-      release-aliri_base64: ${{ steps.release-please['aliri_base64'].release_created }}
-      release-aliri_clock: ${{ steps.release-please['aliri_clock'].release_created }}
-      release-aliri_macros: ${{ steps.release-please['aliri_macros'].release_created }}
-      release-aliri_oauth2: ${{ steps.release-please['aliri_oauth2'].release_created }}
-      release-aliri_reqwest: ${{ steps.release-please['aliri_reqwest'].release_created }}
-      release-aliri_tokens: ${{ steps.release-please['aliri_tokens'].release_created }}
-      release-aliri_tower: ${{ steps.release-please['aliri_tower'].release_created }}
-      release-aliri_traits: ${{ steps.release-please['aliri_traits'].release_created }}
-      release-aliri_warp: ${{ steps.release-please['aliri_warp'].release_created }}
+      releases:  ${{ steps.release-please.outputs.releases_created }}
+      release-aliri: ${{ steps.release-please.outputs['aliri'].release_created }}
+      release-aliri_actix: ${{ steps.release-please.outputs['aliri_actix'].release_created }}
+      release-aliri_axum: ${{ steps.release-please.outputs['aliri_axum'].release_created }}
+      release-aliri_base64: ${{ steps.release-please.outputs['aliri_base64'].release_created }}
+      release-aliri_clock: ${{ steps.release-please.outputs['aliri_clock'].release_created }}
+      release-aliri_macros: ${{ steps.release-please.outputs['aliri_macros'].release_created }}
+      release-aliri_oauth2: ${{ steps.release-please.outputs['aliri_oauth2'].release_created }}
+      release-aliri_reqwest: ${{ steps.release-please.outputs['aliri_reqwest'].release_created }}
+      release-aliri_tokens: ${{ steps.release-please.outputs['aliri_tokens'].release_created }}
+      release-aliri_tower: ${{ steps.release-please.outputs['aliri_tower'].release_created }}
+      release-aliri_traits: ${{ steps.release-please.outputs['aliri_traits'].release_created }}
+      release-aliri_warp: ${{ steps.release-please.outputs['aliri_warp'].release_created }}
   release:
     if: needs.release-please.outputs.releases
     runs-on: ubuntu-22.04
