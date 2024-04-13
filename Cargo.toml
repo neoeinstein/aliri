@@ -1,11 +1,16 @@
 [workspace]
 resolver = "2"
 members = [
+    "aliri",
+    "aliri_actix",
     "aliri_axum",
+    "aliri_base64",
+    "aliri_clock",
+    "aliri_macros",
     "aliri_oauth2",
     "aliri_reqwest",
     "aliri_tokens",
     "aliri_tower",
+    "aliri_traits",
     "aliri_warp",
-    "aliri_actix",
 ]
