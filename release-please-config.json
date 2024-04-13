@@ -4,7 +4,6 @@
   "bump-minor-pre-major": true,
   "bump-patch-for-minor-pre-major": true,
   "include-v-in-tag": true,
-  "separate-pull-requests": true,
   "bootstrap-sha": "7ac4f31852049177cd40e96d9b4d2e458f272fa8",
   "plugins": ["cargo-workspace"],
   "packages": {
