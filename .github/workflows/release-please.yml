@@ -30,49 +30,7 @@ jobs:
       release-aliri_tower: ${{ steps.release-please['aliri_tower'].release_created }}
       release-aliri_traits: ${{ steps.release-please['aliri_traits'].release_created }}
       release-aliri_warp: ${{ steps.release-please['aliri_warp'].release_created }}
-  release-aliri:
-    if: needs.release-please.outputs.releases
-    runs-on: ubuntu-22.04
-    needs: [ release-aliri_base64, release-aliri_clock, release-please ]
-    steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
-      - name: Install Stable Rust Toolchain
-        uses: dtolnay/rust-toolchain@stable
-      - name: Publish aliri crate
-        if: needs.release-please.outputs.release-aliri
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-        run: cargo publish -p aliri
-        shell: bash
-  release-aliri_actix:
-    if: needs.release-please.outputs.release-aliri_actix
-    runs-on: ubuntu-22.04
-    needs: [ release-aliri, release-aliri_oauth2, release-aliri_traits, release-aliri_base64, release-aliri_clock, release-please ]
-    steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
-      - name: Install Stable Rust Toolchain
-        uses: dtolnay/rust-toolchain@stable
-      - name: Publish aliri_actix crate
-        if: needs.release-please.outputs.release-aliri_actix
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-        run: cargo publish -p aliri_actix
-        shell: bash
-  release-aliri_axum:
-    if: needs.release-please.outputs.release-aliri_actix
-    runs-on: ubuntu-22.04
-    needs: [ release-aliri, release-aliri_oauth2, release-aliri_traits, release-aliri_base64, release-aliri_clock, release-aliri_tower, release-please ]
-    steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
-      - name: Install Stable Rust Toolchain
-        uses: dtolnay/rust-toolchain@stable
-      - name: Publish aliri_axum crate
-        if: needs.release-please.outputs.release-aliri_axum
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-        run: cargo publish -p aliri_axum
-        shell: bash
-  release-aliri_base64:
+  release:
     if: needs.release-please.outputs.releases
     runs-on: ubuntu-22.04
     needs: release-please
@@ -80,118 +38,84 @@ jobs:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
       - name: Install Stable Rust Toolchain
         uses: dtolnay/rust-toolchain@stable
+
+      # Shared
       - name: Publish aliri_base64 crate
         if: needs.release-please.outputs.release-aliri_base64
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
         run: cargo publish -p aliri_base64
         shell: bash
-  release-aliri_clock:
-    if: needs.release-please.outputs.releases
-    runs-on: ubuntu-22.04
-    needs: release-please
-    steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
-      - name: Install Stable Rust Toolchain
-        uses: dtolnay/rust-toolchain@stable
       - name: Publish aliri_clock crate
         if: needs.release-please.outputs.release-aliri_clock
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
         run: cargo publish -p aliri_clock
         shell: bash
-  release-aliri_macros:
-    if: needs.release-please.outputs.releases
-    runs-on: ubuntu-22.04
-    needs: release-please
-    steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
-      - name: Install Stable Rust Toolchain
-        uses: dtolnay/rust-toolchain@stable
       - name: Publish aliri_macros crate
         if: needs.release-please.outputs.release-aliri_macros
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
         run: cargo publish -p aliri_macros
         shell: bash
-  release-aliri_oauth2:
-    if: needs.release-please.outputs.releases
-    runs-on: ubuntu-22.04
-    needs: [ release-aliri, release-aliri_clock, release-aliri_traits, release-please ]
-    steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
-      - name: Install Stable Rust Toolchain
-        uses: dtolnay/rust-toolchain@stable
-      - name: Publish aliri_oauth2 crate
-        if: needs.release-please.outputs.release-aliri_oauth2
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-        run: cargo publish -p aliri_oauth2
-        shell: bash
-  release-aliri_reqwest:
-    if: needs.release-please.outputs.release-aliri_reqwest
-    runs-on: ubuntu-22.04
-    needs: [ release-aliri_clock, release-aliri_tokens, release-please ]
-    steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
-      - name: Install Stable Rust Toolchain
-        uses: dtolnay/rust-toolchain@stable
-      - name: Publish aliri_reqwest crate
-        if: needs.release-please.outputs.release-aliri_reqwest
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-        run: cargo publish -p aliri_reqwest
-        shell: bash
-  release-aliri_tokens:
-    if: needs.release-please.outputs.releases
-    runs-on: ubuntu-22.04
-    needs: [ release-aliri, release-aliri_clock, release-please ]
-    steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
-      - name: Install Stable Rust Toolchain
-        uses: dtolnay/rust-toolchain@stable
-      - name: Publish aliri_tokens crate
-        if: needs.release-please.outputs.release-aliri_tokens
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-        run: cargo publish -p aliri_tokens
-        shell: bash
-  release-aliri_tower:
-    if: needs.release-please.outputs.releases
-    runs-on: ubuntu-22.04
-    needs: [ release-aliri, release-aliri_oauth2, release-aliri_traits, release-aliri_base64, release-aliri_clock, release-please ]
-    steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
-      - name: Install Stable Rust Toolchain
-        uses: dtolnay/rust-toolchain@stable
-      - name: Publish aliri_tower crate
-        if: needs.release-please.outputs.release-aliri_tower
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-        run: cargo publish -p aliri_tower
-        shell: bash
-  release-aliri_traits:
-    if: needs.release-please.outputs.releases
-    runs-on: ubuntu-22.04
-    needs: release-please
-    steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
-      - name: Install Stable Rust Toolchain
-        uses: dtolnay/rust-toolchain@stable
       - name: Publish aliri_traits crate
         if: needs.release-please.outputs.release-aliri_traits
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
         run: cargo publish -p aliri_traits
         shell: bash
-  release-aliri_warp:
-    if: needs.release-please.outputs.releases
-    runs-on: ubuntu-22.04
-    needs: [ release-aliri, release-aliri_oauth2, release-please ]
-    steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
-      - name: Install Stable Rust Toolchain
-        uses: dtolnay/rust-toolchain@stable
+
+      # Core
+      - name: Publish aliri crate
+        if: needs.release-please.outputs.release-aliri
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: cargo publish -p aliri
+        shell: bash
+      - name: Publish aliri_oauth2 crate
+        if: needs.release-please.outputs.release-aliri_oauth2
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: cargo publish -p aliri_oauth2
+        shell: bash
+
+      # Hyper/Axum
+      - name: Publish aliri_tower crate
+        if: needs.release-please.outputs.release-aliri_tower
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: cargo publish -p aliri_tower
+        shell: bash
+      - name: Publish aliri_axum crate
+        if: needs.release-please.outputs.release-aliri_axum
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: cargo publish -p aliri_axum
+        shell: bash
+
+      # Reqwest
+      - name: Publish aliri_tokens crate
+        if: needs.release-please.outputs.release-aliri_tokens
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: cargo publish -p aliri_tokens
+        shell: bash
+      - name: Publish aliri_reqwest crate
+        if: needs.release-please.outputs.release-aliri_reqwest
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: cargo publish -p aliri_reqwest
+        shell: bash
+
+      # Actix
+      - name: Publish aliri_actix crate
+        if: needs.release-please.outputs.release-aliri_actix
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: cargo publish -p aliri_actix
+        shell: bash
+
+      # Warp
       - name: Publish aliri_warp crate
         if: needs.release-please.outputs.release-aliri_warp
         env:
