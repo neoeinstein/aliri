@@ -24,7 +24,7 @@ reqwest-middleware = "0.3.0"
 tracing = "0.1"
 
 [dev-dependencies]
-tokio = { version = "1", features = [ "macros", "time" ] }
+tokio = { version = "1.37.0", features = [ "macros", "time" ] }
 
 [package.metadata.workspaces]
 independent = true

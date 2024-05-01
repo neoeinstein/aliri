@@ -30,7 +30,7 @@ reqwest = { version = "0.12", features = [ "json" ], optional = true, default-fe
 serde = { version = "1", features = [ "derive" ] }
 serde_json = { version = "1", optional = true }
 thiserror = "1"
-tokio = { version = "1", features = [ "time", "io-util" ] }
+tokio = { version = "1.37.0", features = [ "time", "io-util" ] }
 tracing = "0.1.40"
 
 [dev-dependencies]
@@ -38,4 +38,4 @@ clap = { version = "4.5.4", features = ["derive", "env"] }
 color-eyre = "0.6"
 dotenvy = "0.15.7"
 tracing-subscriber = { version = "0.3", features = [ "fmt", "env-filter" ] }
-tokio = { version = "1", features = [ "rt-multi-thread", "macros" ] }
+tokio = { version = "1.37.0", features = [ "rt-multi-thread", "macros" ] }
