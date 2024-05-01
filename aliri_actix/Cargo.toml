@@ -30,7 +30,7 @@ aliri_base64 = { version = "0.1.0", path = "../aliri_base64" }
 aliri_clock = { version = "0.1.0", path = "../aliri_clock" }
 aliri_oauth2 = { version = "0.10.0", path = "../aliri_oauth2", features = [ "reqwest" ] }
 color-eyre = "0.6"
-regex = "1"
+regex = "1.10.4"
 serde_json = "1"
 
 [package.metadata.workspaces]
