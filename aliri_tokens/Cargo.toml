@@ -35,7 +35,7 @@ tracing = "0.1.40"
 
 [dev-dependencies]
 clap = { version = "4.5.4", features = ["derive", "env"] }
-color-eyre = "0.6"
+color-eyre = "0.6.3"
 dotenvy = "0.15.7"
 tracing-subscriber = { version = "0.3", features = [ "fmt", "env-filter" ] }
 tokio = { version = "1", features = [ "rt-multi-thread", "macros" ] }

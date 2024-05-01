@@ -21,7 +21,7 @@ tracing = "0.1"
 warp = "0.3"
 
 [dev-dependencies]
-color-eyre = "0.6"
+color-eyre = "0.6.3"
 regex = "1"
 serde_json = "1"
 tokio = { version = "1", features = [ "rt-multi-thread", "macros", "time" ] }
