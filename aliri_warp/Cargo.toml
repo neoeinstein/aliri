@@ -18,7 +18,7 @@ aliri_oauth2 = { version = "0.10.0", path = "../aliri_oauth2", features = [ "req
 serde = { version = "1", features = [ "derive" ] }
 thiserror = "1"
 tracing = "0.1"
-warp = "0.3"
+warp = "0.3.7"
 
 [dev-dependencies]
 color-eyre = "0.6"
