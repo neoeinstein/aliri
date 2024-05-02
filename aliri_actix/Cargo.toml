@@ -24,7 +24,7 @@ thiserror = "1"
 tracing = "0.1"
 
 [dev-dependencies]
-actix-rt = "2"
+actix-rt = "2.9.0"
 actix-web = { version = "4", default-features = false, features = ["macros"] }
 aliri_base64 = { version = "0.1.0", path = "../aliri_base64" }
 aliri_clock = { version = "0.1.0", path = "../aliri_clock" }
