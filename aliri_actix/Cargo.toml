@@ -31,7 +31,7 @@ aliri_clock = { version = "0.1.0", path = "../aliri_clock" }
 aliri_oauth2 = { version = "0.10.0", path = "../aliri_oauth2", features = [ "reqwest" ] }
 color-eyre = "0.6"
 regex = "1"
-serde_json = "1"
+serde_json = "1.0.116"
 
 [package.metadata.workspaces]
 independent = true
