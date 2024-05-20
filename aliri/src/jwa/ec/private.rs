@@ -72,7 +72,7 @@ impl PrivateKey {
         let pkcs8 = Base64::from_encoded(pkcs8_str).map_err(error::key_rejected)?;
 
         let ring_cache = Arc::new(
-            ring::signature::EcdsaKeyPair::from_pkcs8(
+            EcdsaKeyPair::from_pkcs8(
                 SigningAlgorithm::from(public_key.curve()).signing_algorithm(),
                 pkcs8.as_slice(),
                 &ring::rand::SystemRandom::new(),
