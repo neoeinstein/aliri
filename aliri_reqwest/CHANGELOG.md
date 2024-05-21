@@ -1,5 +1,9 @@
 # Changelog
 
+* The following workspace dependencies were updated
+  * dependencies
+    * aliri_tokens bumped from 0.3.0 to 0.3.2
+
 ## [0.5.0](https://github.com/neoeinstein/aliri/compare/aliri_reqwest-v0.4.1...aliri_reqwest-v0.5.0) (2024-04-12)
 
 

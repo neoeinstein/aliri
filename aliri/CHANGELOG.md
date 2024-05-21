@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.4](https://github.com/neoeinstein/aliri/compare/aliri-v0.6.3...aliri-v0.6.4) (2024-05-21)
+
+
+### Bug Fixes
+
+* **aliri_tokens:** use mode on unix only ([#100](https://github.com/neoeinstein/aliri/issues/100)) ([b73896b](https://github.com/neoeinstein/aliri/commit/b73896bcd5126572943896d0352ca067a30663c3))
+
 ## [0.6.3](https://github.com/neoeinstein/aliri/compare/aliri-v0.6.2...aliri-v0.6.3) (2024-04-12)
 
 
