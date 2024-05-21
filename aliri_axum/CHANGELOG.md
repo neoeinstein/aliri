@@ -1,5 +1,13 @@
 # Changelog
 
+* The following workspace dependencies were updated
+  * dependencies
+    * aliri bumped from 0.6.0 to 0.6.4
+    * aliri_oauth2 bumped from 0.10.0 to 0.10.2
+  * dev-dependencies
+    * aliri_oauth2 bumped from 0.10.0 to 0.10.2
+    * aliri_tower bumped from 0.6.0 to 0.6.1
+
 ## [0.4.0](https://github.com/neoeinstein/aliri/compare/aliri_axum-v0.3.0...aliri_axum-v0.4.0) (2024-04-12)
 
 

@@ -3,7 +3,7 @@ name = "aliri_tower"
 description = "Tower middleware for interacting with `aliri` authorities"
 keywords = [ "tower", "jose", "jwt", "oauth2", "auth" ]
 categories = [ "authentication", "web-programming", "web-programming::http-server" ]
-version = "0.6.0"
+version = "0.6.1"
 authors = ["Marcus Griep <marcus@griep.us>"]
 edition = "2021"
 readme = "../README.md"
@@ -13,9 +13,9 @@ repository = "https://github.com/neoeinstein/aliri"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-aliri = { version = "0.6.0", path = "../aliri" }
+aliri = { version = "0.6.4", path = "../aliri" }
 aliri_traits = { version = "0.1.1", path = "../aliri_traits" }
-aliri_oauth2 = { version = "0.10.0", path = "../aliri_oauth2", features = [ "reqwest" ] }
+aliri_oauth2 = { version = "0.10.2", path = "../aliri_oauth2", features = [ "reqwest" ] }
 bytes = "1.6.0"
 http = "1.1"
 http-body = "1.0"
