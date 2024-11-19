@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.5.1](https://github.com/neoeinstein/aliri/compare/aliri_reqwest-v0.5.0...aliri_reqwest-v0.5.1) (2024-11-19)
+
+
+### Bug Fixes
+
+* **aliri_reqwest:** widen reqwest-middleware constraint ([#109](https://github.com/neoeinstein/aliri/issues/109)) ([0f1c0a5](https://github.com/neoeinstein/aliri/commit/0f1c0a5afcc152bd07fd75e15765af89f94d99de))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * aliri_tokens bumped from 0.3.0 to 0.3.2
+
 ## [0.5.0](https://github.com/neoeinstein/aliri/compare/aliri_reqwest-v0.4.1...aliri_reqwest-v0.5.0) (2024-04-12)
 
 

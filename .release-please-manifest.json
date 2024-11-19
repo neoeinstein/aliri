@@ -1,14 +1,14 @@
 {
-  "aliri": "0.6.3",
-  "aliri_actix": "0.9.1",
-  "aliri_axum": "0.4.0",
+  "aliri": "0.6.4",
+  "aliri_actix": "0.9.2",
+  "aliri_axum": "0.4.1",
   "aliri_base64": "0.1.8",
   "aliri_clock": "0.1.4",
   "aliri_marcos": "0.1.2",
-  "aliri_oauth2": "0.10.1",
-  "aliri_reqwest": "0.5.0",
-  "aliri_tokens": "0.3.1",
-  "aliri_tower": "0.6.0",
+  "aliri_oauth2": "0.10.2",
+  "aliri_reqwest": "0.5.1",
+  "aliri_tokens": "0.3.2",
+  "aliri_tower": "0.6.1",
   "aliri_traits": "0.1.1",
-  "aliri_warp": "0.9.0"
+  "aliri_warp": "0.9.1"
 }
