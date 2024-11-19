@@ -147,6 +147,7 @@ pub struct Unexpected {
     source: Box<dyn StdError + Send + Sync + 'static>,
 }
 
+#[allow(dead_code)]
 pub(crate) fn unexpected(
     source: impl Into<Box<dyn StdError + Send + Sync + 'static>>,
 ) -> Unexpected {
