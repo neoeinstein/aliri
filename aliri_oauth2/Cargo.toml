@@ -44,3 +44,6 @@ tokio = { version = "1", features = [ "rt-multi-thread", "macros" ] }
 
 [package.metadata.workspaces]
 independent = true
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(never)']}
