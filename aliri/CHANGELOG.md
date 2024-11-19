@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.6.4](https://github.com/neoeinstein/aliri/compare/aliri-v0.6.3...aliri-v0.6.4) (2024-11-19)
+
+
+### Bug Fixes
+
+* **aliri_reqwest:** widen reqwest-middleware constraint ([#109](https://github.com/neoeinstein/aliri/issues/109)) ([0f1c0a5](https://github.com/neoeinstein/aliri/commit/0f1c0a5afcc152bd07fd75e15765af89f94d99de))
+* **aliri_tokens:** use mode on unix only ([#100](https://github.com/neoeinstein/aliri/issues/100)) ([b73896b](https://github.com/neoeinstein/aliri/commit/b73896bcd5126572943896d0352ca067a30663c3))
+
 ## [0.6.3](https://github.com/neoeinstein/aliri/compare/aliri-v0.6.2...aliri-v0.6.3) (2024-04-12)
 
 
