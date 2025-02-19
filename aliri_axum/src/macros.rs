@@ -174,7 +174,6 @@ macro_rules! scope_guard {
             }
         }
 
-        #[::axum::async_trait]
         impl<S> ::axum::extract::FromRequestParts<S> for $i
         where
             S: Sync,
@@ -234,7 +233,6 @@ macro_rules! scope_guard {
             }
         }
 
-        #[::axum::async_trait]
         impl<S> ::axum::extract::FromRequestParts<S> for $i
         where
             S: Sync,

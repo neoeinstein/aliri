@@ -222,7 +222,6 @@ impl aliri_tower::OnJwtError for MyErrorHandler {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 struct LoginCount(pub u32);
 
-#[axum::async_trait]
 impl<S: Sync> axum::extract::FromRequestParts<S> for LoginCount {
     type Rejection = (http::StatusCode, &'static str);
 
