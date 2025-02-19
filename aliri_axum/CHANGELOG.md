@@ -8,6 +8,17 @@
     * aliri_oauth2 bumped from 0.10.0 to 0.10.2
     * aliri_tower bumped from 0.6.0 to 0.6.1
 
+## [0.5.0](https://github.com/neoeinstein/aliri/compare/aliri_axum-v0.4.1...aliri_axum-v0.5.0) (2025-02-19)
+
+
+### ⚠ BREAKING CHANGES
+
+* **axum:** update to axum 0.8.0
+
+### Features
+
+* **axum:** update to axum 0.8.0 ([af22530](https://github.com/neoeinstein/aliri/commit/af22530429a549e44b490862b9d72b927e9c271c))
+
 ## [0.4.0](https://github.com/neoeinstein/aliri/compare/aliri_axum-v0.3.0...aliri_axum-v0.4.0) (2024-04-12)
 
 
