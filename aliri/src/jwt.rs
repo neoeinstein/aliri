@@ -334,7 +334,7 @@ impl JwtRef {
     }
 }
 
-impl<'a, H> HasAlgorithm for Decomposed<'a, H>
+impl<H> HasAlgorithm for Decomposed<'_, H>
 where
     H: HasAlgorithm,
 {
@@ -343,7 +343,7 @@ where
     }
 }
 
-impl<'a, H> CoreHeaders for Decomposed<'a, H>
+impl<H> CoreHeaders for Decomposed<'_, H>
 where
     H: CoreHeaders,
 {

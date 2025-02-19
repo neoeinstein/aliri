@@ -26,7 +26,7 @@ pub struct BorrowedToken<'a> {
     inner: watch::Ref<'a, TokenWithLifetime>,
 }
 
-impl<'a> ops::Deref for BorrowedToken<'a> {
+impl ops::Deref for BorrowedToken<'_> {
     type Target = TokenWithLifetime;
 
     fn deref(&self) -> &Self::Target {
