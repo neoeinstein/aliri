@@ -26,7 +26,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
-      - uses: Swatinem/rust-cache@f0deed1e0edfc6a9be95417288c0e1099b1eeec3 # v2
+      - uses: Swatinem/rust-cache@779680da715d629ac1d338a641029a2f4372abb5 # v2
       - run: cargo clippy --all-targets --all-features -- -D warnings
 
   test:
@@ -35,7 +35,7 @@ jobs:
     steps:
       - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6
       - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@f0deed1e0edfc6a9be95417288c0e1099b1eeec3 # v2
+      - uses: Swatinem/rust-cache@779680da715d629ac1d338a641029a2f4372abb5 # v2
       - uses: taiki-e/install-action@nextest
       - run: cargo nextest run --no-fail-fast --all-features
       - run: cargo test --doc --no-fail-fast --all-features
@@ -46,7 +46,7 @@ jobs:
     steps:
       - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6
       - uses: dtolnay/rust-toolchain@miri
-      - uses: Swatinem/rust-cache@f0deed1e0edfc6a9be95417288c0e1099b1eeec3 # v2
+      - uses: Swatinem/rust-cache@779680da715d629ac1d338a641029a2f4372abb5 # v2
       - run: cargo miri setup
       - run: cargo miri test -p aliri_base64 -p aliri_oauth2 --no-fail-fast
 
@@ -62,6 +62,6 @@ jobs:
     steps:
       - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6
       - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@f0deed1e0edfc6a9be95417288c0e1099b1eeec3 # v2
+      - uses: Swatinem/rust-cache@779680da715d629ac1d338a641029a2f4372abb5 # v2
       - run: cargo install --locked cargo-deny
       - run: cargo deny --all-features check ${{ matrix.checks }}
