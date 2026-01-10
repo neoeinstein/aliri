@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.3.2](https://github.com/neoeinstein/aliri/compare/aliri_tokens-v0.3.1...aliri_tokens-v0.3.2) (2024-11-19)
+
+
+### Bug Fixes
+
+* **aliri_tokens:** use mode on unix only ([#100](https://github.com/neoeinstein/aliri/issues/100)) ([b73896b](https://github.com/neoeinstein/aliri/commit/b73896bcd5126572943896d0352ca067a30663c3))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * aliri bumped from 0.6.0 to 0.6.4
+
 ## [0.3.1](https://github.com/neoeinstein/aliri/compare/aliri_tokens-v0.3.0...aliri_tokens-v0.3.1) (2024-04-12)
 
 
