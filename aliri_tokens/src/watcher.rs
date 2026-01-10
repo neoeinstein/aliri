@@ -1,15 +1,9 @@
-use std::{error, ops, sync::Arc, time::Duration};
+use std::ops;
 
-use aliri_clock::{Clock, DurationSecs, System, UnixTime};
 use thiserror::Error;
-use tokio::sync::{watch, Mutex};
+use tokio::sync::watch;
 
-use crate::{
-    backoff::{ErrorBackoffConfig, ErrorBackoffHandler, WithBackoff},
-    jitter::JitterSource,
-    sources::AsyncTokenSource,
-    TokenWithLifetime,
-};
+use crate::TokenWithLifetime;
 
 /// A token watcher that can be uses to obtain up-to-date tokens
 #[derive(Clone, Debug)]
@@ -57,7 +51,7 @@ impl TokenWatcher {
     ///
     /// This borrow should be short-lived as outstanding borrows will block the publisher
     /// being able to report new tokens.
-    pub fn token(&self) -> BorrowedToken {
+    pub fn token(&'_ self) -> BorrowedToken<'_> {
         BorrowedToken {
             inner: self.watcher.borrow(),
         }

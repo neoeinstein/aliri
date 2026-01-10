@@ -51,13 +51,10 @@ async fn main() -> color_eyre::Result<()> {
 
     let client = reqwest::Client::builder().https_only(true).build()?;
 
-    let credentials = sources::oauth2::dto::ClientCredentialsWithAudience {
-        credentials: sources::oauth2::dto::ClientCredentials {
-            client_id: opts.client_id,
-            client_secret: opts.client_secret,
-        }
-        .into(),
-        audience: opts.audience,
+    let credentials = sources::oauth2::dto::ClientCredentials {
+        client_id: opts.client_id,
+        client_secret: opts.client_secret,
+        audience: Some(opts.audience),
     };
 
     let fallback = sources::oauth2::ClientCredentialsTokenSource::new(

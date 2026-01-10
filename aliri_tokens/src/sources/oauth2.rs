@@ -29,7 +29,7 @@ pub trait CredentialsSource: serde::Serialize {
 pub struct ClientCredentialsTokenSource<C, T = JsonBody> {
     client: reqwest::Client,
     token_url: reqwest::Url,
-    credentials: dto::ClientCredentialsWithAudience,
+    credentials: dto::ClientCredentials,
     lifetime_config: TokenLifetimeConfig<C>,
     content_type: PhantomData<fn() -> T>,
 }
@@ -39,7 +39,7 @@ impl<C> ClientCredentialsTokenSource<C, JsonBody> {
     pub fn new(
         client: reqwest::Client,
         token_url: reqwest::Url,
-        credentials: dto::ClientCredentialsWithAudience,
+        credentials: dto::ClientCredentials,
         lifetime_config: TokenLifetimeConfig<C>,
     ) -> Self {
         Self {

@@ -1,4 +1,4 @@
-use std::{error, ops, sync::Arc, time::Duration};
+use std::{error, sync::Arc, time::Duration};
 
 use aliri_clock::{Clock, DurationSecs, System, UnixTime};
 use thiserror::Error;
