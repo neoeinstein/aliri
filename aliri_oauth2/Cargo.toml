@@ -15,7 +15,7 @@ ec = [ "aliri/ec" ]
 rsa = [ "aliri/rsa" ]
 hmac = [ "aliri/hmac" ]
 private-keys = [ "aliri/private-keys" ]
-rustls-tls = [ "reqwest/rustls-tls" ]
+rustls = [ "reqwest/rustls" ]
 default-tls = [ "reqwest/default-tls" ]
 default = [ "rsa", "reqwest", "tokio" ]
 
@@ -30,7 +30,7 @@ aliri_traits = { version = "0.1.0", path = "../aliri_traits" }
 aliri_braid = { version = "0.4.0" }
 arc-swap = "1.7"
 compact_str = { version = "0.7.1", features = ["serde"] }
-reqwest = { version = "0.12", optional = true, default-features = false, features = [ "json" ] }
+reqwest = { version = "0.13", optional = true, default-features = false, features = [ "json", "form" ] }
 serde = { version = "1", features = [ "derive" ] }
 thiserror = "1"
 tokio = { version = "1", features = [ "time" ], optional = true }
