@@ -173,7 +173,7 @@ impl ScopePolicy {
 
     /// Add an alternate allowable scope
     pub fn allow(&mut self, scope: Scope) {
-        let this = std::mem::replace(self, Self::deny_all());
+        let this = std::mem::take(self);
         *self = this.or_allow(scope);
     }
 

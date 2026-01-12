@@ -203,7 +203,7 @@ impl Scope {
     /// Adds a scope token to the scope
     #[inline]
     pub fn insert(&mut self, scope_token: ScopeToken) {
-        let this = std::mem::replace(self, Self::empty());
+        let this = std::mem::take(self);
         *self = this.and(scope_token);
     }
 
