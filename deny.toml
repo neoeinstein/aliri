@@ -119,7 +119,7 @@ confidence-threshold = 0.8
 exceptions = [
     # Each entry is the crate and version constraint, and its specific allow
     # list
-    { allow = ["MPL-2.0"], name = "webpki-roots", version = "*" },
+    { allow = ["MPL-2.0", "CDLA-Permissive-2.0"], name = "webpki-roots", version = "*" },
 ]
 
 # Some crates don't have (easily) machine readable licensing information,
@@ -139,7 +139,7 @@ expression = "MIT AND ISC AND OpenSSL"
 # depending on the rest of your configuration
 license-files = [
     # Each entry is a crate relative path, and the (opaque) hash of its contents
-    { path = "LICENSE", hash = 0xbd0eed23 }
+    { path = "LICENSE", hash = 0xbd0eed23 },
 ]
 
 [licenses.private]
