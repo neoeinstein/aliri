@@ -119,7 +119,7 @@ confidence-threshold = 0.8
 exceptions = [
     # Each entry is the crate and version constraint, and its specific allow
     # list
-    { allow = ["MPL-2.0"], name = "webpki-roots", version = "*" },
+    { allow = ["MPL-2.0", "CDLA-Permissive-2.0"], name = "webpki-roots", version = "*" },
     # actix-web depends on foldhash which is Zlib licensed.
     # If we want to support actix-web we must allow this crate's license.
     { allow = ["Zlib"], name = "foldhash", version = "*" },
