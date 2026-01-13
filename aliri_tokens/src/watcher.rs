@@ -123,7 +123,7 @@ impl TokenWatcher {
     ///
     /// This borrow should be short-lived as outstanding borrows will block the publisher
     /// being able to report new tokens.
-    pub fn token(&self) -> BorrowedToken {
+    pub fn token(&self) -> BorrowedToken<'_> {
         BorrowedToken {
             inner: self.watcher.borrow(),
         }

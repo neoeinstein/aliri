@@ -219,6 +219,7 @@ macro_rules! b64_builder {
             /// Calculates the expected length of the base64-encoding for a buffer of size `len`
             #[inline]
             #[must_use]
+            #[allow(clippy::manual_div_ceil)]
             pub const fn calc_encoded_len(len: usize) -> usize {
                 if $is_padded {
                     (len + 2) / 3 * 4
