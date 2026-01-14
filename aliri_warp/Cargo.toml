@@ -3,7 +3,7 @@ name = "aliri_warp"
 description = "Warp filters for interacting with `aliri` authorities"
 keywords = [ "warp", "jose", "jwt", "oauth2", "auth" ]
 categories = [ "authentication", "web-programming", "web-programming::http-server" ]
-version = "0.9.1"
+version = "0.9.2"
 authors = ["Marcus Griep <marcus@griep.us>"]
 edition = "2018"
 readme = "../README.md"
@@ -14,7 +14,7 @@ repository = "https://github.com/neoeinstein/aliri"
 
 [dependencies]
 aliri = { version = "0.6.4", path = "../aliri" }
-aliri_oauth2 = { version = "0.10.2", path = "../aliri_oauth2", features = [ "reqwest" ] }
+aliri_oauth2 = { version = "0.11.0", path = "../aliri_oauth2", features = [ "reqwest" ] }
 serde = { version = "1", features = [ "derive" ] }
 thiserror = "1"
 tracing = "0.1"
