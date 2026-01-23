@@ -8,6 +8,27 @@
     * aliri_oauth2 bumped from 0.10.0 to 0.10.2
     * aliri_tower bumped from 0.6.0 to 0.6.1
 
+## [0.6.0](https://github.com/neoeinstein/aliri/compare/aliri_axum-v0.5.0...aliri_axum-v0.6.0) (2026-01-23)
+
+
+### ⚠ BREAKING CHANGES
+
+* **deps:** update reqwest to v0.13 ([#125](https://github.com/neoeinstein/aliri/issues/125))
+
+### Bug Fixes
+
+* **deps:** update reqwest to v0.13 ([#125](https://github.com/neoeinstein/aliri/issues/125)) ([8d60235](https://github.com/neoeinstein/aliri/commit/8d6023514f79996a98bb0605a33f68b72c51a8ed))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * aliri_oauth2 bumped from 0.10.2 to 0.11.0
+  * dev-dependencies
+    * aliri_oauth2 bumped from 0.10.2 to 0.11.0
+    * aliri_tower bumped from 0.6.1 to 0.6.2
+
 ## [0.5.0](https://github.com/neoeinstein/aliri/compare/aliri_axum-v0.4.1...aliri_axum-v0.5.0) (2025-02-19)
 
 

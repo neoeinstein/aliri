@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.11.0](https://github.com/neoeinstein/aliri/compare/aliri_oauth2-v0.10.2...aliri_oauth2-v0.11.0) (2026-01-23)
+
+
+### ⚠ BREAKING CHANGES
+
+* **deps:** update reqwest to v0.13 ([#125](https://github.com/neoeinstein/aliri/issues/125))
+
+### Bug Fixes
+
+* **deps:** update reqwest to v0.13 ([#125](https://github.com/neoeinstein/aliri/issues/125)) ([8d60235](https://github.com/neoeinstein/aliri/commit/8d6023514f79996a98bb0605a33f68b72c51a8ed))
+
 ## [0.10.2](https://github.com/neoeinstein/aliri/compare/aliri_oauth2-v0.10.1...aliri_oauth2-v0.10.2) (2024-11-19)
 
 
