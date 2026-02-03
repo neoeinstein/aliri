@@ -16,7 +16,7 @@ repository = "https://github.com/neoeinstein/aliri"
 aliri = { version = "0.6.4", path = "../aliri" }
 aliri_traits = { version = "0.1.1", path = "../aliri_traits" }
 aliri_oauth2 = { version = "0.10.2", path = "../aliri_oauth2", features = [ "reqwest" ] }
-bytes = "1.6.0"
+bytes = "1.11.1"
 http = "1.1"
 http-body = "1.0"
 serde = { version = "1", features = [ "derive" ] }
