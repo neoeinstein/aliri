@@ -68,7 +68,7 @@
 //!             .layer(authorizer.scope_layer(policy![scope!["post_user"]]))),
 //!     )
 //!     .route(
-//!         "/users/:id",
+//!         "/users/{id}",
 //!         get(handle_get
 //!             .layer(authorizer.scope_layer(ScopePolicy::allow_one_from_static("get_user")))),
 //!     )
