@@ -23,14 +23,14 @@ serde = { version = "1", features = [ "derive" ] }
 thiserror = "1"
 tracing = "0.1"
 tower-layer = { version = "0.3.2" }
-tower-http = { version = "0.5", features = [ "validate-request" ] }
+tower-http = { version = "0.6", features = [ "validate-request" ] }
 
 [dev-dependencies]
 ## To be re-added once a Tonic example becomes viable again
 # aliri_braid = "0.4.0"
 aliri_base64 = { version = "0.1.5", path = "../aliri_base64" }
 aliri_clock = { version = "0.1.4", path = "../aliri_clock" }
-axum = { version = "0.7", default-features = false, features = ["tokio", "http1", "http2"] }
+axum = { version = "0.8", default-features = false, features = ["tokio", "http1", "http2"] }
 # prost = "0.12"
 # tokio = { version = "1", features = [ "rt-multi-thread", "macros", "net" ] }
 tokio = { version = "1", features = [ "net" ] }
