@@ -40,12 +40,13 @@
 //!
 //! ```
 //! use aliri_clock::DurationSecs;
-//! use aliri_tokens::{backoff, jitter, sources, ClientId, ClientSecret, TokenLifetimeConfig, TokenWatcher};
+//! use aliri_tokens::{backoff, jitter, sources, ClientId, ClientSecret, Scope, TokenLifetimeConfig, TokenRefresher};
 //!
 //! # struct Opts {
 //! #     client_id: ClientId,
 //! #     client_secret: ClientSecret,
 //! #     audience: aliri::jwt::Audience,
+//! #     scope: Vec<&'static str>,
 //! #     token_url: reqwest::Url,
 //! #     credentials_file: std::path::PathBuf,
 //! # }
@@ -54,17 +55,16 @@
 //! #     client_id: ClientId::from_static("test"),
 //! #     client_secret: ClientSecret::from_static("test"),
 //! #     audience: aliri::jwt::Audience::from_static("test"),
+//! #     scope: vec!["test:read"],
 //! #     token_url: reqwest::Url::parse("https://example.com/oauth/token").unwrap(),
 //! #     credentials_file: std::path::PathBuf::from("credentials.json"),
 //! # };
 //! #
-//! let credentials = sources::oauth2::dto::ClientCredentialsWithAudience {
-//!     credentials: sources::oauth2::dto::ClientCredentials {
-//!         client_id: opts.client_id,
-//!         client_secret: opts.client_secret,
-//!     }
-//!     .into(),
-//!     audience: opts.audience,
+//! let credentials = sources::oauth2::dto::ClientCredentials {
+//!     client_id: opts.client_id,
+//!     client_secret: opts.client_secret,
+//!     audience: Some(opts.audience),
+//!     scope: Scope::from_tokens(opts.scope),
 //! };
 //!
 //! let fallback = sources::oauth2::ClientCredentialsTokenSource::new(
@@ -81,7 +81,7 @@
 //!
 //! let jitter_source = jitter::RandomEarlyJitter::new(DurationSecs(60));
 //!
-//! let watcher = TokenWatcher::spawn_from_token_source(
+//! let refresher = TokenRefresher::spawn_from_token_source(
 //!     token_source,
 //!     jitter_source,
 //!     backoff::ErrorBackoffConfig::default(),
@@ -90,7 +90,7 @@
 //! .await?;
 //!
 //! tracing::info!(
-//!     token = format_args!("{:#?}", watcher.token().access_token()),
+//!     token = format_args!("{:#?}", refresher.get_watcher().token().access_token()),
 //!     "first access token"
 //! );
 //! # */

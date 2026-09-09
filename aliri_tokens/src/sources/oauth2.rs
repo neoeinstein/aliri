@@ -8,7 +8,7 @@ use async_trait::async_trait;
 use thiserror::Error;
 
 use super::AsyncTokenSource;
-use crate::{ClientIdRef, RefreshTokenRef, TokenLifetimeConfig, TokenWithLifetime};
+use crate::{ClientIdRef, RefreshTokenRef, ScopeRef, TokenLifetimeConfig, TokenWithLifetime};
 
 pub mod dto;
 
@@ -20,6 +20,10 @@ pub trait CredentialsSource: serde::Serialize {
     fn grant_type() -> &'static str;
     /// The optional audience of the request
     fn audience(&self) -> Option<&jwt::AudienceRef>;
+    /// The optional scope being requested
+    fn scope(&self) -> Option<&ScopeRef> {
+        None
+    }
     /// A handler to received updates to a refresh token if the refresh token rotates
     fn on_refresh_token(&mut self, refresh_token: Box<RefreshTokenRef>);
 }
@@ -183,6 +187,7 @@ pub enum ContentType {
         credentials.grant_type = R::grant_type(),
         credentials.client_id = %credentials.client_id(),
         credentials.audience = maybe_value(&credentials.audience().map(|a| a.as_str())),
+        credentials.scope = maybe_value(&credentials.scope().map(|s| s.as_str())),
     ),
 )]
 async fn request_token<R: CredentialsSource, C: Clock, T: RequestType>(
@@ -227,6 +232,7 @@ async fn request_token<R: CredentialsSource, C: Clock, T: RequestType>(
     tracing::info!(
         has_id_token = resp.id_token.is_some(),
         has_refresh_token = resp.refresh_token.is_some(),
+        granted_scope = maybe_value(&resp.scope.map(|s| s.as_str())),
         lifetime = token.lifetime().0,
         stale = token.stale().0,
         expiry = token.expiry().0,
