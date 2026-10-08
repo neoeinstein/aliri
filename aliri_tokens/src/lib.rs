@@ -40,12 +40,13 @@
 //!
 //! ```
 //! use aliri_clock::DurationSecs;
-//! use aliri_tokens::{backoff, jitter, sources, ClientId, ClientSecret, TokenLifetimeConfig, TokenWatcher};
+//! use aliri_tokens::{backoff, jitter, sources, ClientId, ClientSecret, Scope, TokenLifetimeConfig, TokenWatcher};
 //!
 //! # struct Opts {
 //! #     client_id: ClientId,
 //! #     client_secret: ClientSecret,
 //! #     audience: aliri::jwt::Audience,
+//! #     scope: Vec<&'static str>,
 //! #     token_url: reqwest::Url,
 //! #     credentials_file: std::path::PathBuf,
 //! # }
@@ -54,17 +55,16 @@
 //! #     client_id: ClientId::from_static("test"),
 //! #     client_secret: ClientSecret::from_static("test"),
 //! #     audience: aliri::jwt::Audience::from_static("test"),
+//! #     scope: vec!["test:read"],
 //! #     token_url: reqwest::Url::parse("https://example.com/oauth/token").unwrap(),
 //! #     credentials_file: std::path::PathBuf::from("credentials.json"),
 //! # };
 //! #
-//! let credentials = sources::oauth2::dto::ClientCredentialsWithAudience {
-//!     credentials: sources::oauth2::dto::ClientCredentials {
-//!         client_id: opts.client_id,
-//!         client_secret: opts.client_secret,
-//!     }
-//!     .into(),
-//!     audience: opts.audience,
+//! let credentials = sources::oauth2::dto::ClientCredentials {
+//!     client_id: opts.client_id,
+//!     client_secret: opts.client_secret,
+//!     audience: Some(opts.audience),
+//!     scope: Scope::from_tokens(opts.scope),
 //! };
 //!
 //! let fallback = sources::oauth2::ClientCredentialsTokenSource::new(
@@ -95,6 +95,12 @@
 //! );
 //! # */
 //! ```
+//!
+//! If the token authority may reject a token before it becomes stale, e.g. because it was
+//! revoked, spawn a [`TokenRefresher`] instead. It refreshes the token in the background
+//! just like the watcher, but also allows forcing a refresh using
+//! [`TokenRefresher::refresh()`], for example in response to a `401 Unauthorized`. Watchers
+//! for the refreshed token are obtained using [`TokenRefresher::watcher()`].
 //!
 //! This crate includes an example of doing a periodic refresh using a file cache in
 //! the examples folder. Refer to that example for more details on usage.
@@ -127,10 +133,12 @@
 pub mod backoff;
 mod braids;
 pub mod jitter;
+mod refresher;
 pub mod sources;
 mod tokens;
 mod watcher;
 
 pub use braids::*;
+pub use refresher::{TokenRefreshFailed, TokenRefresher};
 pub use tokens::{TokenLifetimeConfig, TokenStatus, TokenWithLifetime};
 pub use watcher::{BorrowedToken, TokenPublisherQuit, TokenWatcher};

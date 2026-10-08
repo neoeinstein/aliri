@@ -3,7 +3,7 @@ use std::time::Duration;
 use aliri::jwt;
 use aliri_clock::DurationSecs;
 use aliri_tokens::{
-    backoff, jitter, sources, ClientId, ClientSecret, TokenLifetimeConfig, TokenStatus,
+    backoff, jitter, sources, ClientId, ClientSecret, Scope, TokenLifetimeConfig, TokenStatus,
     TokenWatcher,
 };
 use clap::Parser;
@@ -26,6 +26,10 @@ struct Opts {
     /// The audience to request a token for
     #[clap(short, long, env)]
     audience: jwt::Audience,
+
+    /// A scope token to request, repeated once per scope token
+    #[clap(long = "scope", env, value_delimiter = ' ')]
+    scope: Vec<String>,
 
     /// The local file used to cache credentials
     #[clap(
@@ -51,13 +55,11 @@ async fn main() -> color_eyre::Result<()> {
 
     let client = reqwest::Client::builder().https_only(true).build()?;
 
-    let credentials = sources::oauth2::dto::ClientCredentialsWithAudience {
-        credentials: sources::oauth2::dto::ClientCredentials {
-            client_id: opts.client_id,
-            client_secret: opts.client_secret,
-        }
-        .into(),
-        audience: opts.audience,
+    let credentials = sources::oauth2::dto::ClientCredentials {
+        client_id: opts.client_id,
+        client_secret: opts.client_secret,
+        audience: Some(opts.audience),
+        scope: Scope::from_tokens(opts.scope.iter()),
     };
 
     let fallback = sources::oauth2::ClientCredentialsTokenSource::new(

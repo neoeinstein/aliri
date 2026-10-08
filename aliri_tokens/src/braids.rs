@@ -69,6 +69,49 @@ limited_reveal!(ClientSecretRef: "CLIENT SECRET", 5);
 // #[braid(serde)]
 // pub struct DeviceCode;
 //
+/// An OAuth2 scope request
+///
+/// A space-delimited, case-sensitive list of scope tokens, as described by
+/// [RFC 6749 §3.3](https://datatracker.ietf.org/doc/html/rfc6749#section-3.3).
+///
+/// An authority is free to grant less than what was requested, so the scope on the
+/// token response may be narrower than the scope on the request.
+#[braid(serde)]
+pub struct Scope;
+
+impl Scope {
+    /// Builds a scope request out of individual scope tokens, delimiting them with spaces
+    ///
+    /// Returns `None` if the iterator yields no tokens, as an OAuth2 request either
+    /// carries a non-empty scope or omits the parameter entirely.
+    pub fn from_tokens<I>(tokens: I) -> Option<Self>
+    where
+        I: IntoIterator,
+        I::Item: AsRef<str>,
+    {
+        let mut joined = String::new();
+        for token in tokens {
+            if !joined.is_empty() {
+                joined.push(' ');
+            }
+            joined.push_str(token.as_ref());
+        }
+
+        if joined.is_empty() {
+            None
+        } else {
+            Some(Self::new(joined))
+        }
+    }
+}
+
+impl ScopeRef {
+    /// Iterates over the individual scope tokens
+    pub fn tokens(&self) -> impl Iterator<Item = &str> {
+        self.as_str().split(' ').filter(|t| !t.is_empty())
+    }
+}
+
 /// An access token
 #[braid(serde, debug = "owned", display = "owned", ord = "omit")]
 pub struct AccessToken;
