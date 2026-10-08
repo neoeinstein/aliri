@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - id: release-please
-        uses: google-github-actions/release-please-action@e4dc86ba9405554aeba3c6bb2d169500e7d3b4ee # v4
+        uses: googleapis/release-please-action@16a9c90856f42705d54a6fda1823352bdc62cf38 # v4.4.0
         with:
           token: ${{ secrets.RELEASE_PLEASE_PAT }}
     outputs:
@@ -33,10 +33,10 @@ jobs:
       release-aliri_warp: ${{ steps.release-please.outputs['aliri_warp--release_created'] }}
   release:
     if: needs.release-please.outputs.releases == 'true'
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     needs: release-please
     steps:
-      - uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29 # v4
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
       - name: Install Stable Rust Toolchain
         uses: dtolnay/rust-toolchain@stable
 

@@ -177,7 +177,7 @@ impl Predicate<Request> for HttpsOnly {
         req.url().scheme() == "https"
     }
 
-    fn find_case(&self, expected: bool, req: &Request) -> Option<reflection::Case> {
+    fn find_case(&self, expected: bool, req: &Request) -> Option<reflection::Case<'_>> {
         let result = self.eval(req);
         if result != expected {
             Some(
@@ -223,7 +223,7 @@ impl Predicate<Request> for ExactHostMatch {
         req.url().host_str() == Some(&self.host)
     }
 
-    fn find_case(&self, expected: bool, req: &Request) -> Option<reflection::Case> {
+    fn find_case(&self, expected: bool, req: &Request) -> Option<reflection::Case<'_>> {
         let result = self.eval(req);
         if result != expected {
             Some(

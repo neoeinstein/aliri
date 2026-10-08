@@ -264,7 +264,7 @@ impl JwtRef {
     /// # Errors
     ///
     /// Returns an error if the JWT is malformed.
-    pub fn decompose<H>(&self) -> Result<Decomposed<H>, error::JwtVerifyError>
+    pub fn decompose<H>(&self) -> Result<Decomposed<'_, H>, error::JwtVerifyError>
     where
         H: for<'de> Deserialize<'de>,
     {
@@ -334,7 +334,7 @@ impl JwtRef {
     }
 }
 
-impl<'a, H> HasAlgorithm for Decomposed<'a, H>
+impl<H> HasAlgorithm for Decomposed<'_, H>
 where
     H: HasAlgorithm,
 {
@@ -343,7 +343,7 @@ where
     }
 }
 
-impl<'a, H> CoreHeaders for Decomposed<'a, H>
+impl<H> CoreHeaders for Decomposed<'_, H>
 where
     H: CoreHeaders,
 {
