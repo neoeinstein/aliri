@@ -257,7 +257,7 @@ mod tests {
     };
 
     use aliri_tokens::{
-        backoff::ErrorBackoffConfig, jitter::NullJitter, sources::ConstTokenSource, TokenRefresher,
+        backoff::ErrorBackoffConfig, jitter::NullJitter, sources::ConstTokenSource,
     };
     use reqwest::Client;
     use reqwest_middleware::ClientBuilder;
@@ -324,7 +324,7 @@ mod tests {
     }
 
     async fn prepare_middleware() -> AccessTokenMiddleware<HttpsOnly> {
-        let token_refresher = TokenRefresher::spawn_from_token_source(
+        let token_watcher = TokenWatcher::spawn_from_token_source(
             ConstTokenSource::new(TEST_TOKEN),
             NullJitter,
             ErrorBackoffConfig::default(),
@@ -332,7 +332,7 @@ mod tests {
         .await
         .unwrap();
 
-        AccessTokenMiddleware::new(token_refresher.get_watcher())
+        AccessTokenMiddleware::new(token_watcher)
     }
 
     mod when_request_does_not_have_an_authorization_header {

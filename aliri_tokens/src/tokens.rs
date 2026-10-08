@@ -202,6 +202,15 @@ impl TokenLifetimeConfig {
 }
 
 impl<C> TokenLifetimeConfig<C> {
+    #[cfg(test)]
+    pub(crate) fn with_clock<D>(self, clock: D) -> TokenLifetimeConfig<D> {
+        TokenLifetimeConfig {
+            freshness_period: self.freshness_period,
+            min_staleness_period: self.min_staleness_period,
+            clock,
+        }
+    }
+
     fn time_to_stale(&self, issued: UnixTime, valid_duration: DurationSecs) -> UnixTime {
         let delay = (valid_duration * self.freshness_period).max(self.min_staleness_period);
         issued + delay

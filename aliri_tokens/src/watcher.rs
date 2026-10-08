@@ -1,9 +1,13 @@
 use std::ops;
 
+use aliri_clock::{Clock, System};
 use thiserror::Error;
 use tokio::sync::watch;
 
-use crate::TokenWithLifetime;
+use crate::{
+    backoff::ErrorBackoffConfig, jitter::JitterSource, sources::AsyncTokenSource, TokenRefresher,
+    TokenWithLifetime,
+};
 
 /// A token watcher that can be uses to obtain up-to-date tokens
 #[derive(Clone, Debug)]
@@ -34,9 +38,61 @@ impl ops::Deref for BorrowedToken<'_> {
 pub struct TokenPublisherQuit(#[from] watch::error::RecvError);
 
 impl TokenWatcher {
-    /// Create new TokenWatcher.
-    pub fn new(reciever: watch::Receiver<TokenWithLifetime>) -> Self {
-        Self { watcher: reciever }
+    pub(crate) fn new(watcher: watch::Receiver<TokenWithLifetime>) -> Self {
+        Self { watcher }
+    }
+
+    /// Spawns a new token watcher which will automatically and periodically refresh
+    /// the token from a token source
+    ///
+    /// The token will be refreshed when it becomes stale. The token's stale time will be
+    /// jittered by `jitter_source` so that multiple instances don't stampede at the same time.
+    ///
+    /// This jittering also has the benefit of potentially allowing an update from one instance
+    /// to be shared within a caching layer, thus preventing multiple requests to the ultimate
+    /// token authority.
+    ///
+    /// To also be able to refresh the token on demand, e.g. when the token authority revoked
+    /// the current token, use a [`TokenRefresher`] instead.
+    pub async fn spawn_from_token_source<S, J>(
+        token_source: S,
+        jitter_source: J,
+        backoff_config: ErrorBackoffConfig,
+    ) -> Result<Self, S::Error>
+    where
+        S: AsyncTokenSource + 'static,
+        J: JitterSource + Send + 'static,
+    {
+        Self::spawn_from_token_source_with_clock(
+            token_source,
+            jitter_source,
+            backoff_config,
+            System,
+        )
+        .await
+    }
+
+    /// Spawns a new token watcher using the given clock
+    pub async fn spawn_from_token_source_with_clock<S, J, C>(
+        token_source: S,
+        jitter_source: J,
+        backoff_config: ErrorBackoffConfig,
+        clock: C,
+    ) -> Result<Self, S::Error>
+    where
+        S: AsyncTokenSource + 'static,
+        J: JitterSource + Send + 'static,
+        C: Clock + Send + 'static,
+    {
+        let refresher = TokenRefresher::spawn_from_token_source_with_clock(
+            token_source,
+            jitter_source,
+            backoff_config,
+            clock,
+        )
+        .await?;
+
+        Ok(refresher.watcher())
     }
 
     /// A future that returns as ready whenever a new token is published
@@ -51,7 +107,7 @@ impl TokenWatcher {
     ///
     /// This borrow should be short-lived as outstanding borrows will block the publisher
     /// being able to report new tokens.
-    pub fn token(&'_ self) -> BorrowedToken<'_> {
+    pub fn token(&self) -> BorrowedToken<'_> {
         BorrowedToken {
             inner: self.watcher.borrow(),
         }

@@ -40,7 +40,7 @@
 //!
 //! ```
 //! use aliri_clock::DurationSecs;
-//! use aliri_tokens::{backoff, jitter, sources, ClientId, ClientSecret, Scope, TokenLifetimeConfig, TokenRefresher};
+//! use aliri_tokens::{backoff, jitter, sources, ClientId, ClientSecret, Scope, TokenLifetimeConfig, TokenWatcher};
 //!
 //! # struct Opts {
 //! #     client_id: ClientId,
@@ -81,7 +81,7 @@
 //!
 //! let jitter_source = jitter::RandomEarlyJitter::new(DurationSecs(60));
 //!
-//! let refresher = TokenRefresher::spawn_from_token_source(
+//! let watcher = TokenWatcher::spawn_from_token_source(
 //!     token_source,
 //!     jitter_source,
 //!     backoff::ErrorBackoffConfig::default(),
@@ -90,11 +90,17 @@
 //! .await?;
 //!
 //! tracing::info!(
-//!     token = format_args!("{:#?}", refresher.get_watcher().token().access_token()),
+//!     token = format_args!("{:#?}", watcher.token().access_token()),
 //!     "first access token"
 //! );
 //! # */
 //! ```
+//!
+//! If the token authority may reject a token before it becomes stale, e.g. because it was
+//! revoked, spawn a [`TokenRefresher`] instead. It refreshes the token in the background
+//! just like the watcher, but also allows forcing a refresh using
+//! [`TokenRefresher::refresh()`], for example in response to a `401 Unauthorized`. Watchers
+//! for the refreshed token are obtained using [`TokenRefresher::watcher()`].
 //!
 //! This crate includes an example of doing a periodic refresh using a file cache in
 //! the examples folder. Refer to that example for more details on usage.

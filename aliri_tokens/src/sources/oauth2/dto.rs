@@ -1,6 +1,6 @@
 //! DTOs for interacting with OAuth2 token source servers
 
-use aliri::jwt::{self};
+use aliri::jwt;
 use aliri_clock::DurationSecs;
 use serde::{Deserialize, Serialize, Serializer};
 
@@ -37,7 +37,7 @@ impl Serialize for ClientCredentials {
     {
         use serde::ser::SerializeStruct;
 
-        let mut ser = serializer.serialize_struct("ClientCredentials", 3)?;
+        let mut ser = serializer.serialize_struct("ClientCredentials", 5)?;
         ser.serialize_field("grant_type", "client_credentials")?;
         ser.serialize_field("client_id", &self.client_id)?;
         ser.serialize_field("client_secret", &self.client_secret)?;
@@ -59,11 +59,7 @@ impl super::CredentialsSource for ClientCredentials {
         "client_credentials"
     }
     fn audience(&self) -> Option<&jwt::AudienceRef> {
-        if let Some(audience) = &self.audience {
-            Some(audience)
-        } else {
-            None
-        }
+        self.audience.as_deref()
     }
     fn scope(&self) -> Option<&ScopeRef> {
         self.scope.as_deref()
@@ -94,7 +90,7 @@ impl Serialize for RefreshTokenCredentialsSource {
     {
         use serde::ser::SerializeStruct;
 
-        let mut ser = serializer.serialize_struct("RefreshTokenCredentialsSource", 3)?;
+        let mut ser = serializer.serialize_struct("RefreshTokenCredentialsSource", 5)?;
         ser.serialize_field("grant_type", "refresh_token")?;
         ser.serialize_field("client_id", &self.client_id)?;
         if let Some(secret) = &self.client_secret {

@@ -29,32 +29,18 @@ impl FileTokenSource {
         let token = serde_json::from_str(&data)?;
         Ok(token)
     }
-    #[cfg(unix)]
-    async fn write_token(&mut self, token: &TokenWithLifetime) -> Result<(), std::io::Error> {
+
+    async fn write_token(&mut self, token: &TokenWithLifetime) -> Result<(), io::Error> {
         use tokio::io::AsyncWriteExt;
 
-        let mut file = OpenOptions::new()
-            .create(true)
-            .truncate(true)
-            .write(true)
-            .mode(0o600)
-            .open(&self.path)
-            .await?;
-        let data = serde_json::to_string_pretty(&token)?;
-        file.write_all(data.as_bytes()).await?;
-        Ok(())
-    }
+        let mut file_opts = OpenOptions::new();
 
-    #[cfg(windows)]
-    async fn write_token(&mut self, token: &TokenWithLifetime) -> Result<(), std::io::Error> {
-        use tokio::io::AsyncWriteExt;
+        file_opts.create(true).truncate(true).write(true);
 
-        let mut file = OpenOptions::new()
-            .create(true)
-            .truncate(true)
-            .write(true)
-            .open(&self.path)
-            .await?;
+        #[cfg(unix)]
+        file_opts.mode(0o600);
+
+        let mut file = file_opts.open(&self.path).await?;
         let data = serde_json::to_string_pretty(&token)?;
         file.write_all(data.as_bytes()).await?;
         Ok(())
